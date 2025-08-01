@@ -149,8 +149,5 @@ const Students: React.FC = () => {
     </Box>
   );
 };
-    </Box>
-  );
-};
 
 export default Students;

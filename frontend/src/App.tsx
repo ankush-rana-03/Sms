@@ -17,6 +17,7 @@ import Profile from './pages/Profile';
 import Layout from './components/Layout';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
+import LoginDebug from './components/LoginDebug';
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App: React.FC = () => {
         <AuthProvider>
           <Router>
             <Routes>
+              <Route path="/debug" element={<LoginDebug />} />
               <Route path="/login" element={<Login />} />
               <Route
                 path="/"

@@ -66,6 +66,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<StudentFormData>({
     resolver: yupResolver(schema),
@@ -144,6 +145,58 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   };
 
   const handleFormSubmit = handleSubmit(onFormSubmit);
+
+  const handleCompleteRegistration = async () => {
+    if (!faceData) {
+      setError('Please capture the student\'s face to complete registration');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // Get the current form values
+      const formValues = getValues();
+
+      // Prepare student data for API
+      const studentData: ServiceStudentFormData = {
+        name: formValues.name,
+        email: formValues.email,
+        phone: formValues.phone,
+        address: formValues.address,
+        dateOfBirth: formValues.dateOfBirth,
+        grade: formValues.class, // Map class to grade
+        parentName: formValues.parentName,
+        parentPhone: formValues.parentPhone,
+        facialData: {
+          faceId: `face_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          faceDescriptor: faceData.faceDescriptor,
+          faceImage: faceData.faceImage
+        }
+      };
+
+      console.log('Submitting student data:', studentData);
+
+      // Save to database
+      const result = await studentService.createStudent(studentData);
+      
+      console.log('Student created successfully:', result);
+      
+      // Show success message
+      setError(null);
+      setSuccess('Student saved to database successfully!');
+      
+      // Call the original onSubmit callback
+      onSubmit(formValues, faceData);
+      
+    } catch (error: any) {
+      console.error('Error creating student:', error);
+      setError(error.message || 'Failed to create student');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
@@ -346,7 +399,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
             </Button>
             <Button
               variant="contained"
-              onClick={handleFormSubmit}
+              onClick={handleCompleteRegistration}
               disabled={!faceData || isSubmitting}
               startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
             >

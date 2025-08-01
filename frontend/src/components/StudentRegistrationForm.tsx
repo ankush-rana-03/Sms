@@ -61,6 +61,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   const [activeStep, setActiveStep] = useState(0);
   const [faceData, setFaceData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const {
     register,
@@ -126,6 +127,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         
         console.log('Student created successfully:', result);
         
+        // Show success message
+        setError(null);
+        setSuccess('Student saved to database successfully!');
+        
         // Call the original onSubmit callback
         onSubmit(data, faceData);
         
@@ -157,6 +162,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
         </Alert>
       )}
 

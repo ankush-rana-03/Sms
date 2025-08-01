@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar } from '@mui/material';
 import { Add, Person, Refresh } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import studentService, { Student } from '../services/studentService';
@@ -11,6 +11,9 @@ const Students: React.FC = () => {
   const [fetchingStudents, setFetchingStudents] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
 
   // Fetch students on component mount
   useEffect(() => {
@@ -40,6 +43,12 @@ const Students: React.FC = () => {
       // The student is already saved in the form component
       // Just refresh the students list and show success
       await fetchStudents();
+      
+      // Show success toast
+      setToastMessage('Student registered successfully with facial data!');
+      setToastSeverity('success');
+      setShowToast(true);
+      
       setSuccess('Student registered successfully with facial data!');
       setOpenRegistration(false);
       
@@ -47,6 +56,12 @@ const Students: React.FC = () => {
       setTimeout(() => setSuccess(null), 3000);
     } catch (error: any) {
       console.error('Error handling student registration:', error);
+      
+      // Show error toast
+      setToastMessage('Failed to complete registration');
+      setToastSeverity('error');
+      setShowToast(true);
+      
       setError('Failed to complete registration');
     } finally {
       setLoading(false);
@@ -146,6 +161,22 @@ const Students: React.FC = () => {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Toast Notification */}
+      <Snackbar
+        open={showToast}
+        autoHideDuration={4000}
+        onClose={() => setShowToast(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowToast(false)} 
+          severity={toastSeverity}
+          sx={{ width: '100%' }}
+        >
+          {toastMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

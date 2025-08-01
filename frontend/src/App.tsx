@@ -18,6 +18,7 @@ import Layout from './components/Layout';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
 import LoginDebug from './components/LoginDebug';
+import CameraTest from './components/CameraTest';
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App: React.FC = () => {
         <AuthProvider>
           <Router>
             <Routes>
+              <Route path="/camera-test" element={<CameraTest />} />
               <Route path="/debug" element={<LoginDebug />} />
               <Route path="/login" element={<Login />} />
               <Route

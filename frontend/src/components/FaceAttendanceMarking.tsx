@@ -25,6 +25,7 @@ interface Student {
   facialData?: {
     faceDescriptor: number[];
     faceImage: string;
+    isFaceRegistered?: boolean;
   };
 }
 

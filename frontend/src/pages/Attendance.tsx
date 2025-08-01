@@ -275,7 +275,8 @@ const Attendance: React.FC = () => {
             section: 'A',
             facialData: {
               faceDescriptor: [0.1, 0.2, 0.3, 0.4, 0.5], // Mock face data
-              faceImage: 'data:image/jpeg;base64,mock-image-data'
+              faceImage: 'data:image/jpeg;base64,mock-image-data',
+              isFaceRegistered: true
             }
           }))}
           onAttendanceMarked={handleFaceAttendanceMarked}

@@ -114,6 +114,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
           address: data.address,
           dateOfBirth: data.dateOfBirth,
           grade: data.class, // Map class to grade
+          section: data.section || 'A',
+          rollNumber: data.rollNumber || '001',
+          gender: data.gender || 'male',
+          bloodGroup: data.bloodGroup || 'A+',
           parentName: data.parentName,
           parentPhone: data.parentPhone,
           facialData: {
@@ -169,6 +173,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         grade: formValues.class, // Map class to grade
         parentName: formValues.parentName,
         parentPhone: formValues.parentPhone,
+        // Add missing required fields
+        section: formValues.section || 'A',
+        rollNumber: formValues.rollNumber || '001',
+        gender: formValues.gender || 'male',
+        bloodGroup: formValues.bloodGroup || 'A+',
         facialData: {
           faceId: `face_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           faceDescriptor: faceData.faceDescriptor,

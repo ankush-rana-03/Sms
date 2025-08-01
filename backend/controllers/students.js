@@ -71,6 +71,10 @@ exports.createStudent = async (req, res) => {
       address,
       dateOfBirth,
       grade,
+      section,
+      rollNumber,
+      gender,
+      bloodGroup,
       parentName,
       parentPhone,
       facialData
@@ -93,6 +97,10 @@ exports.createStudent = async (req, res) => {
       address,
       dateOfBirth,
       grade,
+      section,
+      rollNumber,
+      gender,
+      bloodGroup,
       parentName,
       parentPhone,
       facialData: {

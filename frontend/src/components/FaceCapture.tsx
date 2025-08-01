@@ -37,7 +37,7 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
     };
   }, []);
 
-  const startStream = async () => {
+    const startStream = async () => {
     try {
       setError(null);
       console.log('Requesting camera access...');
@@ -59,15 +59,46 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        
+        // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
           console.log('Video metadata loaded');
-          setIsStreaming(true);
+          videoRef.current?.play().then(() => {
+            console.log('Video started playing');
+            setIsStreaming(true);
+          }).catch(err => {
+            console.error('Failed to play video:', err);
+            setError('Failed to start video playback');
+          });
         };
+        
         videoRef.current.onerror = (error) => {
           console.error('Video error:', error);
           setError('Failed to start video stream');
-                  };
-        }
+        };
+        
+        videoRef.current.oncanplay = () => {
+          console.log('Video can play');
+        };
+        
+        videoRef.current.onplay = () => {
+          console.log('Video is playing');
+        };
+        
+        // Set a timeout to check if video starts
+        setTimeout(() => {
+          if (!isStreaming && videoRef.current) {
+            console.log('Video not started after timeout, trying to force play');
+            videoRef.current.play().then(() => {
+              console.log('Video started after timeout');
+              setIsStreaming(true);
+            }).catch(err => {
+              console.error('Failed to start video after timeout:', err);
+              setError('Video failed to start. Please refresh and try again.');
+            });
+          }
+        }, 3000);
+      }
       } catch (err: any) {
         console.error('Camera access error:', err);
         let errorMessage = 'Camera access denied. Please allow camera access and try again.';
@@ -197,7 +228,17 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
               ref={videoRef}
               autoPlay
               playsInline
-              style={{ width: '100%', height: 300, objectFit: 'cover' }}
+              muted
+              style={{ 
+                width: '100%', 
+                height: 300, 
+                objectFit: 'cover',
+                backgroundColor: '#000'
+              }}
+              onLoadedMetadata={() => console.log('Video metadata loaded in render')}
+              onCanPlay={() => console.log('Video can play in render')}
+              onPlay={() => console.log('Video playing in render')}
+              onError={(e) => console.error('Video error in render:', e)}
             />
             <Box
               sx={{
@@ -210,8 +251,25 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
                 border: '2px solid #fff',
                 borderRadius: '50%',
                 boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                pointerEvents: 'none',
               }}
             />
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 10,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                bgcolor: 'rgba(0,0,0,0.7)',
+                color: 'white',
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+                fontSize: '0.875rem',
+              }}
+            >
+              Position your face in the circle
+            </Box>
           </Box>
         )}
 
@@ -250,6 +308,22 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
             disabled={isCapturing}
           >
             Start Camera
+          </Button>
+        )}
+
+        {!isStreaming && !capturedImage && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              console.log('Refreshing camera...');
+              stopStream();
+              setTimeout(() => {
+                startStream();
+              }, 500);
+            }}
+            sx={{ ml: 1 }}
+          >
+            Refresh Camera
           </Button>
         )}
 

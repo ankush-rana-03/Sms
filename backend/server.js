@@ -12,7 +12,11 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://school-management-app-demo.netlify.app',
+    'https://sms-38ap.onrender.com'
+  ],
   credentials: true
 }));
 

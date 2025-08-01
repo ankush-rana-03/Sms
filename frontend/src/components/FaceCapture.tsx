@@ -37,83 +37,58 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
     };
   }, []);
 
-    const startStream = async () => {
+      const startStream = async () => {
     try {
       setError(null);
-      console.log('Requesting camera access...');
+      console.log('=== FACE CAPTURE CAMERA START ===');
       
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access is not supported in this browser');
+      // Step 1: Check browser support
+      console.log('1. Checking browser support...');
+      if (!navigator.mediaDevices) {
+        throw new Error('navigator.mediaDevices not supported');
       }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      });
-
-      console.log('Camera access granted, setting up video...');
+      console.log('✅ navigator.mediaDevices supported');
       
+      if (!navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia not supported');
+      }
+      console.log('✅ getUserMedia supported');
+
+      // Step 2: Request camera access
+      console.log('2. Requesting camera access...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' }
+      });
+      console.log('✅ Camera access granted');
+      console.log('Stream tracks:', stream.getTracks().length);
+
+      // Step 3: Set up video element
+      console.log('3. Setting up video element...');
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        console.log('✅ Video srcObject set');
         
         videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded');
-          console.log('Video element:', videoRef.current);
-          console.log('Video readyState:', videoRef.current?.readyState);
-          console.log('Video paused:', videoRef.current?.paused);
-          
+          console.log('✅ Video metadata loaded');
           videoRef.current?.play().then(() => {
-            console.log('Video started playing');
-            console.log('Video paused after play:', videoRef.current?.paused);
+            console.log('✅ Video started playing');
             setIsStreaming(true);
           }).catch(err => {
-            console.error('Failed to play video:', err);
-            setError('Failed to start video playback');
+            console.error('❌ Failed to play video:', err);
+            setError(`Play error: ${err.message}`);
           });
         };
         
-        videoRef.current.onerror = (error) => {
-          console.error('Video error:', error);
-          setError('Failed to start video stream');
-        };
-        
-        videoRef.current.oncanplay = () => {
-          console.log('Video can play');
-        };
-        
-        videoRef.current.onplay = () => {
-          console.log('Video is playing');
+        videoRef.current.onerror = (e) => {
+          console.error('❌ Video error:', e);
+          setError('Video error occurred');
         };
       }
-      } catch (err: any) {
-        console.error('Camera access error:', err);
-        let errorMessage = 'Camera access denied. Please allow camera access and try again.';
-        
-        if (err.name === 'NotAllowedError') {
-          errorMessage = 'Camera access denied. Please allow camera access in your browser settings and try again.';
-        } else if (err.name === 'NotFoundError') {
-          errorMessage = 'No camera found. Please connect a camera and try again.';
-        } else if (err.name === 'NotSupportedError') {
-          errorMessage = 'Camera access is not supported in this browser. Please use a modern browser.';
-        } else if (err.name === 'SecurityError') {
-          errorMessage = 'Camera access blocked due to security restrictions. Please use HTTPS.';
-        }
-        
-        // In development, provide a fallback option
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Camera access failed in development, using fallback');
-          setError(errorMessage + ' (Development: Using fallback mode)');
-          // Don't call onError in development to allow fallback
-          return;
-        }
-        
-        setError(errorMessage);
-        onError(errorMessage);
-      }
+      
+    } catch (err: any) {
+      console.error('❌ Camera error:', err);
+      setError(`Camera error: ${err.message}`);
+    }
   };
 
   const stopStream = () => {

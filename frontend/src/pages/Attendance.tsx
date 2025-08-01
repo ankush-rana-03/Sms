@@ -18,6 +18,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   CameraAlt,
@@ -25,9 +27,11 @@ import {
   Cancel,
   Schedule,
   People,
+  Face,
 } from '@mui/icons-material';
 import Webcam from 'react-webcam';
 import { useAuth } from '../contexts/AuthContext';
+import FaceAttendanceMarking from '../components/FaceAttendanceMarking';
 
 interface Student {
   id: string;
@@ -45,6 +49,7 @@ const Attendance: React.FC = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
   const webcamRef = useRef<Webcam>(null);
 
   // Mock data - in real app, this would come from API
@@ -98,6 +103,29 @@ const Attendance: React.FC = () => {
       setSelectedStudent(null);
       
       // Update student status
+  };
+
+  const handleFaceAttendanceMarked = async (studentId: string, status: 'present' | 'absent', faceImage?: string) => {
+    setLoading(true);
+    try {
+      // In real app, send face attendance data to API
+      console.log('Marking face-based attendance:', { studentId, status, faceImage });
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update student status
+      setStudents(prev =>
+        prev.map(student =>
+          student.id === studentId ? { ...student, status } : student
+        )
+      );
+    } catch (error) {
+      console.error('Error marking face attendance:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
       handleStatusChange(selectedStudent.id, 'present');
     } catch (error) {
       console.error('Error marking attendance:', error);
@@ -132,7 +160,15 @@ const Attendance: React.FC = () => {
         Attendance Management
       </Typography>
 
-      <Grid container spacing={3}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+          <Tab label="Manual Attendance" icon={<People />} />
+          <Tab label="Face-Based Attendance" icon={<Face />} />
+        </Tabs>
+      </Box>
+
+      {activeTab === 0 && (
+        <Grid container spacing={3}>
         {/* Class and Date Selection */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3 }}>
@@ -229,6 +265,24 @@ const Attendance: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+      )}
+
+      {activeTab === 1 && (
+        <FaceAttendanceMarking
+          students={students.map(student => ({
+            ...student,
+            studentId: student.id,
+            class: '10A',
+            section: 'A',
+            facialData: {
+              faceDescriptor: [0.1, 0.2, 0.3, 0.4, 0.5], // Mock face data
+              faceImage: 'data:image/jpeg;base64,mock-image-data'
+            }
+          }))}
+          onAttendanceMarked={handleFaceAttendanceMarked}
+          loading={loading}
+        />
+      )}
 
       {/* Camera Dialog */}
       <Dialog

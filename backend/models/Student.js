@@ -77,6 +77,18 @@ const studentSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  facialData: {
+    faceId: String,
+    faceDescriptor: [Number], // Array of facial features
+    faceImage: {
+      url: String,
+      publicId: String
+    },
+    isFaceRegistered: {
+      type: Boolean,
+      default: false
+    }
   }
 }, {
   timestamps: true

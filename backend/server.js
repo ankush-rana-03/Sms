@@ -12,7 +12,11 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://your-netlify-app-name.netlify.app',
+    'http://localhost:3000' // for local development
+  ],
   credentials: true
 }));
 

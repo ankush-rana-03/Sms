@@ -62,8 +62,13 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
         
         videoRef.current.onloadedmetadata = () => {
           console.log('Video metadata loaded');
+          console.log('Video element:', videoRef.current);
+          console.log('Video readyState:', videoRef.current?.readyState);
+          console.log('Video paused:', videoRef.current?.paused);
+          
           videoRef.current?.play().then(() => {
             console.log('Video started playing');
+            console.log('Video paused after play:', videoRef.current?.paused);
             setIsStreaming(true);
           }).catch(err => {
             console.error('Failed to play video:', err);
@@ -231,52 +236,56 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
           </Box>
         )}
 
-        {isStreaming && (
-          <Box sx={{ position: 'relative' }}>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              style={{ 
-                width: '100%', 
-                height: 300, 
-                objectFit: 'cover',
-                backgroundColor: '#000'
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 200,
-                height: 200,
-                border: '2px solid #fff',
-                borderRadius: '50%',
-                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-                pointerEvents: 'none',
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: 10,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                bgcolor: 'rgba(0,0,0,0.7)',
-                color: 'white',
-                px: 2,
-                py: 1,
-                borderRadius: 1,
-                fontSize: '0.875rem',
-              }}
-            >
-              Position your face in the circle
-            </Box>
-          </Box>
-        )}
+        <Box sx={{ position: 'relative' }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ 
+              width: '100%', 
+              height: 300, 
+              objectFit: 'cover',
+              backgroundColor: '#000',
+              display: isStreaming ? 'block' : 'none'
+            }}
+          />
+          
+          {isStreaming && (
+            <>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 200,
+                  height: 200,
+                  border: '2px solid #fff',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  bgcolor: 'rgba(0,0,0,0.7)',
+                  color: 'white',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 1,
+                  fontSize: '0.875rem',
+                }}
+              >
+                Position your face in the circle
+              </Box>
+            </>
+          )}
+        </Box>
 
         {capturedImage && (
           <Box sx={{ position: 'relative' }}>
@@ -329,6 +338,23 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
             sx={{ ml: 1 }}
           >
             Refresh Camera
+          </Button>
+        )}
+
+        {isStreaming && !capturedImage && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              console.log('Force playing video...');
+              videoRef.current?.play().then(() => {
+                console.log('Video force played successfully');
+              }).catch(err => {
+                console.error('Force play failed:', err);
+              });
+            }}
+            sx={{ ml: 1 }}
+          >
+            Force Play
           </Button>
         )}
 

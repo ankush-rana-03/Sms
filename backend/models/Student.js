@@ -89,7 +89,31 @@ const studentSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     }
-  }
+  },
+  attendance: [{
+    date: {
+      type: String,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['present', 'absent', 'late'],
+      default: 'present'
+    },
+    markedAt: {
+      type: Date,
+      default: Date.now
+    },
+    markedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    verifiedWithFace: {
+      type: Boolean,
+      default: false
+    }
+  }]
 }, {
   timestamps: true
 });

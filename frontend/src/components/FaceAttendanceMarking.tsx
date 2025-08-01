@@ -10,9 +10,15 @@ import {
   CardContent,
   Avatar,
   Chip,
+  Snackbar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { Camera, Person } from '@mui/icons-material';
 import FaceCapture from './FaceCapture';
+import studentService from '../services/studentService';
 
 interface Student {
   id: string;
@@ -60,6 +66,9 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
     setError(null);
   };
 
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent' | 'late'>('present');
+
   const handleFaceCaptured = async (faceDescriptor: number[], faceImage: string) => {
     if (!currentStudent) return;
 
@@ -67,34 +76,33 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
     setError(null);
 
     try {
-      if (!currentStudent.facialData?.faceDescriptor) {
-        setError('Student does not have registered face data. Please contact administrator.');
-        return;
-      }
+      // Mark attendance with face verification using backend API
+      const result = await studentService.markAttendanceWithFace({
+        studentId: currentStudent.id,
+        capturedFaceDescriptor: faceDescriptor,
+        attendanceDate: attendanceDate,
+        status: attendanceStatus
+      });
 
-      // Compare captured face with registered face
-      const { faceRecognitionService } = await import('../services/faceRecognitionService');
-      const isMatch = await faceRecognitionService.compareFaces(
-        faceDescriptor,
-        currentStudent.facialData.faceDescriptor
-      );
+      console.log('Attendance marked successfully:', result);
 
-      if (isMatch) {
-        setAttendanceStatus(prev => ({
-          ...prev,
-          [currentStudent.id]: 'present'
-        }));
-        onAttendanceMarked(currentStudent.id, 'present', faceImage);
-      } else {
-        setAttendanceStatus(prev => ({
-          ...prev,
-          [currentStudent.id]: 'absent'
-        }));
-        onAttendanceMarked(currentStudent.id, 'absent');
-        setError('Face does not match. Attendance marked as absent.');
-      }
+      // Update local state
+      setAttendanceStatus(prev => ({
+        ...prev,
+        [currentStudent.id]: attendanceStatus
+      }));
+
+      // Call the callback
+      onAttendanceMarked(currentStudent.id, attendanceStatus, faceImage);
+
+      // Show success message
+      setError(null);
+      
     } catch (err: any) {
-      setError(err.message || 'Face verification failed');
+      console.error('Error marking attendance:', err);
+      setError(err.message || 'Failed to mark attendance');
+      
+      // Mark as absent if face verification fails
       setAttendanceStatus(prev => ({
         ...prev,
         [currentStudent.id]: 'absent'
@@ -143,6 +151,31 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Click on a student to capture their face and mark attendance. Students must have registered faces to use this feature.
       </Typography>
+
+      {/* Attendance Date and Status Controls */}
+      <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+        <TextField
+          label="Attendance Date"
+          type="date"
+          value={attendanceDate}
+          onChange={(e) => setAttendanceDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 200 }}
+        />
+        
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={attendanceStatus}
+            label="Status"
+            onChange={(e) => setAttendanceStatus(e.target.value as 'present' | 'absent' | 'late')}
+          >
+            <MenuItem value="present">Present</MenuItem>
+            <MenuItem value="absent">Absent</MenuItem>
+            <MenuItem value="late">Late</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

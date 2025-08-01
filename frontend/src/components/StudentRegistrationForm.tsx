@@ -17,6 +17,7 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import FaceCapture from './FaceCapture';
+import studentService, { StudentFormData as ServiceStudentFormData } from '../services/studentService';
 
 const schema = yup.object().shape({
   name: yup.string().required('Name is required'),
@@ -88,7 +89,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
     setError(error);
   };
 
-  const onFormSubmit = (data: StudentFormData) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const onFormSubmit = async (data: StudentFormData) => {
     if (activeStep === 0) {
       handleNext();
     } else if (activeStep === 1) {
@@ -96,7 +99,42 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         setError('Please capture the student\'s face to complete registration');
         return;
       }
-      onSubmit(data, faceData);
+
+      try {
+        setIsSubmitting(true);
+        setError(null);
+
+        // Prepare student data for API
+        const studentData: ServiceStudentFormData = {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          address: data.address,
+          dateOfBirth: data.dateOfBirth,
+          grade: data.class, // Map class to grade
+          parentName: data.parentName,
+          parentPhone: data.parentPhone,
+          facialData: {
+            faceId: `face_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            faceDescriptor: faceData.faceDescriptor,
+            faceImage: faceData.faceImage
+          }
+        };
+
+        // Save to database
+        const result = await studentService.createStudent(studentData);
+        
+        console.log('Student created successfully:', result);
+        
+        // Call the original onSubmit callback
+        onSubmit(data, faceData);
+        
+      } catch (error: any) {
+        console.error('Error creating student:', error);
+        setError(error.message || 'Failed to create student');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -298,9 +336,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
             <Button
               variant="contained"
               onClick={handleFormSubmit}
-              disabled={!faceData || loading}
+              disabled={!faceData || isSubmitting}
+              startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
             >
-              {loading ? <CircularProgress size={24} /> : 'Register Student'}
+              {isSubmitting ? 'Creating Student...' : 'Complete Registration'}
             </Button>
           </Box>
         </Box>

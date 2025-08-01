@@ -1,27 +1,53 @@
-import React, { useState } from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent } from '@mui/material';
-import { Add, Person } from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress } from '@mui/material';
+import { Add, Person, Refresh } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
+import studentService, { Student } from '../services/studentService';
 
 const Students: React.FC = () => {
   const [openRegistration, setOpenRegistration] = useState(false);
   const [loading, setLoading] = useState(false);
-  
-  const mockStudents = [
-    { id: '1', name: 'John Doe', class: '10A', rollNumber: '001', attendance: '95%' },
-    { id: '2', name: 'Jane Smith', class: '10A', rollNumber: '002', attendance: '92%' },
-    { id: '3', name: 'Mike Johnson', class: '10B', rollNumber: '003', attendance: '88%' },
-    { id: '4', name: 'Sarah Wilson', class: '10B', rollNumber: '004', attendance: '96%' },
-  ];
+  const [students, setStudents] = useState<Student[]>([]);
+  const [fetchingStudents, setFetchingStudents] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Fetch students on component mount
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      setFetchingStudents(true);
+      const response = await studentService.getStudents();
+      setStudents(response.data);
+      setError(null);
+    } catch (error: any) {
+      console.error('Error fetching students:', error);
+      setError('Failed to fetch students');
+    } finally {
+      setFetchingStudents(false);
+    }
+  };
 
   const handleRegisterStudent = async (data: any, faceData: any) => {
     setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
     try {
-      // TODO: Implement API call to register student with face data
-      console.log('Registering student:', data, faceData);
+      // The student is already saved in the form component
+      // Just refresh the students list and show success
+      await fetchStudents();
+      setSuccess('Student registered successfully with facial data!');
       setOpenRegistration(false);
-    } catch (error) {
-      console.error('Error registering student:', error);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error: any) {
+      console.error('Error handling student registration:', error);
+      setError('Failed to complete registration');
     } finally {
       setLoading(false);
     }
@@ -31,39 +57,80 @@ const Students: React.FC = () => {
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Students Management</Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<Add />}
-          onClick={() => setOpenRegistration(true)}
-        >
-          Add Student
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button 
+            variant="outlined" 
+            startIcon={<Refresh />}
+            onClick={fetchStudents}
+            disabled={fetchingStudents}
+          >
+            Refresh
+          </Button>
+          <Button 
+            variant="contained" 
+            startIcon={<Add />}
+            onClick={() => setOpenRegistration(true)}
+          >
+            Add Student
+          </Button>
+        </Box>
       </Box>
 
-      <Grid container spacing={3}>
-        {mockStudents.map((student) => (
-          <Grid item xs={12} sm={6} md={4} key={student.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Avatar sx={{ mr: 2 }}>
-                    <Person />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6">{student.name}</Typography>
+      {/* Success/Error Messages */}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
+      
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Loading State */}
+      {fetchingStudents ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : students.length === 0 ? (
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Typography variant="h6" color="text.secondary">
+            No students found. Add your first student!
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {students.map((student) => (
+            <Grid item xs={12} sm={6} md={4} key={student._id}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Avatar sx={{ mr: 2 }}>
+                      <Person />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h6">{student.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Grade: {student.grade} | Email: {student.email}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Phone: {student.phone}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ mt: 1 }}>
                     <Typography variant="body2" color="text.secondary">
-                      Class: {student.class} | Roll: {student.rollNumber}
+                      Face Registered: {student.facialData?.isFaceRegistered ? '✅ Yes' : '❌ No'}
                     </Typography>
                   </Box>
-                </Box>
-                <Typography variant="body2">
-                  Attendance: {student.attendance}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       <Dialog 
         open={openRegistration} 
@@ -79,6 +146,9 @@ const Students: React.FC = () => {
           />
         </DialogContent>
       </Dialog>
+    </Box>
+  );
+};
     </Box>
   );
 };

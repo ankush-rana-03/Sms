@@ -20,6 +20,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import LoginDebug from './components/LoginDebug';
 import CameraTest from './components/CameraTest';
 import StudentCreationTest from './components/StudentCreationTest';
+import DatabaseTest from './components/DatabaseTest';
 import SimpleCameraTest from './components/SimpleCameraTest';
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/simple-camera" element={<SimpleCameraTest />} />
               <Route path="/student-test" element={<StudentCreationTest />} />
+              <Route path="/database-test" element={<DatabaseTest />} />
               <Route path="/camera-test" element={<CameraTest />} />
               <Route path="/debug" element={<LoginDebug />} />
               <Route path="/login" element={<Login />} />

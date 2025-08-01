@@ -5,8 +5,12 @@ const {
   createStudent,
   getStudents,
   markAttendanceWithFace,
-  getStudentAttendance
+  getStudentAttendance,
+  getAllStudentsTest
 } = require('../controllers/students');
+
+// Test route (no authentication required for debugging)
+router.get('/test/all', getAllStudentsTest);
 
 // Student routes
 router.post('/', protect, authorize('admin', 'principal'), createStudent);

@@ -2,6 +2,61 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const faceRecognitionService = require('../services/faceRecognitionService');
 
+// Test route to get all students with full details (for debugging)
+exports.getAllStudentsTest = async (req, res) => {
+  try {
+    console.log('=== TEST ROUTE: Getting all students ===');
+    
+    const students = await Student.find({});
+    
+    console.log('Total students in database:', students.length);
+    students.forEach((student, index) => {
+      console.log(`Student ${index + 1}:`, {
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        hasFaceData: !!student.facialData,
+        isFaceRegistered: student.facialData?.isFaceRegistered,
+        faceDescriptorLength: student.facialData?.faceDescriptor?.length || 0,
+        createdAt: student.createdAt
+      });
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Test route - All students retrieved',
+      count: students.length,
+      data: students.map(student => ({
+        id: student._id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone,
+        address: student.address,
+        dateOfBirth: student.dateOfBirth,
+        grade: student.grade,
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        facialData: {
+          hasFaceData: !!student.facialData,
+          isFaceRegistered: student.facialData?.isFaceRegistered || false,
+          faceId: student.facialData?.faceId,
+          faceDescriptorLength: student.facialData?.faceDescriptor?.length || 0,
+          hasFaceImage: !!student.facialData?.faceImage
+        },
+        createdAt: student.createdAt,
+        updatedAt: student.updatedAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error in test route:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving students for testing',
+      error: error.message
+    });
+  }
+};
+
 // Create a new student with facial data
 exports.createStudent = async (req, res) => {
   console.log('=== CREATE STUDENT REQUEST ===');

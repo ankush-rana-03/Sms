@@ -36,16 +36,20 @@ import { useAuth } from '../contexts/AuthContext';
 
 const drawerWidth = 240;
 
-const menuItems = [
-  { text: 'Dashboard', icon: <Dashboard />, path: '/' },
-  { text: 'Attendance', icon: <People />, path: '/attendance' },
-  { text: 'Students', icon: <School />, path: '/students' },
-  { text: 'Teachers', icon: <Person />, path: '/teachers' },
-  { text: 'Classes', icon: <Class />, path: '/classes' },
-  { text: 'Homework', icon: <Assignment />, path: '/homework' },
-  { text: 'Tests', icon: <Quiz />, path: '/tests' },
-  { text: 'Results', icon: <Assessment />, path: '/results' },
-];
+const getMenuItems = (userRole: string) => {
+  const allItems = [
+    { text: 'Dashboard', icon: <Dashboard />, path: '/', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
+    { text: 'Attendance', icon: <People />, path: '/attendance', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
+    { text: 'Students', icon: <School />, path: '/students', roles: ['admin', 'principal', 'teacher'] },
+    { text: 'Teachers', icon: <Person />, path: '/teachers', roles: ['admin', 'principal'] },
+    { text: 'Classes', icon: <Class />, path: '/classes', roles: ['admin', 'principal', 'teacher'] },
+    { text: 'Homework', icon: <Assignment />, path: '/homework', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
+    { text: 'Tests', icon: <Quiz />, path: '/tests', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
+    { text: 'Results', icon: <Assessment />, path: '/results', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
+  ];
+
+  return allItems.filter(item => item.roles.includes(userRole));
+};
 
 const Layout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -70,6 +74,8 @@ const Layout: React.FC = () => {
     logout();
     navigate('/login');
   };
+
+  const menuItems = getMenuItems(user?.role || 'student');
 
   const drawer = (
     <div>

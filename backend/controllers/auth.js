@@ -236,6 +236,17 @@ const sendTokenResponse = (user, statusCode, res) => {
     .cookie('token', token, options)
     .json({
       success: true,
-      token
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        address: user.address,
+        profileImage: user.profileImage,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified
+      }
     });
 };

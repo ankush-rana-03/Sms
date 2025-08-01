@@ -15,6 +15,7 @@ import Tests from './pages/Tests';
 import Results from './pages/Results';
 import Profile from './pages/Profile';
 import Layout from './components/Layout';
+import RoleBasedRoute from './components/RoleBasedRoute';
 
 const queryClient = new QueryClient();
 
@@ -65,9 +66,21 @@ const App: React.FC = () => {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="attendance" element={<Attendance />} />
-                <Route path="students" element={<Students />} />
-                <Route path="teachers" element={<Teachers />} />
-                <Route path="classes" element={<Classes />} />
+                <Route path="students" element={
+                  <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
+                    <Students />
+                  </RoleBasedRoute>
+                } />
+                <Route path="teachers" element={
+                  <RoleBasedRoute allowedRoles={['admin', 'principal']}>
+                    <Teachers />
+                  </RoleBasedRoute>
+                } />
+                <Route path="classes" element={
+                  <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
+                    <Classes />
+                  </RoleBasedRoute>
+                } />
                 <Route path="homework" element={<Homework />} />
                 <Route path="tests" element={<Tests />} />
                 <Route path="results" element={<Results />} />

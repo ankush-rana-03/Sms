@@ -56,10 +56,20 @@ class StudentService {
   // Create a new student with facial data
   async createStudent(studentData: StudentFormData): Promise<{ success: boolean; data: Student; message: string }> {
     try {
+      console.log('=== FRONTEND: Creating student ===');
+      console.log('Student data:', studentData);
+      console.log('Token:', localStorage.getItem('token'));
+      
       const response = await api.post<{ success: boolean; data: Student; message: string }>('/students', studentData);
+      
+      console.log('=== FRONTEND: Student created successfully ===');
+      console.log('Response:', response);
+      
       return response;
     } catch (error: any) {
-      console.error('Error creating student:', error);
+      console.error('=== FRONTEND: Error creating student ===');
+      console.error('Error:', error);
+      console.error('Response:', error.response);
       throw new Error(error.response?.data?.message || 'Failed to create student');
     }
   }
@@ -67,10 +77,19 @@ class StudentService {
   // Get all students
   async getStudents(): Promise<{ success: boolean; data: Student[]; count: number }> {
     try {
+      console.log('=== FRONTEND: Fetching students ===');
+      console.log('Token:', localStorage.getItem('token'));
+      
       const response = await api.get<{ success: boolean; data: Student[]; count: number }>('/students');
+      
+      console.log('=== FRONTEND: Students fetched successfully ===');
+      console.log('Response:', response);
+      
       return response;
     } catch (error: any) {
-      console.error('Error fetching students:', error);
+      console.error('=== FRONTEND: Error fetching students ===');
+      console.error('Error:', error);
+      console.error('Response:', error.response);
       throw new Error(error.response?.data?.message || 'Failed to fetch students');
     }
   }

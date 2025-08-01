@@ -4,6 +4,10 @@ const faceRecognitionService = require('../services/faceRecognitionService');
 
 // Create a new student with facial data
 exports.createStudent = async (req, res) => {
+  console.log('=== CREATE STUDENT REQUEST ===');
+  console.log('Request body:', req.body);
+  console.log('User:', req.user);
+  
   try {
     const {
       name,
@@ -44,6 +48,8 @@ exports.createStudent = async (req, res) => {
       }
     });
 
+    console.log('Student created successfully:', student._id);
+    
     res.status(201).json({
       success: true,
       message: 'Student created successfully with facial data',
@@ -62,8 +68,13 @@ exports.createStudent = async (req, res) => {
 
 // Get all students
 exports.getStudents = async (req, res) => {
+  console.log('=== GET STUDENTS REQUEST ===');
+  console.log('User:', req.user);
+  
   try {
     const students = await Student.find().select('-facialData.faceDescriptor');
+    
+    console.log('Found students:', students.length);
     
     res.status(200).json({
       success: true,

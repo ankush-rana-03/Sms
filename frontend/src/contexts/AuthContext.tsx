@@ -10,6 +10,7 @@ interface User {
   address: string;
   profileImage?: string;
   isActive: boolean;
+  emailVerified?: boolean;
 }
 
 interface AuthContextType {

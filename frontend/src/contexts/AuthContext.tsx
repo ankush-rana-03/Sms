@@ -62,7 +62,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.login(email, password);
       localStorage.setItem('token', response.token);
-      setUser(response.user);
+      
+      // If user data is not included in login response, fetch it separately
+      if (!response.user) {
+        const userData = await authService.getMe();
+        setUser(userData);
+      } else {
+        setUser(response.user);
+      }
     } catch (error) {
       throw error;
     }

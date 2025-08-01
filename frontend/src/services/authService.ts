@@ -12,11 +12,12 @@ export interface LoginResponse {
     id: string;
     name: string;
     email: string;
-    role: string;
+    role: 'principal' | 'admin' | 'teacher' | 'parent' | 'student';
     phone: string;
     address: string;
     profileImage?: string;
     isActive: boolean;
+    emailVerified?: boolean;
   };
 }
 
@@ -24,11 +25,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: 'principal' | 'admin' | 'teacher' | 'parent' | 'student';
   phone: string;
   address: string;
   profileImage?: string;
   isActive: boolean;
+  emailVerified?: boolean;
 }
 
 class AuthService {

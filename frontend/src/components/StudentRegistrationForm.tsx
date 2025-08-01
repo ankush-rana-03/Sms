@@ -26,7 +26,7 @@ const schema = yup.object().shape({
   class: yup.string().required('Class is required'),
   section: yup.string().required('Section is required'),
   rollNumber: yup.string().required('Roll number is required'),
-  dateOfBirth: yup.date().required('Date of birth is required'),
+  dateOfBirth: yup.string().required('Date of birth is required'),
   gender: yup.string().required('Gender is required'),
   bloodGroup: yup.string().required('Blood group is required'),
   parentName: yup.string().required('Parent name is required'),
@@ -65,7 +65,6 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
     register,
     handleSubmit,
     formState: { errors },
-    getValues,
   } = useForm<StudentFormData>({
     resolver: yupResolver(schema),
   });

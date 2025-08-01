@@ -133,16 +133,6 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: Student['status']) => {
-    switch (status) {
-      case 'present': return 'success';
-      case 'absent': return 'error';
-      case 'late': return 'warning';
-      case 'half-day': return 'info';
-      default: return 'default';
-    }
-  };
-
   const getStatusIcon = (status: Student['status']) => {
     switch (status) {
       case 'present': return <CheckCircle color="success" />;

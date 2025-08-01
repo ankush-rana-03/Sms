@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Typography, Paper, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent } from '@mui/material';
-import { Add, School, Person } from '@mui/icons-material';
+import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent } from '@mui/material';
+import { Add, Person } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 
 const Students: React.FC = () => {

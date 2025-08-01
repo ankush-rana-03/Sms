@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Button, Grid, Card, CardContent, Chip, Avatar, LinearProgress } from '@mui/material';
-import { Assessment, TrendingUp, School, Person } from '@mui/icons-material';
+import { Assessment, Person } from '@mui/icons-material';
 
 const Results: React.FC = () => {
   const mockResults = [

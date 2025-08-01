@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Paper,
   Typography,
   Button,
   Alert,
@@ -12,7 +11,7 @@ import {
   Avatar,
   Chip,
 } from '@mui/material';
-import { Camera, Check, Close, Person } from '@mui/icons-material';
+import { Camera, Person } from '@mui/icons-material';
 import FaceCapture from './FaceCapture';
 
 interface Student {

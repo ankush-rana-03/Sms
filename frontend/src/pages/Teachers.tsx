@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Chip } from '@mui/material';
-import { Add, Person, School, Subject } from '@mui/icons-material';
+import { Add, Person } from '@mui/icons-material';
 
 const Teachers: React.FC = () => {
   const mockTeachers = [

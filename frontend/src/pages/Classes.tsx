@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Chip, List, ListItem, ListItemText } from '@mui/material';
-import { Add, Class, People, Schedule } from '@mui/icons-material';
+import { Add, Class } from '@mui/icons-material';
 
 const Classes: React.FC = () => {
   const mockClasses = [

@@ -42,15 +42,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log('Initializing authentication...');
         const token = localStorage.getItem('token');
+        console.log('Token found:', !!token);
+        
         if (token) {
+          console.log('Attempting to get user data...');
           const userData = await authService.getMe();
+          console.log('User data received:', userData);
           setUser(userData);
+        } else {
+          console.log('No token found, user will need to login');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
         localStorage.removeItem('token');
       } finally {
+        console.log('Setting loading to false');
         setLoading(false);
       }
     };

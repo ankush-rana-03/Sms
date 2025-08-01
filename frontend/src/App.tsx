@@ -16,6 +16,7 @@ import Results from './pages/Results';
 import Profile from './pages/Profile';
 import Layout from './components/Layout';
 import RoleBasedRoute from './components/RoleBasedRoute';
+import LoadingSpinner from './components/LoadingSpinner';
 
 const queryClient = new QueryClient();
 
@@ -37,7 +38,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner message="Initializing application..." />;
   }
 
   if (!user) {

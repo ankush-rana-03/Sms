@@ -83,6 +83,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   };
 
   const handleFaceCaptured = (faceDescriptor: number[], faceImage: string) => {
+    console.log('=== FACE CAPTURED IN FORM ===');
+    console.log('Face descriptor length:', faceDescriptor.length);
+    console.log('Face image length:', faceImage.length);
+    console.log('Face image preview:', faceImage.substring(0, 100) + '...');
+    
     setFaceData({ faceDescriptor, faceImage });
     setError(null);
   };
@@ -186,6 +191,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
       };
 
       console.log('Submitting student data:', studentData);
+      console.log('Face data being sent:', {
+        faceId: studentData.facialData.faceId,
+        descriptorLength: studentData.facialData.faceDescriptor.length,
+        imageLength: studentData.facialData.faceImage.length,
+        imagePreview: studentData.facialData.faceImage.substring(0, 100) + '...'
+      });
 
       // Save to database
       const result = await studentService.createStudent(studentData);

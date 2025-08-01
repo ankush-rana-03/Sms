@@ -106,12 +106,21 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
       setIsCapturing(true);
       setError(null);
 
+      console.log('=== FACE CAPTURE START ===');
+      console.log('Video element:', videoRef.current);
+      console.log('Video ready state:', videoRef.current.readyState);
+      console.log('Video paused:', videoRef.current.paused);
+
       // Create image from video
+      console.log('Creating face image...');
       const faceImage = await faceRecognitionService.createFaceImageFromVideo(videoRef.current);
+      console.log('Face image created, length:', faceImage.length);
       setCapturedImage(faceImage);
 
       // Detect face and get descriptor
+      console.log('Capturing face descriptor...');
       const faceData = await faceRecognitionService.captureFaceFromVideo(videoRef.current);
+      console.log('Face data captured:', faceData);
 
       if (mode === 'verify' && existingFaceDescriptor) {
         // Compare with existing face
@@ -127,6 +136,11 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
         }
       }
 
+      console.log('Calling onFaceCaptured with:', {
+        descriptorLength: faceData.faceDescriptor.length,
+        imageLength: faceImage.length
+      });
+      
       onFaceCaptured(faceData.faceDescriptor, faceImage);
       stopStream();
     } catch (err: any) {

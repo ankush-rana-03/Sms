@@ -105,6 +105,12 @@ class FaceRecognitionService {
   }
 
   async createFaceImageFromVideo(videoElement: HTMLVideoElement): Promise<string> {
+    console.log('Creating face image from video...');
+    console.log('Video element:', videoElement);
+    console.log('Video width:', videoElement.videoWidth);
+    console.log('Video height:', videoElement.videoHeight);
+    console.log('Video ready state:', videoElement.readyState);
+    
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     
@@ -112,11 +118,24 @@ class FaceRecognitionService {
       throw new Error('Could not get canvas context');
     }
 
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
-    context.drawImage(videoElement, 0, 0);
+    // Ensure video has valid dimensions
+    const width = videoElement.videoWidth || 640;
+    const height = videoElement.videoHeight || 480;
     
-    return canvas.toDataURL('image/jpeg', 0.8);
+    console.log('Canvas dimensions:', width, 'x', height);
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Draw the video frame to canvas
+    context.drawImage(videoElement, 0, 0, width, height);
+    
+    // Convert to base64 image
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    
+    console.log('Image captured successfully, length:', imageDataUrl.length);
+    
+    return imageDataUrl;
   }
 }
 

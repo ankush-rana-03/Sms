@@ -103,6 +103,12 @@ const Attendance: React.FC = () => {
       setSelectedStudent(null);
       
       // Update student status
+      handleStatusChange(selectedStudent.id, 'present');
+    } catch (error) {
+      console.error('Error marking attendance:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFaceAttendanceMarked = async (studentId: string, status: 'present' | 'absent', faceImage?: string) => {
@@ -122,13 +128,6 @@ const Attendance: React.FC = () => {
       );
     } catch (error) {
       console.error('Error marking face attendance:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-      handleStatusChange(selectedStudent.id, 'present');
-    } catch (error) {
-      console.error('Error marking attendance:', error);
     } finally {
       setLoading(false);
     }

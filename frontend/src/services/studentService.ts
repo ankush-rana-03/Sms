@@ -1,4 +1,4 @@
-import api from './api';
+import { apiService as api } from './api';
 
 export interface StudentFormData {
   name: string;
@@ -56,8 +56,8 @@ class StudentService {
   // Create a new student with facial data
   async createStudent(studentData: StudentFormData): Promise<{ success: boolean; data: Student; message: string }> {
     try {
-      const response = await api.post('/students', studentData);
-      return response.data;
+      const response = await api.post<{ success: boolean; data: Student; message: string }>('/students', studentData);
+      return response;
     } catch (error: any) {
       console.error('Error creating student:', error);
       throw new Error(error.response?.data?.message || 'Failed to create student');
@@ -67,8 +67,8 @@ class StudentService {
   // Get all students
   async getStudents(): Promise<{ success: boolean; data: Student[]; count: number }> {
     try {
-      const response = await api.get('/students');
-      return response.data;
+      const response = await api.get<{ success: boolean; data: Student[]; count: number }>('/students');
+      return response;
     } catch (error: any) {
       console.error('Error fetching students:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch students');
@@ -88,8 +88,18 @@ class StudentService {
     };
   }> {
     try {
-      const response = await api.post('/students/attendance/face', attendanceData);
-      return response.data;
+      const response = await api.post<{
+        success: boolean;
+        message: string;
+        data: {
+          studentId: string;
+          attendanceDate: string;
+          status: string;
+          similarity: number;
+          verifiedWithFace: boolean;
+        };
+      }>('/students/attendance/face', attendanceData);
+      return response;
     } catch (error: any) {
       console.error('Error marking attendance:', error);
       throw new Error(error.response?.data?.message || 'Failed to mark attendance');
@@ -113,8 +123,18 @@ class StudentService {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const response = await api.get(`/students/${studentId}/attendance?${params.toString()}`);
-      return response.data;
+      const response = await api.get<{
+        success: boolean;
+        data: {
+          student: {
+            id: string;
+            name: string;
+            email: string;
+          };
+          attendance: AttendanceRecord[];
+        };
+      }>(`/students/${studentId}/attendance?${params.toString()}`);
+      return response;
     } catch (error: any) {
       console.error('Error fetching attendance:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch attendance');

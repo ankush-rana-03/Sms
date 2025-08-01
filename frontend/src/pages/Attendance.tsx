@@ -111,7 +111,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const handleFaceAttendanceMarked = async (studentId: string, status: 'present' | 'absent', faceImage?: string) => {
+  const handleFaceAttendanceMarked = async (studentId: string, status: 'present' | 'absent' | 'late', faceImage?: string) => {
     setLoading(true);
     try {
       // In real app, send face attendance data to API

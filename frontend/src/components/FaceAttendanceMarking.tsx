@@ -10,11 +10,11 @@ import {
   CardContent,
   Avatar,
   Chip,
-  Snackbar,
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  TextField
 } from '@mui/material';
 import { Camera, Person } from '@mui/icons-material';
 import FaceCapture from './FaceCapture';
@@ -36,7 +36,7 @@ interface Student {
 
 interface FaceAttendanceMarkingProps {
   students: Student[];
-  onAttendanceMarked: (studentId: string, status: 'present' | 'absent', faceImage?: string) => void;
+  onAttendanceMarked: (studentId: string, status: 'present' | 'absent' | 'late', faceImage?: string) => void;
   loading?: boolean;
 }
 
@@ -47,13 +47,13 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
 }) => {
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [showFaceCapture, setShowFaceCapture] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState<Record<string, 'present' | 'absent' | 'pending'>>({});
+  const [attendanceStatus, setAttendanceStatus] = useState<Record<string, 'present' | 'absent' | 'pending' | 'late'>>({});
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     // Initialize attendance status for all students
-    const initialStatus: Record<string, 'present' | 'absent' | 'pending'> = {};
+    const initialStatus: Record<string, 'present' | 'absent' | 'pending' | 'late'> = {};
     students.forEach(student => {
       initialStatus[student.id] = 'pending';
     });
@@ -124,20 +124,22 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
     }
   };
 
-  const getStatusColor = (status: 'present' | 'absent' | 'pending') => {
+  const getStatusColor = (status: 'present' | 'absent' | 'pending' | 'late') => {
     switch (status) {
       case 'present': return 'success';
       case 'absent': return 'error';
       case 'pending': return 'warning';
+      case 'late': return 'warning';
       default: return 'default';
     }
   };
 
-  const getStatusText = (status: 'present' | 'absent' | 'pending') => {
+  const getStatusText = (status: 'present' | 'absent' | 'pending' | 'late') => {
     switch (status) {
       case 'present': return 'Present';
       case 'absent': return 'Absent';
       case 'pending': return 'Pending';
+      case 'late': return 'Late';
       default: return 'Unknown';
     }
   };

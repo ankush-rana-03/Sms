@@ -40,18 +40,59 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
   const startStream = async () => {
     try {
       setError(null);
+      console.log('Requesting camera access...');
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported in this browser');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' }
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
       });
 
+      console.log('Camera access granted, setting up video...');
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setIsStreaming(true);
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded');
+          setIsStreaming(true);
+        };
+        videoRef.current.onerror = (error) => {
+          console.error('Video error:', error);
+          setError('Failed to start video stream');
+                  };
+        }
+      } catch (err: any) {
+        console.error('Camera access error:', err);
+        let errorMessage = 'Camera access denied. Please allow camera access and try again.';
+        
+        if (err.name === 'NotAllowedError') {
+          errorMessage = 'Camera access denied. Please allow camera access in your browser settings and try again.';
+        } else if (err.name === 'NotFoundError') {
+          errorMessage = 'No camera found. Please connect a camera and try again.';
+        } else if (err.name === 'NotSupportedError') {
+          errorMessage = 'Camera access is not supported in this browser. Please use a modern browser.';
+        } else if (err.name === 'SecurityError') {
+          errorMessage = 'Camera access blocked due to security restrictions. Please use HTTPS.';
+        }
+        
+        // In development, provide a fallback option
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Camera access failed in development, using fallback');
+          setError(errorMessage + ' (Development: Using fallback mode)');
+          // Don't call onError in development to allow fallback
+          return;
+        }
+        
+        setError(errorMessage);
+        onError(errorMessage);
       }
-    } catch (err) {
-      setError('Camera access denied. Please allow camera access and try again.');
-      onError('Camera access denied');
-    }
   };
 
   const stopStream = () => {
@@ -135,9 +176,17 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
           >
             <Box textAlign="center">
               <Camera sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
-              <Typography color="text.secondary">
+              <Typography color="text.secondary" gutterBottom>
                 Camera not started
               </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Click "Start Camera" to begin
+              </Typography>
+              {process.env.NODE_ENV === 'development' && (
+                <Typography variant="caption" color="warning.main" sx={{ mt: 1, display: 'block' }}>
+                  Note: Camera requires HTTPS in production
+                </Typography>
+              )}
             </Box>
           </Box>
         )}
@@ -201,6 +250,32 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
             disabled={isCapturing}
           >
             Start Camera
+          </Button>
+        )}
+
+        {process.env.NODE_ENV === 'development' && !isStreaming && !capturedImage && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              console.log('Testing camera access...');
+              navigator.mediaDevices.enumerateDevices()
+                .then(devices => {
+                  const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                  console.log('Available video devices:', videoDevices);
+                  if (videoDevices.length === 0) {
+                    setError('No camera devices found');
+                  } else {
+                    setError(`Found ${videoDevices.length} camera device(s). Try starting camera again.`);
+                  }
+                })
+                .catch(err => {
+                  console.error('Error enumerating devices:', err);
+                  setError('Failed to check camera devices');
+                });
+            }}
+            sx={{ ml: 1 }}
+          >
+            Test Camera
           </Button>
         )}
 

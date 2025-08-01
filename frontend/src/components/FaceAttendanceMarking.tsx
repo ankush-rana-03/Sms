@@ -67,7 +67,7 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
   };
 
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent' | 'late'>('present');
+  const [selectedStatus, setSelectedStatus] = useState<'present' | 'absent' | 'late'>('present');
 
   const handleFaceCaptured = async (faceDescriptor: number[], faceImage: string) => {
     if (!currentStudent) return;
@@ -81,7 +81,7 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
         studentId: currentStudent.id,
         capturedFaceDescriptor: faceDescriptor,
         attendanceDate: attendanceDate,
-        status: attendanceStatus
+        status: selectedStatus
       });
 
       console.log('Attendance marked successfully:', result);
@@ -89,11 +89,11 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
       // Update local state
       setAttendanceStatus(prev => ({
         ...prev,
-        [currentStudent.id]: attendanceStatus
+        [currentStudent.id]: selectedStatus
       }));
 
       // Call the callback
-      onAttendanceMarked(currentStudent.id, attendanceStatus, faceImage);
+      onAttendanceMarked(currentStudent.id, selectedStatus, faceImage);
 
       // Show success message
       setError(null);
@@ -166,9 +166,9 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
         <FormControl sx={{ minWidth: 150 }}>
           <InputLabel>Status</InputLabel>
           <Select
-            value={attendanceStatus}
+            value={selectedStatus}
             label="Status"
-            onChange={(e) => setAttendanceStatus(e.target.value as 'present' | 'absent' | 'late')}
+            onChange={(e) => setSelectedStatus(e.target.value as 'present' | 'absent' | 'late')}
           >
             <MenuItem value="present">Present</MenuItem>
             <MenuItem value="absent">Absent</MenuItem>

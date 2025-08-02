@@ -62,21 +62,18 @@ class AttendanceService {
     date?: string;
     remarks?: string;
   }) {
-    const response = await api.post('/attendance/mark', data);
-    return response.data;
+    return await api.post('/attendance/mark', data);
   }
 
   // Bulk mark attendance
   async bulkMarkAttendance(request: BulkAttendanceRequest) {
-    const response = await api.post('/attendance/bulk', request);
-    return response.data;
+    return await api.post('/attendance/bulk', request);
   }
 
   // Get attendance by date
   async getAttendanceByDate(date: string, classId?: string) {
     const params = classId ? { classId } : {};
-    const response = await api.get(`/attendance/date/${date}`, { params });
-    return response.data;
+    return await api.get(`/attendance/date/${date}`, { params });
   }
 
   // Get student attendance
@@ -85,8 +82,7 @@ class AttendanceService {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     
-    const response = await api.get(`/attendance/student/${studentId}`, { params });
-    return response.data;
+    return await api.get(`/attendance/student/${studentId}`, { params });
   }
 
   // Update attendance
@@ -94,8 +90,7 @@ class AttendanceService {
     status?: 'present' | 'absent' | 'late' | 'half-day';
     remarks?: string;
   }) {
-    const response = await api.put(`/attendance/${attendanceId}`, data);
-    return response.data;
+    return await api.put(`/attendance/${attendanceId}`, data);
   }
 
   // Get today's attendance for a class (teacher specific)
@@ -104,8 +99,7 @@ class AttendanceService {
     if (grade) params.grade = grade;
     if (section) params.section = section;
     
-    const response = await api.get('/teachers/attendance/today', { params });
-    return response.data;
+    return await api.get('/teachers/attendance/today', { params });
   }
 }
 

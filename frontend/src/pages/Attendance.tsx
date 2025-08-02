@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -36,14 +36,11 @@ import {
   People,
   Person,
   Save,
-  History,
   Edit,
   Visibility,
   WhatsApp,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import attendanceService from '../services/attendanceService';
-import studentService from '../services/studentService';
 
 interface Student {
   id: string;
@@ -76,7 +73,7 @@ const Attendance: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'mark' | 'view'>('mark');
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+
   const [editingAttendance, setEditingAttendance] = useState<AttendanceRecord | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editStatus, setEditStatus] = useState<'present' | 'absent' | 'late' | 'half-day'>('present');
@@ -170,17 +167,15 @@ const Attendance: React.FC = () => {
 
     setSaving(true);
     try {
-      const attendanceData = students.map(student => ({
-        studentId: student.id,
-        status: student.status,
-        remarks: ''
-      }));
-
       // In real app, call the API
       // const result = await attendanceService.bulkMarkAttendance({
       //   classId: selectedClass,
       //   date: selectedDate,
-      //   attendanceData
+      //   attendanceData: students.map(student => ({
+      //     studentId: student.id,
+      //     status: student.status,
+      //     remarks: ''
+      //   }))
       // });
 
       // Simulate API call
@@ -207,7 +202,7 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const fetchAttendanceHistory = async () => {
+  const fetchAttendanceHistory = useCallback(async () => {
     if (!selectedClass || !selectedDate) return;
 
     setLoading(true);
@@ -236,7 +231,7 @@ const Attendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedClass, selectedDate, students, user?.name]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;
@@ -307,7 +302,7 @@ const Attendance: React.FC = () => {
         fetchAttendanceHistory();
       }
     }
-  }, [selectedClass, selectedDate, viewMode]);
+  }, [selectedClass, selectedDate, viewMode, fetchAttendanceHistory]);
 
   return (
     <Box sx={{ flexGrow: 1 }}>

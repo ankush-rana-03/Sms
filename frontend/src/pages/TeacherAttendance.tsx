@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
   Paper,
   Grid,
-  Card,
-  CardContent,
   Button,
   FormControl,
   InputLabel,
@@ -26,7 +24,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Snackbar,
   Tooltip
 } from '@mui/material';
 import {
@@ -34,16 +31,13 @@ import {
   Cancel,
   Schedule,
   Person,
-  School,
   Refresh,
   Edit,
   Save,
   WhatsApp,
-  Visibility,
-  History
+  Visibility
 } from '@mui/icons-material';
 import teacherService, { Student, TodayAttendanceRecord } from '../services/teacherService';
-import attendanceService from '../services/attendanceService';
 import { useAuth } from '../contexts/AuthContext';
 
 const TeacherAttendance: React.FC = () => {
@@ -67,7 +61,7 @@ const TeacherAttendance: React.FC = () => {
   const grades = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const sections = ['A', 'B', 'C', 'D', 'E'];
 
-  const today = new Date().toISOString().split('T')[0];
+
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -101,7 +95,7 @@ const TeacherAttendance: React.FC = () => {
     return false;
   };
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     if (!selectedGrade) return;
 
     setLoading(true);
@@ -116,9 +110,9 @@ const TeacherAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedGrade, selectedSection]);
 
-  const fetchTodayAttendance = async () => {
+  const fetchTodayAttendance = useCallback(async () => {
     if (!selectedGrade) return;
 
     setLoading(true);
@@ -133,9 +127,9 @@ const TeacherAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedGrade, selectedSection]);
 
-  const fetchAttendanceHistory = async () => {
+  const fetchAttendanceHistory = useCallback(async () => {
     if (!selectedGrade || !selectedDate) return;
 
     setLoading(true);
@@ -164,7 +158,7 @@ const TeacherAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedGrade, selectedDate, students, user?.name]);
 
   useEffect(() => {
     if (selectedGrade) {
@@ -175,7 +169,7 @@ const TeacherAttendance: React.FC = () => {
         fetchAttendanceHistory();
       }
     }
-  }, [selectedGrade, selectedSection, selectedDate, viewMode]);
+  }, [selectedGrade, selectedSection, selectedDate, viewMode, fetchStudents, fetchTodayAttendance, fetchAttendanceHistory]);
 
   const handleMarkAttendance = async (studentId: string, status: 'present' | 'absent' | 'late') => {
     if (!canMarkAttendance(selectedDate)) {
@@ -223,17 +217,15 @@ const TeacherAttendance: React.FC = () => {
 
     setSaving(true);
     try {
-      const attendanceData = students.map(student => ({
-        studentId: student.id,
-        status: 'present' as const, // Default status, in real app this would be from UI
-        remarks: ''
-      }));
-
       // In real app, call the API
       // await attendanceService.bulkMarkAttendance({
       //   classId: selectedGrade,
       //   date: selectedDate,
-      //   attendanceData
+      //   attendanceData: students.map(student => ({
+      //     studentId: student.id,
+      //     status: 'present' as const, // Default status, in real app this would be from UI
+      //     remarks: ''
+      //   }))
       // });
 
       // Simulate API call

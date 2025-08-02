@@ -24,6 +24,7 @@ import DatabaseTest from './components/DatabaseTest';
 import StudentCreationDebug from './components/StudentCreationDebug';
 import SimpleCameraTest from './components/SimpleCameraTest';
 import TeacherAttendance from './pages/TeacherAttendance';
+import FaceDescriptorDebug from './components/FaceDescriptorDebug';
 
 const queryClient = new QueryClient();
 
@@ -66,9 +67,10 @@ const App: React.FC = () => {
               <Route path="/simple-camera" element={<SimpleCameraTest />} />
               <Route path="/student-test" element={<StudentCreationTest />} />
               <Route path="/database-test" element={<DatabaseTest />} />
-        <Route path="/student-creation-debug" element={<StudentCreationDebug />} />
+              <Route path="/student-creation-debug" element={<StudentCreationDebug />} />
               <Route path="/camera-test" element={<CameraTest />} />
               <Route path="/debug" element={<LoginDebug />} />
+              <Route path="/face-debug" element={<FaceDescriptorDebug />} />
               <Route path="/login" element={<Login />} />
               <Route
                 path="/"

@@ -6,7 +6,8 @@ const {
   getStudents,
   markAttendanceWithFace,
   getStudentAttendance,
-  getAllStudentsTest
+  getAllStudentsTest,
+  debugFaceDescriptor
 } = require('../controllers/students');
 
 // Test route (no authentication required for debugging)
@@ -19,5 +20,8 @@ router.get('/', protect, authorize('admin', 'principal', 'teacher'), getStudents
 // Attendance routes
 router.post('/attendance/face', protect, authorize('teacher', 'admin'), markAttendanceWithFace);
 router.get('/:studentId/attendance', protect, authorize('teacher', 'admin'), getStudentAttendance);
+
+// Debug route (for troubleshooting face descriptor issues)
+router.get('/:studentId/debug-face', debugFaceDescriptor);
 
 module.exports = router;

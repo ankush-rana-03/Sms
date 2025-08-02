@@ -23,6 +23,7 @@ import StudentCreationTest from './components/StudentCreationTest';
 import DatabaseTest from './components/DatabaseTest';
 import StudentCreationDebug from './components/StudentCreationDebug';
 import SimpleCameraTest from './components/SimpleCameraTest';
+import TeacherAttendance from './pages/TeacherAttendance';
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,11 @@ const App: React.FC = () => {
                 <Route path="tests" element={<Tests />} />
                 <Route path="results" element={<Results />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="teacher-attendance" element={
+                  <RoleBasedRoute allowedRoles={['teacher', 'admin']}>
+                    <TeacherAttendance />
+                  </RoleBasedRoute>
+                } />
               </Route>
             </Routes>
           </Router>

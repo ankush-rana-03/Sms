@@ -31,11 +31,17 @@ exports.register = async (req, res, next) => {
 // @access  Public
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
-    // Validate email & password
-    if (!email || !password) {
-      return next(new ErrorResponse('Please provide an email and password', 400));
+    // Validate email, password and role
+    if (!email || !password || !role) {
+      return next(new ErrorResponse('Please provide an email, password and role', 400));
+    }
+
+    // Validate role
+    const validRoles = ['teacher', 'admin', 'parent'];
+    if (!validRoles.includes(role)) {
+      return next(new ErrorResponse('Invalid role. Please select teacher, admin, or parent', 400));
     }
 
     // Check for user
@@ -50,6 +56,11 @@ exports.login = async (req, res, next) => {
 
     if (!isMatch) {
       return next(new ErrorResponse('Invalid credentials', 401));
+    }
+
+    // Check if user role matches the requested role
+    if (user.role !== role) {
+      return next(new ErrorResponse(`Access denied. This account is registered as ${user.role}, not ${role}`, 403));
     }
 
     // Check if user is active

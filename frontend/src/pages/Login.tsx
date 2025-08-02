@@ -10,9 +10,13 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Visibility, VisibilityOff, School } from '@mui/icons-material';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,11 +25,13 @@ import { useNavigate } from 'react-router-dom';
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  role: yup.string().oneOf(['teacher', 'admin', 'parent'], 'Please select a valid role').required('Role is required'),
 });
 
 interface LoginFormData {
   email: string;
   password: string;
+  role: 'teacher' | 'admin' | 'parent';
 }
 
 const Login: React.FC = () => {
@@ -38,17 +44,21 @@ const Login: React.FC = () => {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: yupResolver(schema),
+    defaultValues: {
+      role: 'teacher'
+    }
   });
 
   const onSubmit = async (data: LoginFormData) => {
     try {
       setLoading(true);
       setError('');
-      console.log('Attempting login with:', data.email);
-      await login(data.email, data.password);
+      console.log('Attempting login with:', data.email, 'role:', data.role);
+      await login(data.email, data.password, data.role);
       console.log('Login successful, navigating to dashboard');
       navigate('/');
     } catch (err: any) {
@@ -135,6 +145,32 @@ const Login: React.FC = () => {
                 ),
               }}
             />
+
+            <FormControl fullWidth margin="normal" error={!!errors.role}>
+              <InputLabel id="role-label">Role</InputLabel>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    labelId="role-label"
+                    id="role"
+                    label="Role"
+                    disabled={loading}
+                  >
+                    <MenuItem value="teacher">Teacher</MenuItem>
+                    <MenuItem value="admin">Admin</MenuItem>
+                    <MenuItem value="parent">Parent</MenuItem>
+                  </Select>
+                )}
+              />
+              {errors.role && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                  {errors.role.message}
+                </Typography>
+              )}
+            </FormControl>
 
             <Button
               type="submit"

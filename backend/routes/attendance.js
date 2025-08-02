@@ -4,7 +4,8 @@ const {
   getAttendanceByDate,
   getStudentAttendance,
   updateAttendance,
-  bulkMarkAttendance
+  bulkMarkAttendance,
+  getTodayAttendance
 } = require('../controllers/attendance');
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.post('/bulk', protect, authorize('teacher'), teacherLocationCheck, bulkMa
 // Routes for all authenticated users
 router.get('/date/:date', protect, getAttendanceByDate);
 router.get('/student/:studentId', protect, getStudentAttendance);
+router.get('/today/:classId', protect, getTodayAttendance);
 
 // Admin/Principal routes
 router.put('/:id', protect, authorize('teacher', 'admin', 'principal'), updateAttendance);

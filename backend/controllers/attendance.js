@@ -11,12 +11,17 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// @desc    Mark attendance with photo
+// @desc    Mark attendance manually (no face recognition)
 // @route   POST /api/attendance/mark
 // @access  Private (Teacher only)
 exports.markAttendance = async (req, res, next) => {
   try {
-    const { studentId, status, photo, location, remarks } = req.body;
+    const { studentId, status, remarks, attendanceDate } = req.body;
+
+    // Validate required fields
+    if (!studentId || !status) {
+      return next(new ErrorResponse('Student ID and status are required', 400));
+    }
 
     // Find student
     const student = await Student.findById(studentId).populate('class');
@@ -24,71 +29,69 @@ exports.markAttendance = async (req, res, next) => {
       return next(new ErrorResponse('Student not found', 404));
     }
 
-    // Check if attendance already marked for today
+    // Determine the date for attendance
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    let targetDate = today;
+    if (attendanceDate) {
+      targetDate = new Date(attendanceDate);
+      targetDate.setHours(0, 0, 0, 0);
+    }
+
+    // Check user permissions for date access
+    const userRole = req.user.role;
+    const isAdmin = userRole === 'admin' || userRole === 'principal';
+    
+    if (!isAdmin) {
+      // Teachers can only mark attendance for today
+      if (targetDate.getTime() !== today.getTime()) {
+        return next(new ErrorResponse('Teachers can only mark attendance for today', 403));
+      }
+    } else {
+      // Admins cannot mark attendance for future dates
+      if (targetDate > today) {
+        return next(new ErrorResponse('Cannot mark attendance for future dates', 403));
+      }
+    }
+
+    // Check if attendance already marked for this date
     const existingAttendance = await Attendance.findOne({
       student: studentId,
       date: {
-        $gte: today,
-        $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        $gte: targetDate,
+        $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
       }
     });
 
     if (existingAttendance) {
-      return next(new ErrorResponse('Attendance already marked for today', 400));
-    }
-
-    let photoUrl = '';
-    let publicId = '';
-
-    // Upload photo to Cloudinary if provided
-    if (photo) {
-      try {
-        const result = await cloudinary.uploader.upload(photo, {
-          folder: 'attendance',
-          transformation: [
-            { width: 400, height: 400, crop: 'fill' },
-            { quality: 'auto' }
-          ]
-        });
-        photoUrl = result.secure_url;
-        publicId = result.public_id;
-      } catch (error) {
-        console.error('Photo upload error:', error);
-        return next(new ErrorResponse('Failed to upload photo', 500));
-      }
-    }
-
-    // Create attendance record
-    const attendance = await Attendance.create({
-      student: studentId,
-      class: student.class._id,
-      date: new Date(),
-      status,
-      markedBy: req.user.id,
-      location,
-      photo: {
-        url: photoUrl,
-        publicId
-      },
-      remarks
-    });
-
-    // Update student attendance stats
-    const studentAttendance = student.attendance;
-    studentAttendance.totalDays += 1;
-    if (status === 'present') {
-      studentAttendance.presentDays += 1;
+      // Update existing attendance
+      existingAttendance.status = status;
+      existingAttendance.remarks = remarks || existingAttendance.remarks;
+      existingAttendance.markedBy = req.user.id;
+      existingAttendance.updatedAt = new Date();
+      
+      await existingAttendance.save();
     } else {
-      studentAttendance.absentDays += 1;
+      // Create new attendance record
+      const attendance = await Attendance.create({
+        student: studentId,
+        class: student.class._id,
+        date: targetDate,
+        status,
+        markedBy: req.user.id,
+        remarks
+      });
     }
-    await student.save();
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      data: attendance
+      message: 'Attendance marked successfully',
+      data: {
+        studentId,
+        status,
+        date: targetDate.toISOString().split('T')[0]
+      }
     });
   } catch (err) {
     next(err);
@@ -102,11 +105,24 @@ exports.getAttendanceByDate = async (req, res, next) => {
   try {
     const { date } = req.params;
     const { classId } = req.query;
+    const userRole = req.user.role;
+    const isAdmin = userRole === 'admin' || userRole === 'principal';
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check permissions
+    if (!isAdmin && targetDate > today) {
+      return next(new ErrorResponse('Cannot access future attendance records', 403));
+    }
 
     const query = {
       date: {
-        $gte: new Date(date),
-        $lt: new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000)
+        $gte: targetDate,
+        $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000)
       }
     };
 
@@ -119,10 +135,28 @@ exports.getAttendanceByDate = async (req, res, next) => {
       .populate('class', 'name section')
       .populate('markedBy', 'name');
 
+    // Add permission flags
+    const attendanceWithPermissions = attendance.map(record => {
+      const recordDate = new Date(record.date);
+      recordDate.setHours(0, 0, 0, 0);
+      
+      return {
+        ...record.toObject(),
+        canEdit: isAdmin ? recordDate <= today : recordDate.getTime() === today.getTime(),
+        isFuture: recordDate > today,
+        isToday: recordDate.getTime() === today.getTime()
+      };
+    });
+
     res.status(200).json({
       success: true,
-      count: attendance.length,
-      data: attendance
+      count: attendanceWithPermissions.length,
+      data: attendanceWithPermissions,
+      permissions: {
+        canEditToday: isAdmin ? true : true,
+        canEditPast: isAdmin,
+        canViewFuture: isAdmin
+      }
     });
   } catch (err) {
     next(err);
@@ -136,6 +170,8 @@ exports.getStudentAttendance = async (req, res, next) => {
   try {
     const { studentId } = req.params;
     const { startDate, endDate } = req.query;
+    const userRole = req.user.role;
+    const isAdmin = userRole === 'admin' || userRole === 'principal';
 
     const query = { student: studentId };
 
@@ -151,6 +187,22 @@ exports.getStudentAttendance = async (req, res, next) => {
       .populate('markedBy', 'name')
       .sort({ date: -1 });
 
+    // Add permission flags
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const attendanceWithPermissions = attendance.map(record => {
+      const recordDate = new Date(record.date);
+      recordDate.setHours(0, 0, 0, 0);
+      
+      return {
+        ...record.toObject(),
+        canEdit: isAdmin ? recordDate <= today : recordDate.getTime() === today.getTime(),
+        isFuture: recordDate > today,
+        isToday: recordDate.getTime() === today.getTime()
+      };
+    });
+
     // Calculate statistics
     const totalDays = attendance.length;
     const presentDays = attendance.filter(a => a.status === 'present').length;
@@ -161,7 +213,7 @@ exports.getStudentAttendance = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        attendance,
+        attendance: attendanceWithPermissions,
         statistics: {
           totalDays,
           presentDays,
@@ -183,23 +235,44 @@ exports.updateAttendance = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, remarks } = req.body;
+    const userRole = req.user.role;
+    const isAdmin = userRole === 'admin' || userRole === 'principal';
 
     const attendance = await Attendance.findById(id);
     if (!attendance) {
       return next(new ErrorResponse('Attendance record not found', 404));
     }
 
+    // Check permissions
+    const attendanceDate = new Date(attendance.date);
+    attendanceDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!isAdmin) {
+      // Teachers can only edit today's attendance
+      if (attendanceDate.getTime() !== today.getTime()) {
+        return next(new ErrorResponse('Teachers can only edit today\'s attendance', 403));
+      }
+    } else {
+      // Admins cannot edit future attendance
+      if (attendanceDate > today) {
+        return next(new ErrorResponse('Cannot edit future attendance records', 403));
+      }
+    }
+
     // Update attendance
     attendance.status = status || attendance.status;
     attendance.remarks = remarks || attendance.remarks;
-    attendance.isVerified = true;
-    attendance.verifiedBy = req.user.id;
-    attendance.verifiedAt = Date.now();
+    attendance.updatedBy = req.user.id;
+    attendance.updatedAt = new Date();
 
     await attendance.save();
 
     res.status(200).json({
       success: true,
+      message: 'Attendance updated successfully',
       data: attendance
     });
   } catch (err) {
@@ -213,6 +286,27 @@ exports.updateAttendance = async (req, res, next) => {
 exports.bulkMarkAttendance = async (req, res, next) => {
   try {
     const { classId, date, attendanceData } = req.body;
+    const userRole = req.user.role;
+    const isAdmin = userRole === 'admin' || userRole === 'principal';
+
+    // Validate date permissions
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!isAdmin) {
+      // Teachers can only mark attendance for today
+      if (targetDate.getTime() !== today.getTime()) {
+        return next(new ErrorResponse('Teachers can only mark attendance for today', 403));
+      }
+    } else {
+      // Admins cannot mark attendance for future dates
+      if (targetDate > today) {
+        return next(new ErrorResponse('Cannot mark attendance for future dates', 403));
+      }
+    }
 
     const attendanceRecords = [];
     const errors = [];
@@ -224,30 +318,36 @@ exports.bulkMarkAttendance = async (req, res, next) => {
         // Check if attendance already exists
         const existingAttendance = await Attendance.findOne({
           student: studentId,
-          date: new Date(date)
+          date: targetDate
         });
 
         if (existingAttendance) {
-          errors.push(`Attendance already marked for student ${studentId}`);
-          continue;
+          // Update existing attendance
+          existingAttendance.status = status;
+          existingAttendance.remarks = remarks || existingAttendance.remarks;
+          existingAttendance.markedBy = req.user.id;
+          existingAttendance.updatedAt = new Date();
+          await existingAttendance.save();
+          attendanceRecords.push(existingAttendance);
+        } else {
+          // Create new attendance record
+          const student = await Student.findById(studentId);
+          if (!student) {
+            errors.push(`Student ${studentId} not found`);
+            continue;
+          }
+
+          const attendance = await Attendance.create({
+            student: studentId,
+            class: classId,
+            date: targetDate,
+            status,
+            markedBy: req.user.id,
+            remarks
+          });
+
+          attendanceRecords.push(attendance);
         }
-
-        const student = await Student.findById(studentId);
-        if (!student) {
-          errors.push(`Student ${studentId} not found`);
-          continue;
-        }
-
-        const attendance = await Attendance.create({
-          student: studentId,
-          class: classId,
-          date: new Date(date),
-          status,
-          markedBy: req.user.id,
-          remarks
-        });
-
-        attendanceRecords.push(attendance);
       } catch (error) {
         errors.push(`Error marking attendance for student ${record.studentId}: ${error.message}`);
       }
@@ -255,10 +355,82 @@ exports.bulkMarkAttendance = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
+      message: 'Bulk attendance marked successfully',
       data: {
         marked: attendanceRecords.length,
         errors,
         records: attendanceRecords
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get today's attendance for a class
+// @route   GET /api/attendance/today/:classId
+// @access  Private
+exports.getTodayAttendance = async (req, res, next) => {
+  try {
+    const { classId } = req.params;
+    const userRole = req.user.role;
+    const isAdmin = userRole === 'admin' || userRole === 'principal';
+
+    // Get all students in the class
+    const students = await Student.find({ class: classId }).populate('class');
+    if (!students.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No students found in this class'
+      });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get today's attendance records
+    const todayAttendance = await Attendance.find({
+      class: classId,
+      date: {
+        $gte: today,
+        $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+      }
+    }).populate('student', 'name studentId');
+
+    // Create attendance map
+    const attendanceMap = new Map();
+    todayAttendance.forEach(record => {
+      attendanceMap.set(record.student._id.toString(), record);
+    });
+
+    // Prepare response with all students
+    const attendanceData = students.map(student => {
+      const attendanceRecord = attendanceMap.get(student._id.toString());
+      return {
+        student: {
+          id: student._id,
+          name: student.name,
+          studentId: student.studentId
+        },
+        attendance: attendanceRecord ? {
+          id: attendanceRecord._id,
+          status: attendanceRecord.status,
+          remarks: attendanceRecord.remarks,
+          markedAt: attendanceRecord.markedAt,
+          markedBy: attendanceRecord.markedBy
+        } : null,
+        canEdit: true, // Teachers can always edit today's attendance
+        isToday: true
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: attendanceData.length,
+      data: attendanceData,
+      permissions: {
+        canEdit: true,
+        isToday: true
       }
     });
   } catch (err) {

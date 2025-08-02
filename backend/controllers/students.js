@@ -159,6 +159,14 @@ exports.markAttendanceWithFace = async (req, res) => {
   try {
     const { studentId, capturedFaceDescriptor, attendanceDate, status } = req.body;
 
+    // Validate required fields
+    if (!studentId || !capturedFaceDescriptor || !attendanceDate || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: studentId, capturedFaceDescriptor, attendanceDate, status'
+      });
+    }
+
     // Find the student
     const student = await Student.findById(studentId);
     if (!student) {
@@ -176,12 +184,38 @@ exports.markAttendanceWithFace = async (req, res) => {
       });
     }
 
-    // Compare faces using face recognition service
+    // Validate stored face descriptor
     const storedFaceDescriptor = student.facialData.faceDescriptor;
-    const similarity = await faceRecognitionService.compareFaces(
-      storedFaceDescriptor,
-      capturedFaceDescriptor
-    );
+    if (!storedFaceDescriptor || !Array.isArray(storedFaceDescriptor) || storedFaceDescriptor.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student has invalid stored facial data'
+      });
+    }
+
+    // Validate captured face descriptor
+    if (!Array.isArray(capturedFaceDescriptor) || capturedFaceDescriptor.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid captured face descriptor format'
+      });
+    }
+
+    // Compare faces using face recognition service
+    let similarity;
+    try {
+      similarity = await faceRecognitionService.compareFaces(
+        storedFaceDescriptor,
+        capturedFaceDescriptor
+      );
+    } catch (faceError) {
+      console.error('Face comparison error:', faceError);
+      return res.status(500).json({
+        success: false,
+        message: 'Face verification failed due to technical error',
+        error: faceError.message
+      });
+    }
 
     console.log('Face similarity score:', similarity);
 

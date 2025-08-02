@@ -24,7 +24,12 @@ class FaceRecognitionService {
       }
 
       if (descriptor1.length !== descriptor2.length) {
-        throw new Error('Face descriptors must have the same length');
+        throw new Error(`Face descriptors must have the same length. Got ${descriptor1.length} and ${descriptor2.length}`);
+      }
+
+      // Validate that all elements are numbers
+      if (!this.validateFaceDescriptor(descriptor1) || !this.validateFaceDescriptor(descriptor2)) {
+        throw new Error('Face descriptors must contain only valid numbers');
       }
 
       // Calculate Euclidean distance between descriptors
@@ -45,37 +50,71 @@ class FaceRecognitionService {
 
   // Calculate Euclidean distance between two vectors
   calculateEuclideanDistance(vector1, vector2) {
-    if (vector1.length !== vector2.length) {
-      throw new Error('Vectors must have the same length');
-    }
+    try {
+      if (!Array.isArray(vector1) || !Array.isArray(vector2)) {
+        throw new Error('Both vectors must be arrays');
+      }
 
-    let sum = 0;
-    for (let i = 0; i < vector1.length; i++) {
-      const diff = vector1[i] - vector2[i];
-      sum += diff * diff;
-    }
+      if (vector1.length !== vector2.length) {
+        throw new Error(`Vectors must have the same length. Got ${vector1.length} and ${vector2.length}`);
+      }
 
-    return Math.sqrt(sum);
+      if (vector1.length === 0) {
+        throw new Error('Vectors cannot be empty');
+      }
+
+      let sum = 0;
+      for (let i = 0; i < vector1.length; i++) {
+        const val1 = Number(vector1[i]);
+        const val2 = Number(vector2[i]);
+        
+        // Check for NaN or invalid numbers
+        if (isNaN(val1) || isNaN(val2)) {
+          throw new Error(`Invalid number at index ${i}: ${vector1[i]} or ${vector2[i]}`);
+        }
+        
+        const diff = val1 - val2;
+        sum += diff * diff;
+      }
+
+      const result = Math.sqrt(sum);
+      
+      // Check for NaN result
+      if (isNaN(result)) {
+        throw new Error('Euclidean distance calculation resulted in NaN');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error calculating Euclidean distance:', error);
+      throw error;
+    }
   }
 
   // Validate face descriptor format
   validateFaceDescriptor(descriptor) {
-    if (!Array.isArray(descriptor)) {
-      throw new Error('Face descriptor must be an array');
-    }
-
-    if (descriptor.length === 0) {
-      throw new Error('Face descriptor cannot be empty');
-    }
-
-    // Check if all elements are numbers
-    for (let i = 0; i < descriptor.length; i++) {
-      if (typeof descriptor[i] !== 'number') {
-        throw new Error('Face descriptor must contain only numbers');
+    try {
+      if (!Array.isArray(descriptor)) {
+        throw new Error('Face descriptor must be an array');
       }
-    }
 
-    return true;
+      if (descriptor.length === 0) {
+        throw new Error('Face descriptor cannot be empty');
+      }
+
+      // Check if all elements are valid numbers
+      for (let i = 0; i < descriptor.length; i++) {
+        const num = Number(descriptor[i]);
+        if (isNaN(num)) {
+          throw new Error(`Invalid number at index ${i}: ${descriptor[i]}`);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Face descriptor validation error:', error);
+      return false;
+    }
   }
 
   // Generate a unique face ID

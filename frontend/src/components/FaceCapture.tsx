@@ -122,15 +122,32 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
       const faceData = await faceRecognitionService.captureFaceFromVideo(videoRef.current);
       console.log('Face data captured:', faceData);
 
-      if (mode === 'verify' && existingFaceDescriptor) {
-        // Compare with existing face
-        const isMatch = await faceRecognitionService.compareFaces(
-          faceData.faceDescriptor,
-          existingFaceDescriptor
-        );
+      // Validate face descriptor
+      if (!faceData.faceDescriptor || !Array.isArray(faceData.faceDescriptor) || faceData.faceDescriptor.length === 0) {
+        throw new Error('Failed to capture valid face descriptor');
+      }
 
-        if (!isMatch) {
-          setError('Face does not match. Please try again or contact administrator.');
+      if (mode === 'verify' && existingFaceDescriptor) {
+        // Validate existing face descriptor
+        if (!Array.isArray(existingFaceDescriptor) || existingFaceDescriptor.length === 0) {
+          throw new Error('Invalid stored face descriptor');
+        }
+
+        // Compare with existing face
+        try {
+          const isMatch = await faceRecognitionService.compareFaces(
+            faceData.faceDescriptor,
+            existingFaceDescriptor
+          );
+
+          if (!isMatch) {
+            setError('Face does not match. Please try again or contact administrator.');
+            onError('Face verification failed');
+            return;
+          }
+        } catch (comparisonError) {
+          console.error('Face comparison error:', comparisonError);
+          setError('Face verification failed due to technical error. Please try again.');
           onError('Face verification failed');
           return;
         }
@@ -148,7 +165,7 @@ const FaceCapture: React.FC<FaceCaptureProps> = ({
       
       // In development, provide a fallback
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Using development fallback for face capture');
+        console.warn('Using development fallback for face capture due to error:', err);
         const mockFaceData = {
           faceDescriptor: Array.from({ length: 128 }, () => Math.random()),
           faceLandmarks: null

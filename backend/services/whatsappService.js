@@ -21,10 +21,12 @@ class WhatsAppService {
 
       this.client.on('qr', (qr) => {
         console.log('=== QR CODE RECEIVED ===');
+        console.log('QR Code Data:', qr);
         console.log('Please scan this QR code with WhatsApp to authenticate:');
         qrcode.generate(qr, { small: true });
         console.log('=== END QR CODE ===');
         this.qrCode = qr;
+        console.log('QR Code stored in service:', this.qrCode);
       });
 
       this.client.on('ready', () => {

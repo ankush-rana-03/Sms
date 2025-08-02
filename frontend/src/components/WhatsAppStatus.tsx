@@ -49,6 +49,7 @@ const WhatsAppStatus: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log('=== Frontend: Checking WhatsApp Status ===');
       const response = await fetch('/api/whatsapp/status', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -60,20 +61,30 @@ const WhatsAppStatus: React.FC = () => {
       }
       
       const data = await response.json();
+      console.log('=== Frontend: Status Response ===');
+      console.log('Full response:', data);
+      console.log('Status data:', data.data);
+      console.log('QR Code present:', !!data.data.qrCode);
+      console.log('QR Code length:', data.data.qrCode ? data.data.qrCode.length : 0);
+      
       setStatus(data.data);
       
       // Generate QR code if available
       if (data.data.qrCode && !data.data.isReady) {
+        console.log('=== Frontend: Generating QR Code ===');
         try {
           const qrUrl = await QRCode.toDataURL(data.data.qrCode);
+          console.log('QR Code URL generated:', qrUrl.substring(0, 50) + '...');
           setQrCodeUrl(qrUrl);
         } catch (qrError) {
           console.error('Error generating QR code:', qrError);
         }
       } else {
+        console.log('No QR code to generate or WhatsApp is ready');
         setQrCodeUrl(null);
       }
     } catch (err: any) {
+      console.error('Error checking status:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -166,6 +177,9 @@ const WhatsAppStatus: React.FC = () => {
                 <Typography variant="body2" color="text.secondary">
                   Has Client: {status.hasClient ? 'Yes' : 'No'}
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  QR Code Available: {status.qrCode ? 'Yes' : 'No'}
+                </Typography>
 
                 {/* QR Code Section */}
                 {qrCodeUrl && !status.isReady && (
@@ -197,6 +211,38 @@ const WhatsAppStatus: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                         After scanning, refresh the status to check if authentication is complete.
                       </Typography>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Debug Section */}
+                {status.qrCode && !status.isReady && !qrCodeUrl && (
+                  <Card sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5' }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="error">
+                        🔧 Debug: QR Code Available but Not Displayed
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        QR Code Data Length: {status.qrCode.length}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        QR Code Preview: {status.qrCode.substring(0, 50)}...
+                      </Typography>
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={async () => {
+                          try {
+                            const qrUrl = await QRCode.toDataURL(status.qrCode!);
+                            setQrCodeUrl(qrUrl);
+                          } catch (error) {
+                            console.error('Manual QR generation failed:', error);
+                          }
+                        }}
+                        sx={{ mt: 1 }}
+                      >
+                        Generate QR Code Manually
+                      </Button>
                     </CardContent>
                   </Card>
                 )}

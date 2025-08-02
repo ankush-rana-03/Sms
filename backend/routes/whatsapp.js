@@ -9,11 +9,16 @@ const whatsappService = require('../services/whatsappService');
 router.get('/status', protect, authorize('admin'), async (req, res) => {
   try {
     const status = whatsappService.getStatus();
+    console.log('=== WhatsApp Status Request ===');
+    console.log('Status data:', status);
+    console.log('QR Code present:', !!status.qrCode);
+    console.log('QR Code length:', status.qrCode ? status.qrCode.length : 0);
     res.json({
       success: true,
       data: status
     });
   } catch (error) {
+    console.error('Error getting WhatsApp status:', error);
     res.status(500).json({
       success: false,
       message: 'Error getting WhatsApp status',

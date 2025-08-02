@@ -34,6 +34,7 @@ import {
   Cancel,
   Schedule,
   People,
+  Person,
   Save,
   History,
   Edit,

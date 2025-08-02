@@ -125,9 +125,92 @@ const StudentCreationDebug: React.FC = () => {
       addLog('info', `Face descriptor length: ${studentData.facialData.faceDescriptor.length}`);
       addLog('info', `Face image length: ${studentData.facialData.faceImage.length}`);
 
+      // Show alert with data being saved
+      const alertData = {
+        studentInfo: {
+          name: studentData.name,
+          email: studentData.email,
+          phone: studentData.phone,
+          address: studentData.address,
+          dateOfBirth: studentData.dateOfBirth,
+          grade: studentData.grade,
+          section: studentData.section,
+          rollNumber: studentData.rollNumber,
+          gender: studentData.gender,
+          bloodGroup: studentData.bloodGroup,
+          parentName: studentData.parentName,
+          parentPhone: studentData.parentPhone
+        },
+        faceData: {
+          faceId: studentData.facialData.faceId,
+          descriptorLength: studentData.facialData.faceDescriptor.length,
+          imageLength: studentData.facialData.faceImage.length,
+          imagePreview: studentData.facialData.faceImage.substring(0, 50) + '...',
+          descriptorSample: studentData.facialData.faceDescriptor.slice(0, 5)
+        }
+      };
+
+      const shouldProceed = window.confirm(
+        `📋 DATA TO BE SAVED:\n\n` +
+        `👤 STUDENT INFO:\n` +
+        `Name: ${alertData.studentInfo.name}\n` +
+        `Email: ${alertData.studentInfo.email}\n` +
+        `Phone: ${alertData.studentInfo.phone}\n` +
+        `Address: ${alertData.studentInfo.address}\n` +
+        `DOB: ${alertData.studentInfo.dateOfBirth}\n` +
+        `Grade: ${alertData.studentInfo.grade}\n` +
+        `Section: ${alertData.studentInfo.section}\n` +
+        `Roll: ${alertData.studentInfo.rollNumber}\n` +
+        `Gender: ${alertData.studentInfo.gender}\n` +
+        `Blood: ${alertData.studentInfo.bloodGroup}\n` +
+        `Parent: ${alertData.studentInfo.parentName}\n` +
+        `Parent Phone: ${alertData.studentInfo.parentPhone}\n\n` +
+        `📷 FACE DATA:\n` +
+        `Face ID: ${alertData.faceData.faceId}\n` +
+        `Descriptor Length: ${alertData.faceData.descriptorLength}\n` +
+        `Image Length: ${alertData.faceData.imageLength}\n` +
+        `Image Preview: ${alertData.faceData.imagePreview}\n` +
+        `Descriptor Sample: [${alertData.faceData.descriptorSample.join(', ')}]\n\n` +
+        `✅ Click OK to save this data to database\n` +
+        `❌ Click Cancel to abort`
+      );
+
+      if (!shouldProceed) {
+        addLog('warning', 'User cancelled student save');
+        return;
+      }
+
       const result = await studentService.createStudent(studentData);
       
       addLog('success', `Student saved successfully! ID: ${result.data._id}`);
+      
+      // Show success alert with saved data
+      const savedData = result.data;
+      window.alert(
+        `✅ STUDENT SAVED SUCCESSFULLY!\n\n` +
+        `🆔 Database ID: ${savedData._id}\n` +
+        `👤 Name: ${savedData.name}\n` +
+        `📧 Email: ${savedData.email}\n` +
+        `📱 Phone: ${savedData.phone}\n` +
+        `🏠 Address: ${savedData.address}\n` +
+        `📅 DOB: ${savedData.dateOfBirth}\n` +
+        `📚 Grade: ${savedData.grade}\n` +
+        `📋 Section: ${savedData.section}\n` +
+        `🔢 Roll: ${savedData.rollNumber}\n` +
+        `👥 Gender: ${savedData.gender}\n` +
+        `🩸 Blood: ${savedData.bloodGroup}\n` +
+        `👨‍👩‍👧‍👦 Parent: ${savedData.parentName}\n` +
+        `📞 Parent Phone: ${savedData.parentPhone}\n\n` +
+        `📷 FACE DATA SAVED:\n` +
+        `Face ID: ${savedData.facialData?.faceId || 'N/A'}\n` +
+        `Face Registered: ${savedData.facialData?.isFaceRegistered ? 'Yes' : 'No'}\n` +
+        `Descriptor Length: ${savedData.facialData?.faceDescriptor?.length || 0}\n` +
+        `Image Length: ${savedData.facialData?.faceImage?.length || 0}\n\n` +
+        `⏰ Created At: ${new Date(savedData.createdAt).toLocaleString()}\n` +
+        `🔄 Updated At: ${new Date(savedData.updatedAt).toLocaleString()}\n\n` +
+        `🎉 Student registration completed successfully!`
+      );
+      
       setSavedStudent(result.data);
       setCurrentStep('complete');
     } catch (error: any) {

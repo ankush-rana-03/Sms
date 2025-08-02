@@ -125,6 +125,42 @@ const WhatsAppStatus: React.FC = () => {
     }
   };
 
+  const forceQRGeneration = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('=== Force QR Generation ===');
+      const response = await fetch('/api/whatsapp/force-qr');
+      console.log('Force QR response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Force QR failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Force QR response data:', data);
+      
+      if (data.status.qrCode) {
+        setStatus(data.status);
+        try {
+          const qrUrl = await QRCode.toDataURL(data.status.qrCode);
+          setQrCodeUrl(qrUrl);
+          setSuccess('QR Code generated successfully!');
+        } catch (qrError) {
+          console.error('QR generation error:', qrError);
+          setError('QR code generated but failed to display');
+        }
+      } else {
+        setError('No QR code generated. Check server logs.');
+      }
+    } catch (err: any) {
+      console.error('Force QR error:', err);
+      setError(`Force QR failed: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sendTestNotification = async () => {
     if (!testData.phoneNumber || !testData.studentName) {
       setError('Please fill in all fields');
@@ -197,6 +233,15 @@ const WhatsAppStatus: React.FC = () => {
                 variant="outlined"
               >
                 Test Backend
+              </Button>
+              <Button
+                onClick={forceQRGeneration}
+                disabled={loading}
+                size="small"
+                variant="contained"
+                color="secondary"
+              >
+                Force QR
               </Button>
             </Box>
 

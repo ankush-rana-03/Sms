@@ -85,10 +85,12 @@ app.listen(PORT, async () => {
   
   // Initialize WhatsApp service
   try {
+    console.log('=== Starting WhatsApp Service Initialization ===');
     await whatsappService.initialize();
-    console.log('WhatsApp service initialized successfully');
+    console.log('=== WhatsApp service initialized successfully ===');
   } catch (error) {
-    console.error('Failed to initialize WhatsApp service:', error);
+    console.error('=== Failed to initialize WhatsApp service ===');
+    console.error('Error:', error);
     console.log('WhatsApp notifications will be disabled');
   }
 });

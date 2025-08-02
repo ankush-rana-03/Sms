@@ -198,6 +198,61 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         imagePreview: studentData.facialData.faceImage.substring(0, 100) + '...'
       });
 
+      // Show alert with data being saved
+      const alertData = {
+        studentInfo: {
+          name: studentData.name,
+          email: studentData.email,
+          phone: studentData.phone,
+          address: studentData.address,
+          dateOfBirth: studentData.dateOfBirth,
+          grade: studentData.grade,
+          section: studentData.section,
+          rollNumber: studentData.rollNumber,
+          gender: studentData.gender,
+          bloodGroup: studentData.bloodGroup,
+          parentName: studentData.parentName,
+          parentPhone: studentData.parentPhone
+        },
+        faceData: {
+          faceId: studentData.facialData.faceId,
+          descriptorLength: studentData.facialData.faceDescriptor.length,
+          imageLength: studentData.facialData.faceImage.length,
+          imagePreview: studentData.facialData.faceImage.substring(0, 50) + '...',
+          descriptorSample: studentData.facialData.faceDescriptor.slice(0, 5)
+        }
+      };
+
+      const shouldProceed = window.confirm(
+        `📋 DATA TO BE SAVED:\n\n` +
+        `👤 STUDENT INFO:\n` +
+        `Name: ${alertData.studentInfo.name}\n` +
+        `Email: ${alertData.studentInfo.email}\n` +
+        `Phone: ${alertData.studentInfo.phone}\n` +
+        `Address: ${alertData.studentInfo.address}\n` +
+        `DOB: ${alertData.studentInfo.dateOfBirth}\n` +
+        `Grade: ${alertData.studentInfo.grade}\n` +
+        `Section: ${alertData.studentInfo.section}\n` +
+        `Roll: ${alertData.studentInfo.rollNumber}\n` +
+        `Gender: ${alertData.studentInfo.gender}\n` +
+        `Blood: ${alertData.studentInfo.bloodGroup}\n` +
+        `Parent: ${alertData.studentInfo.parentName}\n` +
+        `Parent Phone: ${alertData.studentInfo.parentPhone}\n\n` +
+        `📷 FACE DATA:\n` +
+        `Face ID: ${alertData.faceData.faceId}\n` +
+        `Descriptor Length: ${alertData.faceData.descriptorLength}\n` +
+        `Image Length: ${alertData.faceData.imageLength}\n` +
+        `Image Preview: ${alertData.faceData.imagePreview}\n` +
+        `Descriptor Sample: [${alertData.faceData.descriptorSample.join(', ')}]\n\n` +
+        `✅ Click OK to save this data to database\n` +
+        `❌ Click Cancel to abort`
+      );
+
+      if (!shouldProceed) {
+        console.log('User cancelled student save');
+        return;
+      }
+
       // Save to database
       const result = await studentService.createStudent(studentData);
       
@@ -207,12 +262,56 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
       setError(null);
       setSuccess('Student saved to database successfully!');
       
+      // Show success alert with saved data
+      const savedData = result.data;
+      window.alert(
+        `✅ STUDENT SAVED SUCCESSFULLY!\n\n` +
+        `🆔 Database ID: ${savedData._id}\n` +
+        `👤 Name: ${savedData.name}\n` +
+        `📧 Email: ${savedData.email}\n` +
+        `📱 Phone: ${savedData.phone}\n` +
+        `🏠 Address: ${savedData.address}\n` +
+        `📅 DOB: ${savedData.dateOfBirth}\n` +
+        `📚 Grade: ${savedData.grade}\n` +
+        `📋 Section: ${savedData.section}\n` +
+        `🔢 Roll: ${savedData.rollNumber}\n` +
+        `👥 Gender: ${savedData.gender}\n` +
+        `🩸 Blood: ${savedData.bloodGroup}\n` +
+        `👨‍👩‍👧‍👦 Parent: ${savedData.parentName}\n` +
+        `📞 Parent Phone: ${savedData.parentPhone}\n\n` +
+        `📷 FACE DATA SAVED:\n` +
+        `Face ID: ${savedData.facialData?.faceId || 'N/A'}\n` +
+        `Face Registered: ${savedData.facialData?.isFaceRegistered ? 'Yes' : 'No'}\n` +
+        `Descriptor Length: ${savedData.facialData?.faceDescriptor?.length || 0}\n` +
+        `Image Length: ${savedData.facialData?.faceImage?.length || 0}\n\n` +
+        `⏰ Created At: ${new Date(savedData.createdAt).toLocaleString()}\n` +
+        `🔄 Updated At: ${new Date(savedData.updatedAt).toLocaleString()}\n\n` +
+        `🎉 Student registration completed successfully!`
+      );
+      
       // Call the original onSubmit callback
       onSubmit(formValues, faceData);
       
     } catch (error: any) {
       console.error('Error creating student:', error);
       setError(error.message || 'Failed to create student');
+      
+      // Show error alert with details
+      window.alert(
+        `❌ FAILED TO SAVE STUDENT!\n\n` +
+        `Error: ${error.message || 'Unknown error'}\n\n` +
+        `🔍 Debug Info:\n` +
+        `- API Response: ${error.response?.data?.message || 'No response data'}\n` +
+        `- Status Code: ${error.response?.status || 'Unknown'}\n` +
+        `- Network Error: ${error.code || 'None'}\n\n` +
+        `📋 Data that failed to save:\n` +
+        `- Student Name: ${formData.name}\n` +
+        `- Student Email: ${formData.email}\n` +
+        `- Face Data Present: ${faceData ? 'Yes' : 'No'}\n` +
+        `- Face Image Length: ${faceData?.faceImage?.length || 0}\n` +
+        `- Face Descriptor Length: ${faceData?.faceDescriptor?.length || 0}\n\n` +
+        `Please check the console for more details.`
+      );
     } finally {
       setIsSubmitting(false);
     }

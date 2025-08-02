@@ -22,6 +22,45 @@ router.get('/status', protect, authorize('admin'), async (req, res) => {
   }
 });
 
+// @desc    Get QR code for WhatsApp authentication
+// @route   GET /api/whatsapp/qr
+// @access  Private (Admin only)
+router.get('/qr', protect, authorize('admin'), async (req, res) => {
+  try {
+    const status = whatsappService.getStatus();
+    
+    if (status.qrCode) {
+      res.json({
+        success: true,
+        data: {
+          qrCode: status.qrCode,
+          message: 'Scan this QR code with WhatsApp to authenticate'
+        }
+      });
+    } else if (status.isReady) {
+      res.json({
+        success: true,
+        data: {
+          message: 'WhatsApp is already authenticated and ready'
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        data: {
+          message: 'QR code not available. Please wait for WhatsApp service to initialize.'
+        }
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error getting QR code',
+      error: error.message
+    });
+  }
+});
+
 // @desc    Test WhatsApp notification
 // @route   POST /api/whatsapp/test
 // @access  Private (Admin only)

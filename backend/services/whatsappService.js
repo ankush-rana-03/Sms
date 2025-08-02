@@ -5,6 +5,7 @@ class WhatsAppService {
   constructor() {
     this.client = null;
     this.isReady = false;
+    this.qrCode = null;
   }
 
   async initialize() {
@@ -23,6 +24,7 @@ class WhatsAppService {
         console.log('Please scan this QR code with WhatsApp to authenticate:');
         qrcode.generate(qr, { small: true });
         console.log('=== END QR CODE ===');
+        this.qrCode = qr;
       });
 
       this.client.on('ready', () => {
@@ -113,7 +115,8 @@ class WhatsAppService {
     return {
       isReady: this.isReady,
       hasClient: !!this.client,
-      status: this.isReady ? 'ready' : 'not_ready'
+      status: this.isReady ? 'ready' : 'not_ready',
+      qrCode: this.qrCode
     };
   }
 }

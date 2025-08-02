@@ -11,14 +11,18 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid
+  Grid,
+  Card,
+  CardContent
 } from '@mui/material';
 import { WhatsApp, Refresh, Send } from '@mui/icons-material';
+import QRCode from 'qrcode';
 
 interface WhatsAppStatus {
   isReady: boolean;
   hasClient: boolean;
   status: string;
+  qrCode?: string;
 }
 
 const WhatsAppStatus: React.FC = () => {
@@ -26,6 +30,7 @@ const WhatsAppStatus: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   
   // Test notification form
   const [testData, setTestData] = useState({
@@ -56,6 +61,18 @@ const WhatsAppStatus: React.FC = () => {
       
       const data = await response.json();
       setStatus(data.data);
+      
+      // Generate QR code if available
+      if (data.data.qrCode && !data.data.isReady) {
+        try {
+          const qrUrl = await QRCode.toDataURL(data.data.qrCode);
+          setQrCodeUrl(qrUrl);
+        } catch (qrError) {
+          console.error('Error generating QR code:', qrError);
+        }
+      } else {
+        setQrCodeUrl(null);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -149,6 +166,40 @@ const WhatsAppStatus: React.FC = () => {
                 <Typography variant="body2" color="text.secondary">
                   Has Client: {status.hasClient ? 'Yes' : 'No'}
                 </Typography>
+
+                {/* QR Code Section */}
+                {qrCodeUrl && !status.isReady && (
+                  <Card sx={{ mt: 2, p: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        📱 Scan QR Code to Link WhatsApp
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        1. Open WhatsApp on your phone<br/>
+                        2. Go to Settings → Linked Devices<br/>
+                        3. Tap "Link a Device"<br/>
+                        4. Scan this QR code:
+                      </Typography>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        p: 2, 
+                        bgcolor: 'white',
+                        border: '1px solid #ddd',
+                        borderRadius: 1
+                      }}>
+                        <img 
+                          src={qrCodeUrl}
+                          alt="WhatsApp QR Code"
+                          style={{ maxWidth: '200px', height: 'auto' }}
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                        After scanning, refresh the status to check if authentication is complete.
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                )}
               </Box>
             ) : (
               <Alert severity="error">

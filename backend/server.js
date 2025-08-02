@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const whatsappService = require('./services/whatsappService');
 require('dotenv').config();
 
 const app = express();
@@ -78,8 +79,30 @@ app.use('*', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Initialize WhatsApp service
+  try {
+    await whatsappService.initialize();
+    console.log('WhatsApp service initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize WhatsApp service:', error);
+    console.log('WhatsApp notifications will be disabled');
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await whatsappService.disconnect();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully');
+  await whatsappService.disconnect();
+  process.exit(0);
 });
 
 module.exports = app;

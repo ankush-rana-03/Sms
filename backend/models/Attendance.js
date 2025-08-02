@@ -30,15 +30,6 @@ const attendanceSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  location: {
-    latitude: Number,
-    longitude: Number,
-    address: String
-  },
-  photo: {
-    url: String,
-    publicId: String
-  },
   remarks: String,
   isVerified: {
     type: Boolean,

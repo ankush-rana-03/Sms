@@ -2,21 +2,21 @@ const Attendance = require('../models/Attendance');
 const Student = require('../models/Student');
 const Class = require('../models/Class');
 const ErrorResponse = require('../utils/errorResponse');
-const cloudinary = require('cloudinary').v2;
+const { validateAttendanceDate, canEditAttendance } = require('../utils/dateValidation');
+const whatsappService = require('../services/whatsappService');
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// @desc    Mark attendance with photo
+// @desc    Mark attendance manually
 // @route   POST /api/attendance/mark
 // @access  Private (Teacher only)
 exports.markAttendance = async (req, res, next) => {
   try {
-    const { studentId, status, photo, location, remarks } = req.body;
+    const { studentId, status, date, remarks } = req.body;
+
+    // Validate date based on user role
+    const dateValidation = validateAttendanceDate(date || new Date(), req.user.role);
+    if (!dateValidation.isValid) {
+      return next(new ErrorResponse(dateValidation.message, 400));
+    }
 
     // Find student
     const student = await Student.findById(studentId).populate('class');
@@ -24,71 +24,56 @@ exports.markAttendance = async (req, res, next) => {
       return next(new ErrorResponse('Student not found', 404));
     }
 
-    // Check if attendance already marked for today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Check if attendance already marked for the specified date
+    const attendanceDate = new Date(date || new Date());
+    attendanceDate.setHours(0, 0, 0, 0);
     
     const existingAttendance = await Attendance.findOne({
       student: studentId,
       date: {
-        $gte: today,
-        $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        $gte: attendanceDate,
+        $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
       }
     });
 
     if (existingAttendance) {
-      return next(new ErrorResponse('Attendance already marked for today', 400));
-    }
-
-    let photoUrl = '';
-    let publicId = '';
-
-    // Upload photo to Cloudinary if provided
-    if (photo) {
-      try {
-        const result = await cloudinary.uploader.upload(photo, {
-          folder: 'attendance',
-          transformation: [
-            { width: 400, height: 400, crop: 'fill' },
-            { quality: 'auto' }
-          ]
-        });
-        photoUrl = result.secure_url;
-        publicId = result.public_id;
-      } catch (error) {
-        console.error('Photo upload error:', error);
-        return next(new ErrorResponse('Failed to upload photo', 500));
-      }
+      return next(new ErrorResponse('Attendance already marked for this date', 400));
     }
 
     // Create attendance record
     const attendance = await Attendance.create({
       student: studentId,
       class: student.class._id,
-      date: new Date(),
+      date: attendanceDate,
       status,
       markedBy: req.user.id,
-      location,
-      photo: {
-        url: photoUrl,
-        publicId
-      },
       remarks
     });
 
-    // Update student attendance stats
-    const studentAttendance = student.attendance;
-    studentAttendance.totalDays += 1;
-    if (status === 'present') {
-      studentAttendance.presentDays += 1;
-    } else {
-      studentAttendance.absentDays += 1;
+    // Send WhatsApp notification to parent
+    try {
+      const formattedDate = attendanceDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      await whatsappService.sendAttendanceNotification(
+        student.parentPhone,
+        student.name,
+        status,
+        formattedDate
+      );
+    } catch (whatsappError) {
+      console.error('WhatsApp notification failed:', whatsappError);
+      // Don't fail the attendance marking if WhatsApp fails
     }
-    await student.save();
 
     res.status(201).json({
       success: true,
-      data: attendance
+      data: attendance,
+      message: 'Attendance marked successfully'
     });
   } catch (err) {
     next(err);
@@ -115,7 +100,7 @@ exports.getAttendanceByDate = async (req, res, next) => {
     }
 
     const attendance = await Attendance.find(query)
-      .populate('student', 'name studentId')
+      .populate('student', 'name studentId parentPhone')
       .populate('class', 'name section')
       .populate('markedBy', 'name');
 
@@ -178,15 +163,20 @@ exports.getStudentAttendance = async (req, res, next) => {
 
 // @desc    Update attendance
 // @route   PUT /api/attendance/:id
-// @access  Private (Teacher, Admin, Principal)
+// @access  Private (Teacher, Admin)
 exports.updateAttendance = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, remarks } = req.body;
 
-    const attendance = await Attendance.findById(id);
+    const attendance = await Attendance.findById(id).populate('student');
     if (!attendance) {
       return next(new ErrorResponse('Attendance record not found', 404));
+    }
+
+    // Check if user can edit this attendance
+    if (!canEditAttendance(attendance.date, req.user.role)) {
+      return next(new ErrorResponse('You are not authorized to edit this attendance record', 403));
     }
 
     // Update attendance
@@ -198,9 +188,31 @@ exports.updateAttendance = async (req, res, next) => {
 
     await attendance.save();
 
+    // Send WhatsApp notification if status changed
+    if (status && status !== attendance.status && attendance.student) {
+      try {
+        const formattedDate = attendance.date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        await whatsappService.sendAttendanceNotification(
+          attendance.student.parentPhone,
+          attendance.student.name,
+          status,
+          formattedDate
+        );
+      } catch (whatsappError) {
+        console.error('WhatsApp notification failed:', whatsappError);
+      }
+    }
+
     res.status(200).json({
       success: true,
-      data: attendance
+      data: attendance,
+      message: 'Attendance updated successfully'
     });
   } catch (err) {
     next(err);
@@ -214,17 +226,30 @@ exports.bulkMarkAttendance = async (req, res, next) => {
   try {
     const { classId, date, attendanceData } = req.body;
 
+    // Validate date based on user role
+    const dateValidation = validateAttendanceDate(date || new Date(), req.user.role);
+    if (!dateValidation.isValid) {
+      return next(new ErrorResponse(dateValidation.message, 400));
+    }
+
     const attendanceRecords = [];
     const errors = [];
+    const notifications = [];
 
     for (const record of attendanceData) {
       try {
         const { studentId, status, remarks } = record;
 
         // Check if attendance already exists
+        const attendanceDate = new Date(date || new Date());
+        attendanceDate.setHours(0, 0, 0, 0);
+        
         const existingAttendance = await Attendance.findOne({
           student: studentId,
-          date: new Date(date)
+          date: {
+            $gte: attendanceDate,
+            $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
+          }
         });
 
         if (existingAttendance) {
@@ -241,13 +266,36 @@ exports.bulkMarkAttendance = async (req, res, next) => {
         const attendance = await Attendance.create({
           student: studentId,
           class: classId,
-          date: new Date(date),
+          date: attendanceDate,
           status,
           markedBy: req.user.id,
           remarks
         });
 
         attendanceRecords.push(attendance);
+
+        // Send WhatsApp notification
+        try {
+          const formattedDate = attendanceDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+          
+          const notificationSent = await whatsappService.sendAttendanceNotification(
+            student.parentPhone,
+            student.name,
+            status,
+            formattedDate
+          );
+          
+          if (notificationSent) {
+            notifications.push(`Notification sent to ${student.name}'s parent`);
+          }
+        } catch (whatsappError) {
+          console.error('WhatsApp notification failed for student:', student.name, whatsappError);
+        }
       } catch (error) {
         errors.push(`Error marking attendance for student ${record.studentId}: ${error.message}`);
       }
@@ -258,6 +306,7 @@ exports.bulkMarkAttendance = async (req, res, next) => {
       data: {
         marked: attendanceRecords.length,
         errors,
+        notifications,
         records: attendanceRecords
       }
     });

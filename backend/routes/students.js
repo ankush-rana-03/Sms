@@ -4,7 +4,6 @@ const { protect, authorize } = require('../middleware/auth');
 const {
   createStudent,
   getStudents,
-  markAttendanceWithFace,
   getStudentAttendance,
   getAllStudentsTest
 } = require('../controllers/students');
@@ -17,7 +16,6 @@ router.post('/', protect, authorize('admin', 'principal'), createStudent);
 router.get('/', protect, authorize('admin', 'principal', 'teacher'), getStudents);
 
 // Attendance routes
-router.post('/attendance/face', protect, authorize('teacher', 'admin'), markAttendanceWithFace);
 router.get('/:studentId/attendance', protect, authorize('teacher', 'admin'), getStudentAttendance);
 
 module.exports = router;

@@ -23,15 +23,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const schema = yup.object().shape({
+  role: yup.string().oneOf(['teacher', 'admin', 'parent'], 'Please select a valid role').required('Role is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
-  role: yup.string().oneOf(['teacher', 'admin', 'parent'], 'Please select a valid role').required('Role is required'),
 });
 
 interface LoginFormData {
+  role: 'teacher' | 'admin' | 'parent';
   email: string;
   password: string;
-  role: 'teacher' | 'admin' | 'parent';
 }
 
 const Login: React.FC = () => {
@@ -49,7 +49,7 @@ const Login: React.FC = () => {
   } = useForm<LoginFormData>({
     resolver: yupResolver(schema),
     defaultValues: {
-      role: 'teacher'
+      role: 'admin'
     }
   });
 
@@ -107,6 +107,32 @@ const Login: React.FC = () => {
           )}
 
           <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1, width: '100%' }}>
+            <FormControl fullWidth margin="normal" error={!!errors.role}>
+              <InputLabel id="role-label">Role</InputLabel>
+              <Controller
+                name="role"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    labelId="role-label"
+                    id="role"
+                    label="Role"
+                    disabled={loading}
+                  >
+                    <MenuItem value="admin">Admin</MenuItem>
+                    <MenuItem value="teacher">Teacher</MenuItem>
+                    <MenuItem value="parent">Parent</MenuItem>
+                  </Select>
+                )}
+              />
+              {errors.role && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                  {errors.role.message}
+                </Typography>
+              )}
+            </FormControl>
+
             <TextField
               margin="normal"
               fullWidth
@@ -145,32 +171,6 @@ const Login: React.FC = () => {
                 ),
               }}
             />
-
-            <FormControl fullWidth margin="normal" error={!!errors.role}>
-              <InputLabel id="role-label">Role</InputLabel>
-              <Controller
-                name="role"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    {...field}
-                    labelId="role-label"
-                    id="role"
-                    label="Role"
-                    disabled={loading}
-                  >
-                    <MenuItem value="teacher">Teacher</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
-                    <MenuItem value="parent">Parent</MenuItem>
-                  </Select>
-                )}
-              />
-              {errors.role && (
-                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                  {errors.role.message}
-                </Typography>
-              )}
-            </FormControl>
 
             <Button
               type="submit"

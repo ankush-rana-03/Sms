@@ -57,18 +57,49 @@ class FaceRecognitionService {
 
   async compareFaces(descriptor1: number[], descriptor2: number[]): Promise<boolean> {
     try {
+      // Validate inputs
+      if (!Array.isArray(descriptor1) || !Array.isArray(descriptor2)) {
+        throw new Error('Both descriptors must be arrays');
+      }
+
+      if (descriptor1.length !== descriptor2.length) {
+        throw new Error(`Descriptors must have the same length. Got ${descriptor1.length} and ${descriptor2.length}`);
+      }
+
+      if (descriptor1.length === 0) {
+        throw new Error('Descriptors cannot be empty');
+      }
+
+      // Validate that all elements are numbers
+      for (let i = 0; i < descriptor1.length; i++) {
+        if (typeof descriptor1[i] !== 'number' || isNaN(descriptor1[i])) {
+          throw new Error(`Invalid number in descriptor1 at index ${i}: ${descriptor1[i]}`);
+        }
+        if (typeof descriptor2[i] !== 'number' || isNaN(descriptor2[i])) {
+          throw new Error(`Invalid number in descriptor2 at index ${i}: ${descriptor2[i]}`);
+        }
+      }
+
       const distance = faceapi.euclideanDistance(descriptor1, descriptor2);
       const threshold = 0.6; // Lower threshold = more strict matching
       
       console.log('Face comparison distance:', distance, 'Threshold:', threshold);
+      
+      // Check for NaN result
+      if (isNaN(distance)) {
+        throw new Error('Euclidean distance calculation resulted in NaN');
+      }
+      
       return distance < threshold;
     } catch (error) {
       console.error('Face comparison error:', error);
+      
       // Fallback: return true for development
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Using fallback face comparison for development');
+        console.warn('Using fallback face comparison for development due to error:', error);
         return true;
       }
+      
       throw error;
     }
   }

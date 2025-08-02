@@ -294,6 +294,7 @@ const TeacherAttendance: React.FC = () => {
       case 'absent': return 'error';
       case 'late': return 'warning';
       case 'half-day': return 'info';
+      case 'not_marked': return 'default';
       default: return 'default';
     }
   };
@@ -303,6 +304,7 @@ const TeacherAttendance: React.FC = () => {
       case 'present': return <CheckCircle />;
       case 'absent': return <Cancel />;
       case 'late': return <Schedule />;
+      case 'not_marked': return <Person />;
       default: return <Person />;
     }
   };

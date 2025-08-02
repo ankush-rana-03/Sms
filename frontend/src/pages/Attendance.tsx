@@ -286,7 +286,7 @@ const Attendance: React.FC = () => {
       case 'absent': return <Cancel color="error" />;
       case 'late': return <Schedule color="warning" />;
       case 'half-day': return <People color="info" />;
-      default: return null;
+      default: return <Person />;
     }
   };
 

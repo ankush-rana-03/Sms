@@ -3,6 +3,17 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const whatsappService = require('../services/whatsappService');
 
+// @desc    Test endpoint (no auth required)
+// @route   GET /api/whatsapp/test-endpoint
+// @access  Public
+router.get('/test-endpoint', (req, res) => {
+  res.json({
+    success: true,
+    message: 'WhatsApp route is working',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // @desc    Get WhatsApp service status
 // @route   GET /api/whatsapp/status
 // @access  Private (Admin only)

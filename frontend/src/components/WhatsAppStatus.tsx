@@ -31,6 +31,7 @@ const WhatsAppStatus: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [backendTest, setBackendTest] = useState<string | null>(null);
   
   // Test notification form
   const [testData, setTestData] = useState({
@@ -50,14 +51,22 @@ const WhatsAppStatus: React.FC = () => {
     setError(null);
     try {
       console.log('=== Frontend: Checking WhatsApp Status ===');
+      console.log('Token:', localStorage.getItem('token') ? 'Present' : 'Missing');
+      
       const response = await fetch('/api/whatsapp/status', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
         }
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (!response.ok) {
-        throw new Error('Failed to check WhatsApp status');
+        const errorText = await response.text();
+        console.error('Response error text:', errorText);
+        throw new Error(`Failed to check WhatsApp status: ${response.status} ${errorText}`);
       }
       
       const data = await response.json();
@@ -91,6 +100,31 @@ const WhatsAppStatus: React.FC = () => {
     }
   };
 
+  const testBackendConnection = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('=== Testing Backend Connection ===');
+      const response = await fetch('/api/whatsapp/test-endpoint');
+      console.log('Test response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Backend test failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Test response data:', data);
+      setBackendTest('Backend is accessible');
+      setSuccess('Backend connection test successful!');
+    } catch (err: any) {
+      console.error('Backend test error:', err);
+      setBackendTest('Backend is not accessible');
+      setError(`Backend test failed: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sendTestNotification = async () => {
     if (!testData.phoneNumber || !testData.studentName) {
       setError('Please fill in all fields');
@@ -112,7 +146,8 @@ const WhatsAppStatus: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to send test notification');
+        const errorText = await response.text();
+        throw new Error(`Failed to send test notification: ${response.status} ${errorText}`);
       }
       
       const data = await response.json();

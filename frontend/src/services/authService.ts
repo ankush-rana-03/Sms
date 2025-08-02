@@ -3,6 +3,7 @@ import { apiService } from './api';
 export interface LoginRequest {
   email: string;
   password: string;
+  role: string;
 }
 
 export interface LoginResponse {
@@ -34,8 +35,8 @@ export interface User {
 }
 
 class AuthService {
-  async login(email: string, password: string): Promise<LoginResponse> {
-    return apiService.post<LoginResponse>('/auth/login', { email, password });
+  async login(email: string, password: string, role: string): Promise<LoginResponse> {
+    return apiService.post<LoginResponse>('/auth/login', { email, password, role });
   }
 
   async register(userData: {

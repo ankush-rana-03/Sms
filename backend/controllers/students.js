@@ -178,6 +178,31 @@ exports.markAttendanceWithFace = async (req, res) => {
 
     // Compare faces using face recognition service
     const storedFaceDescriptor = student.facialData.faceDescriptor;
+    
+    console.log('Face attendance marking - Debug info:');
+    console.log('Student ID:', studentId);
+    console.log('Student name:', student.name);
+    console.log('Stored face descriptor length:', storedFaceDescriptor?.length);
+    console.log('Captured face descriptor length:', capturedFaceDescriptor?.length);
+    console.log('Student has facial data:', !!student.facialData);
+    console.log('Face is registered:', student.facialData?.isFaceRegistered);
+    
+    // Validate stored face descriptor
+    if (!storedFaceDescriptor || !Array.isArray(storedFaceDescriptor) || storedFaceDescriptor.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student does not have valid registered facial data. Please re-register the student\'s face.'
+      });
+    }
+    
+    // Validate captured face descriptor
+    if (!capturedFaceDescriptor || !Array.isArray(capturedFaceDescriptor) || capturedFaceDescriptor.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No face detected in the captured image. Please try again.'
+      });
+    }
+    
     const similarity = await faceRecognitionService.compareFaces(
       storedFaceDescriptor,
       capturedFaceDescriptor

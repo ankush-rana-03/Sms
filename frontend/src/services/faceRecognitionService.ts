@@ -37,21 +37,36 @@ class FaceRecognitionService {
         throw new Error('No face detected in the image');
       }
 
+      const faceDescriptor = Array.from(detections.descriptor);
+      
+      // Validate face descriptor
+      if (!faceDescriptor || faceDescriptor.length === 0) {
+        throw new Error('Invalid face descriptor generated');
+      }
+      
+      // Ensure descriptor has the expected length (128 for face-api.js)
+      if (faceDescriptor.length !== 128) {
+        console.warn(`Unexpected face descriptor length: ${faceDescriptor.length}, expected 128`);
+      }
+
       return {
-        faceDescriptor: Array.from(detections.descriptor),
+        faceDescriptor: faceDescriptor,
         faceLandmarks: detections.landmarks
       };
     } catch (error) {
       console.error('Face detection error:', error);
-      // Fallback: return mock face descriptor for development
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Using fallback face detection for development');
-        return {
-          faceDescriptor: Array.from({ length: 128 }, () => Math.random()),
-          faceLandmarks: null
-        };
+      
+      // For production, always throw the error
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
       }
-      throw error;
+      
+      // Fallback: return mock face descriptor for development only
+      console.warn('Using fallback face detection for development');
+      return {
+        faceDescriptor: Array.from({ length: 128 }, () => Math.random()),
+        faceLandmarks: null
+      };
     }
   }
 
@@ -86,21 +101,36 @@ class FaceRecognitionService {
         throw new Error('No face detected in the video');
       }
 
+      const faceDescriptor = Array.from(detections.descriptor);
+      
+      // Validate face descriptor
+      if (!faceDescriptor || faceDescriptor.length === 0) {
+        throw new Error('Invalid face descriptor generated from video');
+      }
+      
+      // Ensure descriptor has the expected length (128 for face-api.js)
+      if (faceDescriptor.length !== 128) {
+        console.warn(`Unexpected face descriptor length from video: ${faceDescriptor.length}, expected 128`);
+      }
+
       return {
-        faceDescriptor: Array.from(detections.descriptor),
+        faceDescriptor: faceDescriptor,
         faceLandmarks: detections.landmarks
       };
     } catch (error) {
       console.error('Face capture error:', error);
-      // Fallback: return mock face descriptor for development
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Using fallback face capture for development');
-        return {
-          faceDescriptor: Array.from({ length: 128 }, () => Math.random()),
-          faceLandmarks: null
-        };
+      
+      // For production, always throw the error
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
       }
-      throw error;
+      
+      // Fallback: return mock face descriptor for development only
+      console.warn('Using fallback face capture for development');
+      return {
+        faceDescriptor: Array.from({ length: 128 }, () => Math.random()),
+        faceLandmarks: null
+      };
     }
   }
 

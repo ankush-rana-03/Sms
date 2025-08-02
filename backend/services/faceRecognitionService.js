@@ -15,6 +15,12 @@ class FaceRecognitionService {
   // Compare two face descriptors and return similarity score
   async compareFaces(descriptor1, descriptor2) {
     try {
+      console.log('Comparing face descriptors:');
+      console.log('Descriptor 1 length:', descriptor1?.length);
+      console.log('Descriptor 2 length:', descriptor2?.length);
+      console.log('Descriptor 1 type:', typeof descriptor1);
+      console.log('Descriptor 2 type:', typeof descriptor2);
+
       if (!descriptor1 || !descriptor2) {
         throw new Error('Both face descriptors are required');
       }
@@ -23,8 +29,25 @@ class FaceRecognitionService {
         throw new Error('Face descriptors must be arrays');
       }
 
+      // Validate descriptor lengths
+      if (descriptor1.length === 0 || descriptor2.length === 0) {
+        throw new Error('Face descriptors cannot be empty');
+      }
+
       if (descriptor1.length !== descriptor2.length) {
-        throw new Error('Face descriptors must have the same length');
+        console.error('Descriptor length mismatch:');
+        console.error('Descriptor 1:', descriptor1.length, 'elements');
+        console.error('Descriptor 2:', descriptor2.length, 'elements');
+        console.error('Descriptor 1 sample:', descriptor1.slice(0, 5));
+        console.error('Descriptor 2 sample:', descriptor2.slice(0, 5));
+        throw new Error(`Face descriptors must have the same length. Got ${descriptor1.length} and ${descriptor2.length}`);
+      }
+
+      // Validate that all elements are numbers
+      for (let i = 0; i < descriptor1.length; i++) {
+        if (typeof descriptor1[i] !== 'number' || typeof descriptor2[i] !== 'number') {
+          throw new Error('Face descriptors must contain only numbers');
+        }
       }
 
       // Calculate Euclidean distance between descriptors

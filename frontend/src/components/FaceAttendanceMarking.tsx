@@ -100,7 +100,21 @@ const FaceAttendanceMarking: React.FC<FaceAttendanceMarkingProps> = ({
       
     } catch (err: any) {
       console.error('Error marking attendance:', err);
-      setError(err.message || 'Failed to mark attendance');
+      
+      // Handle specific face recognition errors
+      let errorMessage = err.message || 'Failed to mark attendance';
+      
+      if (errorMessage.includes('Face descriptors must have the same length')) {
+        errorMessage = 'Face recognition error: Descriptor mismatch. Please try again or re-register the student\'s face.';
+      } else if (errorMessage.includes('No face detected')) {
+        errorMessage = 'No face detected in the image. Please ensure the student\'s face is clearly visible and try again.';
+      } else if (errorMessage.includes('does not have valid registered facial data')) {
+        errorMessage = 'Student needs to re-register their face. Please contact the administrator.';
+      } else if (errorMessage.includes('Face verification failed')) {
+        errorMessage = 'Face verification failed. Please ensure it\'s the correct student and try again.';
+      }
+      
+      setError(errorMessage);
       
       // Mark as absent if face verification fails
       setAttendanceStatus(prev => ({

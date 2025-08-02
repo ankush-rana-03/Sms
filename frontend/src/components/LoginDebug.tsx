@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Box, Typography, Button, TextField, Alert } from '@mui/material';
+import { Box, Typography, Button, TextField, Alert, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { authService } from '../services/authService';
 
 const LoginDebug: React.FC = () => {
   const [email, setEmail] = useState('admin@school.com');
   const [password, setPassword] = useState('password123');
+  const [role, setRole] = useState<'teacher' | 'admin' | 'parent'>('admin');
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -13,7 +14,7 @@ const LoginDebug: React.FC = () => {
       setResult('Testing login...');
       setError('');
       
-      const response = await authService.login(email, password);
+      const response = await authService.login(email, password, role);
       setResult(`Login successful! User: ${response.user.name}, Role: ${response.user.role}`);
     } catch (err: any) {
       setError(`Login failed: ${err.response?.data?.message || err.message}`);
@@ -54,6 +55,20 @@ const LoginDebug: React.FC = () => {
         onChange={(e) => setPassword(e.target.value)}
         sx={{ mb: 2 }}
       />
+
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel id="role-label">Role</InputLabel>
+        <Select
+          labelId="role-label"
+          value={role}
+          label="Role"
+          onChange={(e) => setRole(e.target.value as 'teacher' | 'admin' | 'parent')}
+        >
+          <MenuItem value="teacher">Teacher</MenuItem>
+          <MenuItem value="admin">Admin</MenuItem>
+          <MenuItem value="parent">Parent</MenuItem>
+        </Select>
+      </FormControl>
       
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <Button onClick={testLogin} variant="contained">
@@ -80,10 +95,9 @@ const LoginDebug: React.FC = () => {
         Test Credentials:
       </Typography>
       <Typography variant="body2" sx={{ mt: 1 }}>
-        • admin@school.com / password123<br/>
-        • teacher@school.com / password123<br/>
-        • student@school.com / password123<br/>
-        • parent@school.com / password123
+        • admin@school.com / password123 (Role: admin)<br/>
+        • teacher@school.com / password123 (Role: teacher)<br/>
+        • parent@school.com / password123 (Role: parent)
       </Typography>
     </Box>
   );

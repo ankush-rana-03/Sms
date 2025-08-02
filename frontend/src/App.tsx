@@ -24,6 +24,7 @@ import DatabaseTest from './components/DatabaseTest';
 import StudentCreationDebug from './components/StudentCreationDebug';
 import SimpleCameraTest from './components/SimpleCameraTest';
 import TeacherAttendance from './pages/TeacherAttendance';
+import WhatsAppStatus from './components/WhatsAppStatus';
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,11 @@ const App: React.FC = () => {
                 <Route path="teacher-attendance" element={
                   <RoleBasedRoute allowedRoles={['teacher', 'admin']}>
                     <TeacherAttendance />
+                  </RoleBasedRoute>
+                } />
+                <Route path="whatsapp-status" element={
+                  <RoleBasedRoute allowedRoles={['admin']}>
+                    <WhatsAppStatus />
                   </RoleBasedRoute>
                 } />
               </Route>

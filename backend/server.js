@@ -61,6 +61,7 @@ app.use('/api/homework', require('./routes/homework'));
 app.use('/api/tests', require('./routes/tests'));
 app.use('/api/results', require('./routes/results'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/whatsapp', require('./routes/whatsapp'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

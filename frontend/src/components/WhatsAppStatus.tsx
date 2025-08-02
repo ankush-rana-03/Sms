@@ -18,7 +18,7 @@ import {
 import { WhatsApp, Refresh, Send } from '@mui/icons-material';
 import QRCode from 'qrcode';
 
-interface WhatsAppStatus {
+interface WhatsAppServiceStatus {
   isReady: boolean;
   hasClient: boolean;
   status: string;
@@ -26,7 +26,7 @@ interface WhatsAppStatus {
 }
 
 const WhatsAppStatus: React.FC = () => {
-  const [status, setStatus] = useState<WhatsAppStatus | null>(null);
+  const [status, setStatus] = useState<WhatsAppServiceStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

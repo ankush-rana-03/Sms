@@ -3,7 +3,6 @@ import { Box, Button, Typography, Alert } from '@mui/material';
 
 const CameraTest: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
 
@@ -47,7 +46,6 @@ const CameraTest: React.FC = () => {
           addLog('Video metadata loaded');
           videoRef.current?.play().then(() => {
             addLog('Video started playing successfully!');
-            setIsStreaming(true);
           }).catch(err => {
             addLog(`Failed to play video: ${err.message}`);
             setError(`Play error: ${err.message}`);
@@ -81,7 +79,6 @@ const CameraTest: React.FC = () => {
         addLog(`Stopping track: ${track.kind}`);
         track.stop();
       });
-      setIsStreaming(false);
       addLog('Camera stopped');
     }
   };

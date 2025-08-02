@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, Button, Alert, Paper } from '@mui/material';
+import { Box, Typography, Alert, Paper } from '@mui/material';
 import StudentRegistrationForm from './StudentRegistrationForm';
 
 const StudentCreationTest: React.FC = () => {

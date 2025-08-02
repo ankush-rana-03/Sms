@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -8,12 +8,9 @@ import {
   CircularProgress,
   TextField,
   Grid,
-  Card,
-  CardContent,
-  Divider,
   Chip
 } from '@mui/material';
-import { Person, Camera, Save, CheckCircle, Error } from '@mui/icons-material';
+import { Person, Camera, Save, CheckCircle } from '@mui/icons-material';
 import FaceCapture from './FaceCapture';
 import studentService from '../services/studentService';
 

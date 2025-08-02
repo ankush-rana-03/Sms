@@ -30,7 +30,6 @@ import {
   Notifications,
   Logout,
   Settings,
-  Camera,
   WhatsApp,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';

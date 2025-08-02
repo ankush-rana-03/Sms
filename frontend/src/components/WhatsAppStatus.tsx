@@ -190,6 +190,14 @@ const WhatsAppStatus: React.FC = () => {
               >
                 Refresh
               </Button>
+              <Button
+                onClick={testBackendConnection}
+                disabled={loading}
+                size="small"
+                variant="outlined"
+              >
+                Test Backend
+              </Button>
             </Box>
 
             {loading ? (
@@ -215,6 +223,17 @@ const WhatsAppStatus: React.FC = () => {
                 <Typography variant="body2" color="text.secondary">
                   QR Code Available: {status.qrCode ? 'Yes' : 'No'}
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  QR Code Length: {status.qrCode ? status.qrCode.length : 0}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  QR Code Preview: {status.qrCode ? status.qrCode.substring(0, 30) + '...' : 'None'}
+                </Typography>
+                {backendTest && (
+                  <Typography variant="body2" color="text.secondary">
+                    Backend Test: {backendTest}
+                  </Typography>
+                )}
 
                 {/* QR Code Section */}
                 {qrCodeUrl && !status.isReady && (
@@ -268,15 +287,49 @@ const WhatsAppStatus: React.FC = () => {
                         size="small" 
                         onClick={async () => {
                           try {
+                            console.log('Manual QR generation with data:', status.qrCode!.substring(0, 50) + '...');
                             const qrUrl = await QRCode.toDataURL(status.qrCode!);
+                            console.log('Manual QR URL generated:', qrUrl.substring(0, 50) + '...');
                             setQrCodeUrl(qrUrl);
                           } catch (error) {
                             console.error('Manual QR generation failed:', error);
+                            setError(`QR generation failed: ${error}`);
                           }
                         }}
                         sx={{ mt: 1 }}
                       >
                         Generate QR Code Manually
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Always show QR code if available */}
+                {status.qrCode && !status.isReady && (
+                  <Card sx={{ mt: 2, p: 2, bgcolor: '#e8f5e8' }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        📱 QR Code Data Available
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        QR code data is available from backend. Click below to generate and display it:
+                      </Typography>
+                      <Button 
+                        variant="contained" 
+                        color="primary"
+                        onClick={async () => {
+                          try {
+                            console.log('Generating QR from data length:', status.qrCode!.length);
+                            const qrUrl = await QRCode.toDataURL(status.qrCode!);
+                            setQrCodeUrl(qrUrl);
+                            setSuccess('QR Code generated successfully!');
+                          } catch (error) {
+                            console.error('QR generation failed:', error);
+                            setError(`QR generation failed: ${error}`);
+                          }
+                        }}
+                      >
+                        Generate QR Code
                       </Button>
                     </CardContent>
                   </Card>

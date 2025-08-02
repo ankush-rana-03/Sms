@@ -34,7 +34,8 @@ import {
   School,
   Refresh,
   Face,
-  Camera
+  Camera,
+  Help
 } from '@mui/icons-material';
 import teacherService, { Student, TodayAttendanceRecord } from '../services/teacherService';
 import FaceAttendanceMarking from '../components/FaceAttendanceMarking';
@@ -154,7 +155,7 @@ const TeacherAttendance: React.FC = () => {
       case 'present': return <CheckCircle />;
       case 'absent': return <Cancel />;
       case 'late': return <Schedule />;
-      default: return null;
+      default: return <Help />;
     }
   };
 
@@ -372,17 +373,18 @@ const TeacherAttendance: React.FC = () => {
               </Typography>
               
               <FaceAttendanceMarking
-                onFaceCaptured={(faceDescriptor, faceImage) => {
-                  // This will be handled by the component
-                }}
-                onError={(error) => {
-                  setError(error);
-                  setShowFaceAttendance(false);
-                }}
-                mode="verify"
-                existingFaceDescriptor={selectedStudent.facialData.faceDescriptor}
+                students={[{
+                  ...selectedStudent,
+                  studentId: selectedStudent.id,
+                  class: selectedStudent.grade,
+                  facialData: {
+                    faceDescriptor: [],
+                    faceImage: '',
+                    isFaceRegistered: selectedStudent.facialData.isFaceRegistered
+                  }
+                }]}
                 onAttendanceMarked={handleFaceAttendanceMarked}
-                currentStudent={selectedStudent}
+                loading={loading}
               />
             </Box>
           )}

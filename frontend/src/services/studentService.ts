@@ -28,6 +28,10 @@ export interface Student {
   address: string;
   dateOfBirth: string;
   grade: string;
+  section: string;
+  rollNumber: string;
+  gender: string;
+  bloodGroup: string;
   parentName: string;
   parentPhone: string;
   facialData: {

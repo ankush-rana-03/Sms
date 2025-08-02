@@ -161,34 +161,34 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
       return;
     }
 
+    // Get the current form values
+    const formValues = getValues();
+
+    // Prepare student data for API
+    const studentData: ServiceStudentFormData = {
+      name: formValues.name,
+      email: formValues.email,
+      phone: formValues.phone,
+      address: formValues.address,
+      dateOfBirth: formValues.dateOfBirth,
+      grade: formValues.class, // Map class to grade
+      parentName: formValues.parentName,
+      parentPhone: formValues.parentPhone,
+      // Add missing required fields
+      section: formValues.section || 'A',
+      rollNumber: formValues.rollNumber || '001',
+      gender: formValues.gender || 'male',
+      bloodGroup: formValues.bloodGroup || 'A+',
+      facialData: {
+        faceId: `face_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        faceDescriptor: faceData.faceDescriptor,
+        faceImage: faceData.faceImage
+      }
+    };
+
     try {
       setIsSubmitting(true);
       setError(null);
-
-      // Get the current form values
-      const formValues = getValues();
-
-      // Prepare student data for API
-      const studentData: ServiceStudentFormData = {
-        name: formValues.name,
-        email: formValues.email,
-        phone: formValues.phone,
-        address: formValues.address,
-        dateOfBirth: formValues.dateOfBirth,
-        grade: formValues.class, // Map class to grade
-        parentName: formValues.parentName,
-        parentPhone: formValues.parentPhone,
-        // Add missing required fields
-        section: formValues.section || 'A',
-        rollNumber: formValues.rollNumber || '001',
-        gender: formValues.gender || 'male',
-        bloodGroup: formValues.bloodGroup || 'A+',
-        facialData: {
-          faceId: `face_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          faceDescriptor: faceData.faceDescriptor,
-          faceImage: faceData.faceImage
-        }
-      };
 
       console.log('Submitting student data:', studentData);
       console.log('Face data being sent:', {
@@ -305,8 +305,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         `- Status Code: ${error.response?.status || 'Unknown'}\n` +
         `- Network Error: ${error.code || 'None'}\n\n` +
         `📋 Data that failed to save:\n` +
-        `- Student Name: ${formData.name}\n` +
-        `- Student Email: ${formData.email}\n` +
+        `- Student Name: ${studentData.name}\n` +
+        `- Student Email: ${studentData.email}\n` +
         `- Face Data Present: ${faceData ? 'Yes' : 'No'}\n` +
         `- Face Image Length: ${faceData?.faceImage?.length || 0}\n` +
         `- Face Descriptor Length: ${faceData?.faceDescriptor?.length || 0}\n\n` +

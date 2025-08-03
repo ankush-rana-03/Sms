@@ -1,5 +1,8 @@
 const Student = require('../models/Student');
 const User = require('../models/User');
+const Teacher = require('../models/Teacher');
+const Class = require('../models/Class');
+const bcrypt = require('bcryptjs');
 
 // Get students by class and section
 exports.getStudentsByClass = async (req, res) => {
@@ -44,7 +47,6 @@ exports.getStudentsByClass = async (req, res) => {
         bloodGroup: student.bloodGroup,
         parentName: student.parentName,
         parentPhone: student.parentPhone,
-
         attendance: student.attendance || []
       }))
     });
@@ -102,7 +104,6 @@ exports.markAttendance = async (req, res) => {
       existingAttendance.status = status;
       existingAttendance.markedAt = new Date();
       existingAttendance.markedBy = req.user.id;
-
     } else {
       // Add new attendance record
       student.attendance.push({
@@ -229,8 +230,7 @@ exports.getTodayAttendance = async (req, res) => {
         section: student.section,
         rollNumber: student.rollNumber,
         todayStatus: todayRecord ? todayRecord.status : 'not_marked',
-        markedAt: todayRecord ? todayRecord.markedAt : null,
-
+        markedAt: todayRecord ? todayRecord.markedAt : null
       };
     });
 
@@ -247,6 +247,288 @@ exports.getTodayAttendance = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching today attendance',
+      error: error.message
+    });
+  }
+};
+
+// ========== TEACHER MANAGEMENT FUNCTIONS ==========
+
+// Get all teachers
+exports.getAllTeachers = async (req, res) => {
+  try {
+    const teachers = await Teacher.find()
+      .populate('user', 'name email role isActive')
+      .populate('assignedClasses.class', 'name grade section')
+      .populate('classTeacherOf', 'name grade section');
+
+    res.status(200).json({
+      success: true,
+      count: teachers.length,
+      data: teachers
+    });
+  } catch (error) {
+    console.error('Error fetching teachers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching teachers',
+      error: error.message
+    });
+  }
+};
+
+// Create new teacher
+exports.createTeacher = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      designation,
+      subjects,
+      assignedClasses,
+      qualification,
+      experience,
+      specialization,
+      salary,
+      emergencyContact
+    } = req.body;
+
+    // Check if teacher already exists
+    const existingTeacher = await Teacher.findOne({ email });
+    if (existingTeacher) {
+      return res.status(400).json({
+        success: false,
+        message: 'Teacher with this email already exists'
+      });
+    }
+
+    // Create user account for teacher
+    const user = await User.create({
+      name,
+      email,
+      password: 'password123', // Default password
+      role: 'teacher',
+      phone,
+      address: '',
+      isActive: true
+    });
+
+    // Create teacher profile
+    const teacher = await Teacher.create({
+      user: user._id,
+      name,
+      email,
+      phone,
+      designation,
+      subjects,
+      assignedClasses,
+      qualification,
+      experience,
+      specialization,
+      salary,
+      contactInfo: {
+        emergencyContact
+      }
+    });
+
+    const populatedTeacher = await Teacher.findById(teacher._id)
+      .populate('user', 'name email role isActive')
+      .populate('assignedClasses.class', 'name grade section');
+
+    res.status(201).json({
+      success: true,
+      message: 'Teacher created successfully',
+      data: populatedTeacher
+    });
+  } catch (error) {
+    console.error('Error creating teacher:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating teacher',
+      error: error.message
+    });
+  }
+};
+
+// Update teacher
+exports.updateTeacher = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const updateData = req.body;
+
+    const teacher = await Teacher.findByIdAndUpdate(
+      teacherId,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('user', 'name email role isActive')
+     .populate('assignedClasses.class', 'name grade section');
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Teacher updated successfully',
+      data: teacher
+    });
+  } catch (error) {
+    console.error('Error updating teacher:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating teacher',
+      error: error.message
+    });
+  }
+};
+
+// Delete teacher
+exports.deleteTeacher = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Deactivate user account
+    await User.findByIdAndUpdate(teacher.user, { isActive: false });
+
+    // Delete teacher profile
+    await Teacher.findByIdAndDelete(teacherId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Teacher deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting teacher:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting teacher',
+      error: error.message
+    });
+  }
+};
+
+// Reset teacher password
+exports.resetTeacherPassword = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { newPassword } = req.body;
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Update user password
+    const user = await User.findById(teacher.user);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User account not found'
+      });
+    }
+
+    user.password = newPassword || 'password123';
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Teacher password reset successfully'
+    });
+  } catch (error) {
+    console.error('Error resetting teacher password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error resetting teacher password',
+      error: error.message
+    });
+  }
+};
+
+// Get teacher online status
+exports.getTeacherStatus = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const teacher = await Teacher.findById(teacherId)
+      .select('onlineStatus name email');
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        name: teacher.name,
+        email: teacher.email,
+        onlineStatus: teacher.onlineStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching teacher status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching teacher status',
+      error: error.message
+    });
+  }
+};
+
+// Update teacher online status
+exports.updateTeacherStatus = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { isOnline } = req.body;
+
+    const teacher = await Teacher.findByIdAndUpdate(
+      teacherId,
+      {
+        'onlineStatus.isOnline': isOnline,
+        'onlineStatus.lastSeen': new Date(),
+        'onlineStatus.lastActivity': new Date()
+      },
+      { new: true }
+    );
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Teacher status updated successfully',
+      data: {
+        name: teacher.name,
+        email: teacher.email,
+        onlineStatus: teacher.onlineStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error updating teacher status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating teacher status',
       error: error.message
     });
   }

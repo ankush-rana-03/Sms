@@ -241,7 +241,7 @@ const TeacherManagement: React.FC = () => {
 
   const fetchStatistics = async () => {
     try {
-      const data = await apiService.get('/admin/teachers/statistics/overview');
+      const data = await apiService.get<StatisticsResponse>('/admin/teachers/statistics/overview');
       setStatistics(data.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
@@ -291,7 +291,7 @@ const TeacherManagement: React.FC = () => {
       console.log('Creating teacher with data:', teacherData);
 
       try {
-        const responseData = await apiService.post('/admin/teachers', teacherData);
+        const responseData = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
         console.log('Response data:', responseData);
         
         showSnackbar(`Teacher created successfully. Temporary password: ${responseData.data.temporaryPassword}`, 'success');

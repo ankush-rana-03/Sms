@@ -29,10 +29,10 @@ const teacherSchema = new mongoose.Schema({
     enum: ['TGT', 'PGT', 'JBT', 'NTT'],
     required: true
   },
-  subjects: [{
-    type: String,
-    required: true
-  }],
+  subjects: {
+    type: [String],
+    default: []
+  },
   assignedClasses: [{
     class: {
       type: mongoose.Schema.Types.ObjectId,
@@ -54,14 +54,17 @@ const teacherSchema = new mongoose.Schema({
     },
     previousSchools: [String]
   },
-  specialization: [String],
+  specialization: {
+    type: [String],
+    default: []
+  },
   joiningDate: {
     type: Date,
     default: Date.now
   },
   salary: {
     type: Number,
-    required: true
+    default: 0
   },
   contactInfo: {
     emergencyContact: {

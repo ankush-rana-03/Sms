@@ -96,6 +96,8 @@ exports.getAllTeachers = async (req, res) => {
 // Create new teacher
 exports.createTeacher = async (req, res) => {
   try {
+    console.log('Received teacher creation request:', req.body);
+    
     const {
       name,
       email,
@@ -107,7 +109,8 @@ exports.createTeacher = async (req, res) => {
       experience,
       specialization,
       salary,
-      emergencyContact
+      emergencyContact,
+      joiningDate
     } = req.body;
 
     // Validate required fields
@@ -151,7 +154,7 @@ exports.createTeacher = async (req, res) => {
     });
 
     // Create teacher profile
-    const teacher = await Teacher.create({
+    const teacherData = {
       user: user._id,
       name,
       email,
@@ -163,11 +166,16 @@ exports.createTeacher = async (req, res) => {
       experience: experience || { years: 0, previousSchools: [] },
       specialization: specialization || [],
       salary: salary || 0,
+      joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
       contactInfo: {
         emergencyContact: emergencyContact || {}
       },
       passwordResetRequired: true
-    });
+    };
+
+    console.log('Creating teacher with data:', teacherData);
+    
+    const teacher = await Teacher.create(teacherData);
 
     const populatedTeacher = await Teacher.findById(teacher._id)
       .populate('user', 'name email role isActive')
@@ -184,6 +192,26 @@ exports.createTeacher = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating teacher:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: validationErrors
+      });
+    }
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists`
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error creating teacher',

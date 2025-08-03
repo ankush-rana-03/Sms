@@ -10,8 +10,7 @@ import {
   Grid,
   Chip
 } from '@mui/material';
-import { Person, Camera, Save, CheckCircle } from '@mui/icons-material';
-import FaceCapture from './FaceCapture';
+import { Person, Save, CheckCircle } from '@mui/icons-material';
 import studentService from '../services/studentService';
 
 interface LogMessage {
@@ -23,7 +22,7 @@ interface LogMessage {
 
 const StudentCreationDebug: React.FC = () => {
   const [logs, setLogs] = useState<LogMessage[]>([]);
-  const [currentStep, setCurrentStep] = useState<'form' | 'face-capture' | 'saving' | 'complete'>('form');
+  const [currentStep, setCurrentStep] = useState<'form' | 'saving' | 'complete'>('form');
   const [formData, setFormData] = useState({
     name: 'Test Student',
     email: 'test.student@school.com',
@@ -38,7 +37,6 @@ const StudentCreationDebug: React.FC = () => {
     parentName: 'Test Parent',
     parentPhone: '0987654321'
   });
-  const [faceData, setFaceData] = useState<{ faceDescriptor: number[]; faceImage: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedStudent, setSavedStudent] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,362 +83,293 @@ const StudentCreationDebug: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFaceCaptured = (faceDescriptor: number[], faceImage: string) => {
-    addLog('success', `Face captured successfully! Descriptor: ${faceDescriptor.length} values, Image: ${faceImage.length} chars`);
-    setFaceData({ faceDescriptor, faceImage });
-    setCurrentStep('saving');
-  };
-
-  const handleFaceError = (error: string) => {
-    addLog('error', `Face capture error: ${error}`);
-    setError(error);
-  };
-
   const handleSaveStudent = async () => {
-    if (!faceData) {
-      addLog('error', 'No face data available for saving');
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-    addLog('info', 'Starting student save process...');
-
     try {
+      setIsSaving(true);
+      setError(null);
+      setCurrentStep('saving');
+      
+      addLog('info', 'Starting student creation process...');
+      addLog('info', `Form data: ${JSON.stringify(formData, null, 2)}`);
+
       const studentData = {
-        ...formData,
-        facialData: {
-          faceId: `face_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          faceDescriptor: faceData.faceDescriptor,
-          faceImage: faceData.faceImage
-        }
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        dateOfBirth: formData.dateOfBirth,
+        grade: formData.grade,
+        section: formData.section,
+        rollNumber: formData.rollNumber,
+        gender: formData.gender,
+        bloodGroup: formData.bloodGroup,
+        parentName: formData.parentName,
+        parentPhone: formData.parentPhone
       };
 
-      addLog('info', `Submitting student data to API...`);
-      addLog('info', `Student name: ${studentData.name}`);
-      addLog('info', `Student email: ${studentData.email}`);
-      addLog('info', `Face descriptor length: ${studentData.facialData.faceDescriptor.length}`);
-      addLog('info', `Face image length: ${studentData.facialData.faceImage.length}`);
-
-      // Show alert with data being saved
-      const alertData = {
-        studentInfo: {
-          name: studentData.name,
-          email: studentData.email,
-          phone: studentData.phone,
-          address: studentData.address,
-          dateOfBirth: studentData.dateOfBirth,
-          grade: studentData.grade,
-          section: studentData.section,
-          rollNumber: studentData.rollNumber,
-          gender: studentData.gender,
-          bloodGroup: studentData.bloodGroup,
-          parentName: studentData.parentName,
-          parentPhone: studentData.parentPhone
-        },
-        faceData: {
-          faceId: studentData.facialData.faceId,
-          descriptorLength: studentData.facialData.faceDescriptor.length,
-          imageLength: studentData.facialData.faceImage.length,
-          imagePreview: studentData.facialData.faceImage.substring(0, 50) + '...',
-          descriptorSample: studentData.facialData.faceDescriptor.slice(0, 5)
-        }
-      };
-
-      const shouldProceed = window.confirm(
-        `📋 DATA TO BE SAVED:\n\n` +
-        `👤 STUDENT INFO:\n` +
-        `Name: ${alertData.studentInfo.name}\n` +
-        `Email: ${alertData.studentInfo.email}\n` +
-        `Phone: ${alertData.studentInfo.phone}\n` +
-        `Address: ${alertData.studentInfo.address}\n` +
-        `DOB: ${alertData.studentInfo.dateOfBirth}\n` +
-        `Grade: ${alertData.studentInfo.grade}\n` +
-        `Section: ${alertData.studentInfo.section}\n` +
-        `Roll: ${alertData.studentInfo.rollNumber}\n` +
-        `Gender: ${alertData.studentInfo.gender}\n` +
-        `Blood: ${alertData.studentInfo.bloodGroup}\n` +
-        `Parent: ${alertData.studentInfo.parentName}\n` +
-        `Parent Phone: ${alertData.studentInfo.parentPhone}\n\n` +
-        `📷 FACE DATA:\n` +
-        `Face ID: ${alertData.faceData.faceId}\n` +
-        `Descriptor Length: ${alertData.faceData.descriptorLength}\n` +
-        `Image Length: ${alertData.faceData.imageLength}\n` +
-        `Image Preview: ${alertData.faceData.imagePreview}\n` +
-        `Descriptor Sample: [${alertData.faceData.descriptorSample.join(', ')}]\n\n` +
-        `✅ Click OK to save this data to database\n` +
-        `❌ Click Cancel to abort`
-      );
-
-      if (!shouldProceed) {
-        addLog('warning', 'User cancelled student save');
-        return;
-      }
-
+      addLog('info', 'Calling studentService.createStudent...');
       const result = await studentService.createStudent(studentData);
       
-      addLog('success', `Student saved successfully! ID: ${result.data._id}`);
-      
-      // Show success alert with saved data
-      const savedData = result.data;
-      window.alert(
-        `✅ STUDENT SAVED SUCCESSFULLY!\n\n` +
-        `🆔 Database ID: ${savedData._id}\n` +
-        `👤 Name: ${savedData.name}\n` +
-        `📧 Email: ${savedData.email}\n` +
-        `📱 Phone: ${savedData.phone}\n` +
-        `🏠 Address: ${savedData.address}\n` +
-        `📅 DOB: ${savedData.dateOfBirth}\n` +
-        `📚 Grade: ${savedData.grade}\n` +
-        `📋 Section: ${savedData.section}\n` +
-        `🔢 Roll: ${savedData.rollNumber}\n` +
-        `👥 Gender: ${savedData.gender}\n` +
-        `🩸 Blood: ${savedData.bloodGroup}\n` +
-        `👨‍👩‍👧‍👦 Parent: ${savedData.parentName}\n` +
-        `📞 Parent Phone: ${savedData.parentPhone}\n\n` +
-        `📷 FACE DATA SAVED:\n` +
-        `Face ID: ${savedData.facialData?.faceId || 'N/A'}\n` +
-        `Face Registered: ${savedData.facialData?.isFaceRegistered ? 'Yes' : 'No'}\n` +
-        `Descriptor Length: ${savedData.facialData?.faceDescriptor?.length || 0}\n` +
-        `Image Length: ${savedData.facialData?.faceImage?.length || 0}\n\n` +
-        `⏰ Created At: ${new Date(savedData.createdAt).toLocaleString()}\n` +
-        `🔄 Updated At: ${new Date(savedData.updatedAt).toLocaleString()}\n\n` +
-        `🎉 Student registration completed successfully!`
-      );
+      addLog('success', 'Student created successfully!');
+      addLog('info', `Response: ${JSON.stringify(result, null, 2)}`);
       
       setSavedStudent(result.data);
       setCurrentStep('complete');
+      
     } catch (error: any) {
-      addLog('error', `Failed to save student: ${error.message}`);
+      addLog('error', `Failed to create student: ${error.message}`);
       setError(error.message);
+      setCurrentStep('form');
     } finally {
       setIsSaving(false);
     }
   };
 
   const resetProcess = () => {
-    setLogs([]);
     setCurrentStep('form');
-    setFaceData(null);
     setSavedStudent(null);
     setError(null);
-    addLog('info', 'Process reset - starting fresh');
+    setLogs([]);
   };
 
   const getStepColor = (step: string) => {
-    switch (step) {
-      case 'form': return currentStep === 'form' ? 'primary' : 'default';
-      case 'face-capture': return currentStep === 'face-capture' ? 'primary' : 'default';
-      case 'saving': return currentStep === 'saving' ? 'primary' : 'default';
-      case 'complete': return currentStep === 'complete' ? 'success' : 'default';
-      default: return 'default';
-    }
+    if (currentStep === step) return 'primary';
+    if (step === 'form') return 'default';
+    if (currentStep === 'complete') return 'success';
+    return 'default';
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-      <Typography variant="h4" gutterBottom align="center">
-        🧪 Student Creation Debug Test
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Student Creation Debug
       </Typography>
 
       {/* Progress Steps */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center', gap: 2 }}>
-        <Chip 
-          label="1. Form Data" 
-          color={getStepColor('form')}
-          icon={<Person />}
-        />
-        <Chip 
-          label="2. Face Capture" 
-          color={getStepColor('face-capture')}
-          icon={<Camera />}
-        />
-        <Chip 
-          label="3. Save to DB" 
-          color={getStepColor('saving')}
-          icon={<Save />}
-        />
-        <Chip 
-          label="4. Complete" 
-          color={getStepColor('complete')}
-          icon={<CheckCircle />}
-        />
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Chip
+            icon={<Person />}
+            label="Form Data"
+            color={getStepColor('form')}
+            variant={currentStep === 'form' ? 'filled' : 'outlined'}
+          />
+          <Box sx={{ width: 50, height: 2, bgcolor: 'grey.300', mx: 1 }} />
+          <Chip
+            icon={<Save />}
+            label="Saving"
+            color={getStepColor('saving')}
+            variant={currentStep === 'saving' ? 'filled' : 'outlined'}
+          />
+          <Box sx={{ width: 50, height: 2, bgcolor: 'grey.300', mx: 1 }} />
+          <Chip
+            icon={<CheckCircle />}
+            label="Complete"
+            color={getStepColor('complete')}
+            variant={currentStep === 'complete' ? 'filled' : 'outlined'}
+          />
+        </Box>
       </Box>
 
-      <Grid container spacing={3}>
-        {/* Left Column - Form and Face Capture */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              📝 Student Information
-            </Typography>
-            
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  value={formData.name}
-                  onChange={(e) => handleFormChange('name', e.target.value)}
-                  size="small"
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  value={formData.email}
-                  onChange={(e) => handleFormChange('email', e.target.value)}
-                  size="small"
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Phone"
-                  value={formData.phone}
-                  onChange={(e) => handleFormChange('phone', e.target.value)}
-                  size="small"
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Grade"
-                  value={formData.grade}
-                  onChange={(e) => handleFormChange('grade', e.target.value)}
-                  size="small"
-                />
-              </Grid>
+      {/* Form Section */}
+      {currentStep === 'form' && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Student Information
+          </Typography>
+          
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Name"
+                value={formData.name}
+                onChange={(e) => handleFormChange('name', e.target.value)}
+              />
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Email"
+                value={formData.email}
+                onChange={(e) => handleFormChange('email', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Phone"
+                value={formData.phone}
+                onChange={(e) => handleFormChange('phone', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Address"
+                value={formData.address}
+                onChange={(e) => handleFormChange('address', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Grade"
+                value={formData.grade}
+                onChange={(e) => handleFormChange('grade', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Section"
+                value={formData.section}
+                onChange={(e) => handleFormChange('section', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Roll Number"
+                value={formData.rollNumber}
+                onChange={(e) => handleFormChange('rollNumber', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Date of Birth"
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={(e) => handleFormChange('dateOfBirth', e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Gender"
+                value={formData.gender}
+                onChange={(e) => handleFormChange('gender', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Blood Group"
+                value={formData.bloodGroup}
+                onChange={(e) => handleFormChange('bloodGroup', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Parent Name"
+                value={formData.parentName}
+                onChange={(e) => handleFormChange('parentName', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Parent Phone"
+                value={formData.parentPhone}
+                onChange={(e) => handleFormChange('parentPhone', e.target.value)}
+              />
+            </Grid>
+          </Grid>
 
+          <Box sx={{ mt: 3 }}>
             <Button
               variant="contained"
-              onClick={() => setCurrentStep('face-capture')}
-              sx={{ mt: 2 }}
-              disabled={!formData.name || !formData.email}
+              onClick={handleSaveStudent}
+              disabled={isSaving}
+              startIcon={isSaving ? <CircularProgress size={20} /> : <Save />}
             >
-              Next: Capture Face
+              {isSaving ? 'Creating Student...' : 'Create Student'}
             </Button>
-          </Paper>
+          </Box>
+        </Paper>
+      )}
 
-          {currentStep === 'face-capture' && (
-            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                📷 Face Capture
-              </Typography>
-              
-              <FaceCapture
-                onFaceCaptured={handleFaceCaptured}
-                onError={handleFaceError}
-                mode="register"
-              />
-            </Paper>
-          )}
-
-          {currentStep === 'saving' && (
-            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                💾 Save to Database
-              </Typography>
-              
-              {isSaving ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <CircularProgress size={20} />
-                  <Typography>Saving student to database...</Typography>
-                </Box>
-              ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleSaveStudent}
-                  disabled={!faceData}
-                  startIcon={<Save />}
-                >
-                  Save Student
-                </Button>
-              )}
-            </Paper>
-          )}
-
-          {currentStep === 'complete' && savedStudent && (
-            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom color="success.main">
-                ✅ Student Created Successfully!
-              </Typography>
-              
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2">
-                  <strong>ID:</strong> {savedStudent._id}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Name:</strong> {savedStudent.name}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Email:</strong> {savedStudent.email}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Face Registered:</strong> {savedStudent.facialData?.isFaceRegistered ? 'Yes' : 'No'}
-                </Typography>
-              </Box>
-            </Paper>
-          )}
-
-          <Button
-            variant="outlined"
-            onClick={resetProcess}
-            sx={{ mt: 2 }}
-          >
-            Reset Process
-          </Button>
-        </Grid>
-
-        {/* Right Column - Live Logs */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 3, height: '600px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h6" gutterBottom>
-              📊 Live Console Logs
+      {/* Saving Section */}
+      {currentStep === 'saving' && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ ml: 2 }}>
+              Creating Student...
             </Typography>
-            
-            <Box sx={{ 
-              flex: 1, 
-              overflow: 'auto', 
-              bgcolor: '#1e1e1e', 
-              p: 2, 
-              borderRadius: 1,
-              fontFamily: 'monospace',
-              fontSize: '0.875rem'
-            }}>
-              {logs.map((log) => (
-                <Box key={log.id} sx={{ mb: 1 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: log.level === 'error' ? '#ff6b6b' : 
-                             log.level === 'success' ? '#51cf66' :
-                             log.level === 'warning' ? '#ffd43b' : '#adb5bd',
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    [{log.timestamp}] {log.message}
-                  </Typography>
-                </Box>
-              ))}
-              {logs.length === 0 && (
-                <Typography variant="body2" color="text.secondary">
-                  No logs yet. Start the process to see live debugging...
-                </Typography>
-              )}
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+          </Box>
+        </Paper>
+      )}
 
+      {/* Complete Section */}
+      {currentStep === 'complete' && savedStudent && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Student created successfully!
+          </Alert>
+          
+          <Typography variant="h6" gutterBottom>
+            Created Student Details
+          </Typography>
+          
+          <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
+            <Typography><strong>ID:</strong> {savedStudent._id}</Typography>
+            <Typography><strong>Name:</strong> {savedStudent.name}</Typography>
+            <Typography><strong>Email:</strong> {savedStudent.email}</Typography>
+            <Typography><strong>Phone:</strong> {savedStudent.phone}</Typography>
+            <Typography><strong>Grade:</strong> {savedStudent.grade}</Typography>
+            <Typography><strong>Section:</strong> {savedStudent.section}</Typography>
+            <Typography><strong>Roll Number:</strong> {savedStudent.rollNumber}</Typography>
+            <Typography><strong>Created At:</strong> {new Date(savedStudent.createdAt).toLocaleString()}</Typography>
+          </Box>
+
+          <Box sx={{ mt: 3 }}>
+            <Button variant="contained" onClick={resetProcess}>
+              Create Another Student
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Error Display */}
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
+
+      {/* Logs Section */}
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Debug Logs
+        </Typography>
+        
+        <Box sx={{ maxHeight: 400, overflow: 'auto', bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
+          {logs.map((log) => (
+            <Box key={log.id} sx={{ mb: 1, fontFamily: 'monospace', fontSize: '0.875rem' }}>
+              <span style={{ color: log.level === 'error' ? 'red' : log.level === 'success' ? 'green' : log.level === 'warning' ? 'orange' : 'black' }}>
+                [{log.timestamp}] {log.level.toUpperCase()}: {log.message}
+              </span>
+            </Box>
+          ))}
+          {logs.length === 0 && (
+            <Typography color="text.secondary">
+              No logs yet. Start the process to see debug information.
+            </Typography>
+          )}
+        </Box>
+
+        {logs.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Button size="small" onClick={() => setLogs([])}>
+              Clear Logs
+            </Button>
+          </Box>
+        )}
+      </Paper>
     </Box>
   );
 };

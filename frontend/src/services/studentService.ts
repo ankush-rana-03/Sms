@@ -13,11 +13,6 @@ export interface StudentFormData {
   bloodGroup: string;
   parentName: string;
   parentPhone: string;
-  facialData: {
-    faceId: string;
-    faceDescriptor: number[];
-    faceImage: string;
-  };
 }
 
 export interface Student {
@@ -34,12 +29,6 @@ export interface Student {
   bloodGroup: string;
   parentName: string;
   parentPhone: string;
-  facialData: {
-    faceId: string;
-    faceDescriptor: number[];
-    faceImage: string;
-    isFaceRegistered: boolean;
-  };
   attendance?: AttendanceRecord[];
   createdAt: string;
   updatedAt: string;
@@ -50,18 +39,16 @@ export interface AttendanceRecord {
   status: 'present' | 'absent' | 'late';
   markedAt: string;
   markedBy: string;
-  verifiedWithFace: boolean;
 }
 
 export interface AttendanceMarkingData {
   studentId: string;
-  capturedFaceDescriptor: number[];
   attendanceDate: string;
   status: 'present' | 'absent' | 'late';
 }
 
 class StudentService {
-  // Create a new student with facial data
+  // Create a new student
   async createStudent(studentData: StudentFormData): Promise<{ success: boolean; data: Student; message: string }> {
     try {
       console.log('=== FRONTEND: Creating student ===');
@@ -102,16 +89,14 @@ class StudentService {
     }
   }
 
-  // Mark attendance with face verification
-  async markAttendanceWithFace(attendanceData: AttendanceMarkingData): Promise<{
+  // Mark attendance
+  async markAttendance(attendanceData: AttendanceMarkingData): Promise<{
     success: boolean;
     message: string;
     data: {
       studentId: string;
       attendanceDate: string;
       status: string;
-      similarity: number;
-      verifiedWithFace: boolean;
     };
   }> {
     try {
@@ -122,10 +107,8 @@ class StudentService {
           studentId: string;
           attendanceDate: string;
           status: string;
-          similarity: number;
-          verifiedWithFace: boolean;
         };
-      }>('/students/attendance/face', attendanceData);
+      }>('/students/attendance', attendanceData);
       return response;
     } catch (error: any) {
       console.error('Error marking attendance:', error);

@@ -1,6 +1,5 @@
 const Student = require('../models/Student');
 const User = require('../models/User');
-const faceRecognitionService = require('../services/faceRecognitionService');
 
 // Test route to get all students with full details (for debugging)
 exports.getAllStudentsTest = async (req, res) => {
@@ -15,9 +14,6 @@ exports.getAllStudentsTest = async (req, res) => {
         id: student._id,
         name: student.name,
         email: student.email,
-        hasFaceData: !!student.facialData,
-        isFaceRegistered: student.facialData?.isFaceRegistered,
-        faceDescriptorLength: student.facialData?.faceDescriptor?.length || 0,
         createdAt: student.createdAt
       });
     });
@@ -36,13 +32,6 @@ exports.getAllStudentsTest = async (req, res) => {
         grade: student.grade,
         parentName: student.parentName,
         parentPhone: student.parentPhone,
-        facialData: {
-          hasFaceData: !!student.facialData,
-          isFaceRegistered: student.facialData?.isFaceRegistered || false,
-          faceId: student.facialData?.faceId,
-          faceDescriptorLength: student.facialData?.faceDescriptor?.length || 0,
-          hasFaceImage: !!student.facialData?.faceImage
-        },
         createdAt: student.createdAt,
         updatedAt: student.updatedAt
       }))
@@ -57,7 +46,7 @@ exports.getAllStudentsTest = async (req, res) => {
   }
 };
 
-// Create a new student with facial data
+// Create a new student
 exports.createStudent = async (req, res) => {
   console.log('=== CREATE STUDENT REQUEST ===');
   console.log('Request body:', req.body);
@@ -76,8 +65,7 @@ exports.createStudent = async (req, res) => {
       gender,
       bloodGroup,
       parentName,
-      parentPhone,
-      facialData
+      parentPhone
     } = req.body;
 
     // Check if student already exists
@@ -89,7 +77,7 @@ exports.createStudent = async (req, res) => {
       });
     }
 
-    // Create student with facial data
+    // Create student
     const student = await Student.create({
       name,
       email,
@@ -102,20 +90,14 @@ exports.createStudent = async (req, res) => {
       gender,
       bloodGroup,
       parentName,
-      parentPhone,
-      facialData: {
-        faceId: facialData.faceId,
-        faceDescriptor: facialData.faceDescriptor,
-        faceImage: facialData.faceImage,
-        isFaceRegistered: true
-      }
+      parentPhone
     });
 
     console.log('Student created successfully:', student._id);
     
     res.status(201).json({
       success: true,
-      message: 'Student created successfully with facial data',
+      message: 'Student created successfully',
       data: student
     });
 
@@ -135,7 +117,7 @@ exports.getStudents = async (req, res) => {
   console.log('User:', req.user);
   
   try {
-    const students = await Student.find().select('-facialData.faceDescriptor');
+    const students = await Student.find();
     
     console.log('Found students:', students.length);
     
@@ -153,8 +135,6 @@ exports.getStudents = async (req, res) => {
     });
   }
 };
-
-
 
 // Get attendance records for a student
 exports.getStudentAttendance = async (req, res) => {

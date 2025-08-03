@@ -4,6 +4,7 @@ const Class = require('../models/Class');
 const LoginLog = require('../models/LoginLog');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const emailService = require('../services/emailService');
 
 // Generate a secure random password
 const generatePassword = () => {
@@ -203,13 +204,29 @@ exports.createTeacher = async (req, res) => {
       .populate('user', 'name email role isActive')
       .populate('assignedClasses.class', 'name grade section');
 
+    // Send welcome email to the teacher
+    try {
+      await emailService.sendTeacherWelcomeEmail({
+        name: populatedTeacher.name,
+        email: populatedTeacher.email,
+        designation: populatedTeacher.designation,
+        teacherId: populatedTeacher.teacherId,
+        joiningDate: populatedTeacher.joiningDate
+      }, password);
+      
+      console.log('Welcome email sent successfully to:', populatedTeacher.email);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail the teacher creation if email fails
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Teacher created successfully',
+      message: 'Teacher created successfully and welcome email sent',
       data: {
         teacher: populatedTeacher,
         temporaryPassword: password,
-        message: 'Please provide this temporary password to the teacher. They will be required to change it on first login.'
+        message: 'Teacher account created successfully. Welcome email has been sent with login credentials.'
       }
     });
   } catch (error) {

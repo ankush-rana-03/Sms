@@ -288,6 +288,8 @@ const TeacherManagement: React.FC = () => {
         salary: 0 // Default salary
       };
 
+      console.log('Frontend sending data:', teacherData);
+
       console.log('Creating teacher with data:', teacherData);
 
       try {

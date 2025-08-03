@@ -1,4 +1,4 @@
-import { api } from './api';
+import { apiService } from './api';
 
 export interface Teacher {
   _id: string;
@@ -172,26 +172,26 @@ class TeacherManagementService {
     if (params.designation) queryParams.append('designation', params.designation);
     if (params.status) queryParams.append('status', params.status);
 
-    const response = await api.get(`/admin/teachers?${queryParams.toString()}`);
-    return response.data;
+    const response = await apiService.get(`/admin/teachers?${queryParams.toString()}`);
+    return response;
   }
 
   // Create new teacher
   async createTeacher(data: CreateTeacherData): Promise<CreateTeacherResponse> {
-    const response = await api.post('/admin/teachers', data);
-    return response.data;
+    const response = await apiService.post('/admin/teachers', data);
+    return response;
   }
 
   // Update teacher
   async updateTeacher(teacherId: string, data: UpdateTeacherData): Promise<{ success: boolean; message: string; data: Teacher }> {
-    const response = await api.put(`/admin/teachers/${teacherId}`, data);
-    return response.data;
+    const response = await apiService.put(`/admin/teachers/${teacherId}`, data);
+    return response;
   }
 
   // Delete (deactivate) teacher
   async deleteTeacher(teacherId: string): Promise<{ success: boolean; message: string }> {
-    const response = await api.delete(`/admin/teachers/${teacherId}`);
-    return response.data;
+    const response = await apiService.delete(`/admin/teachers/${teacherId}`);
+    return response;
   }
 
   // Reset teacher password

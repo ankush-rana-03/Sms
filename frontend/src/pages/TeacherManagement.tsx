@@ -98,6 +98,13 @@ interface Teacher {
   joiningDate: string;
   salary: number;
   isActive: boolean;
+  contactInfo?: {
+    emergencyContact: {
+      name: string;
+      phone: string;
+      relationship: string;
+    };
+  };
   onlineStatus: {
     isOnline: boolean;
     lastSeen: string;
@@ -183,6 +190,7 @@ const TeacherManagement: React.FC = () => {
     },
     specialization: [] as string[],
     salary: 0,
+    joiningDate: '',
     emergencyContact: {
       name: '',
       phone: '',
@@ -412,6 +420,7 @@ const TeacherManagement: React.FC = () => {
       experience: teacher.experience,
       specialization: teacher.specialization,
       salary: teacher.salary,
+      joiningDate: teacher.joiningDate,
       emergencyContact: teacher.contactInfo?.emergencyContact || {
         name: '',
         phone: '',
@@ -470,6 +479,7 @@ const TeacherManagement: React.FC = () => {
       },
       specialization: [],
       salary: 0,
+      joiningDate: '',
       emergencyContact: {
         name: '',
         phone: '',
@@ -828,8 +838,7 @@ const TeacherManagement: React.FC = () => {
           {dialogMode === 'create' ? 'Add New Teacher' : 'Edit Teacher'}
         </DialogTitle>
         <DialogContent>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -954,18 +963,19 @@ const TeacherManagement: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <DatePicker
+                <TextField
+                  fullWidth
                   label="Joining Date"
-                  value={formData.joiningDate ? new Date(formData.joiningDate) : null}
-                  onChange={(date) => setFormData({
+                  type="date"
+                  value={formData.joiningDate ? formData.joiningDate.split('T')[0] : ''}
+                  onChange={(e) => setFormData({
                     ...formData,
-                    joiningDate: date ? date.toISOString() : ''
+                    joiningDate: e.target.value ? new Date(e.target.value).toISOString() : ''
                   })}
-                  slotProps={{ textField: { fullWidth: true } }}
+                  InputLabelProps={{ shrink: true }}
                 />
               </Grid>
             </Grid>
-          </LocalizationProvider>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>

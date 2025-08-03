@@ -25,7 +25,7 @@ exports.getStudentsByClass = async (req, res) => {
 
     console.log('Database query:', query);
 
-    const students = await Student.find(query).select('-facialData.faceDescriptor');
+    const students = await Student.find(query);
     
     console.log('Found students:', students.length);
     
@@ -44,12 +44,7 @@ exports.getStudentsByClass = async (req, res) => {
         bloodGroup: student.bloodGroup,
         parentName: student.parentName,
         parentPhone: student.parentPhone,
-        facialData: {
-          hasFaceData: !!student.facialData,
-          isFaceRegistered: student.facialData?.isFaceRegistered || false,
-          faceId: student.facialData?.faceId,
-          hasFaceImage: !!student.facialData?.faceImage
-        },
+
         attendance: student.attendance || []
       }))
     });
@@ -70,7 +65,7 @@ exports.markAttendance = async (req, res) => {
   console.log('Request body:', req.body);
   
   try {
-    const { studentId, status, date, verifiedWithFace = false } = req.body;
+    const { studentId, status, date } = req.body;
     
     if (!studentId || !status || !date) {
       return res.status(400).json({
@@ -107,15 +102,14 @@ exports.markAttendance = async (req, res) => {
       existingAttendance.status = status;
       existingAttendance.markedAt = new Date();
       existingAttendance.markedBy = req.user.id;
-      existingAttendance.verifiedWithFace = verifiedWithFace;
+
     } else {
       // Add new attendance record
       student.attendance.push({
         date,
         status,
         markedAt: new Date(),
-        markedBy: req.user.id,
-        verifiedWithFace
+        markedBy: req.user.id
       });
     }
 
@@ -130,7 +124,6 @@ exports.markAttendance = async (req, res) => {
         studentId,
         status,
         date,
-        verifiedWithFace,
         markedAt: new Date()
       }
     });
@@ -224,7 +217,7 @@ exports.getTodayAttendance = async (req, res) => {
       query.section = section;
     }
 
-    const students = await Student.find(query).select('-facialData.faceDescriptor');
+    const students = await Student.find(query);
     
     const todayAttendance = students.map(student => {
       const todayRecord = student.attendance?.find(record => record.date === today);
@@ -237,7 +230,7 @@ exports.getTodayAttendance = async (req, res) => {
         rollNumber: student.rollNumber,
         todayStatus: todayRecord ? todayRecord.status : 'not_marked',
         markedAt: todayRecord ? todayRecord.markedAt : null,
-        verifiedWithFace: todayRecord ? todayRecord.verifiedWithFace : false
+
       };
     });
 

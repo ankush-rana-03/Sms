@@ -1,3 +1,3 @@
-2025/08/03-12:09:40.327 121e Reusing MANIFEST /workspace/backend/.wwebjs_auth/session/Default/Service Worker/Database/MANIFEST-000001
-2025/08/03-12:09:40.328 121e Recovering log #3
-2025/08/03-12:09:40.328 121e Reusing old log /workspace/backend/.wwebjs_auth/session/Default/Service Worker/Database/000003.log 
+2025/08/03-12:10:51.530 1728 Reusing MANIFEST /workspace/backend/.wwebjs_auth/session/Default/Service Worker/Database/MANIFEST-000001
+2025/08/03-12:10:51.530 1728 Recovering log #3
+2025/08/03-12:10:51.530 1728 Reusing old log /workspace/backend/.wwebjs_auth/session/Default/Service Worker/Database/000003.log 

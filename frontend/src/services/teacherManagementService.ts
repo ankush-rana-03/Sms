@@ -232,7 +232,7 @@ class TeacherManagementService {
 
   // Get online teachers
   async getOnlineTeachers(): Promise<{ success: boolean; count: number; data: Teacher[] }> {
-    const response = await apiService.get('/admin/teachers/online/teachers');
+    const response = await apiService.get<{ success: boolean; count: number; data: Teacher[] }>('/admin/teachers/online/teachers');
     return response;
   }
 
@@ -243,13 +243,13 @@ class TeacherManagementService {
     subject: string;
     grade: string;
   }>): Promise<{ success: boolean; message: string; data: Teacher }> {
-    const response = await apiService.post(`/admin/teachers/${teacherId}/assign-classes`, { assignedClasses });
+    const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(`/admin/teachers/${teacherId}/assign-classes`, { assignedClasses });
     return response;
   }
 
   // Get teacher statistics
   async getTeacherStatistics(): Promise<StatisticsResponse> {
-    const response = await apiService.get('/admin/teachers/statistics/overview');
+    const response = await apiService.get<StatisticsResponse>('/admin/teachers/statistics/overview');
     return response;
   }
 }

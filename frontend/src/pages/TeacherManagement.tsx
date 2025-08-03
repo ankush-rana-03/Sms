@@ -267,6 +267,13 @@ const TeacherManagement: React.FC = () => {
 
   const handleCreateTeacher = async () => {
     try {
+      // Check authentication
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showSnackbar('Authentication required. Please login again.', 'error');
+        return;
+      }
+
       // Validate required fields
       if (!formData.name || !formData.email || !formData.phone || !formData.designation) {
         showSnackbar('Please fill in all required fields (Name, Email, Phone, Designation)', 'error');
@@ -290,9 +297,8 @@ const TeacherManagement: React.FC = () => {
 
       console.log('Frontend sending data:', teacherData);
 
-      console.log('Creating teacher with data:', teacherData);
-
       try {
+        console.log('Making API call to /admin/teachers...');
         const responseData = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
         console.log('Response data:', responseData);
         
@@ -301,7 +307,12 @@ const TeacherManagement: React.FC = () => {
         resetForm();
         fetchTeachers();
       } catch (error: any) {
-        console.error('API Error:', error);
+        console.error('API Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          statusText: error.response?.statusText
+        });
         throw new Error(error.response?.data?.message || error.message || 'Failed to create teacher');
       }
     } catch (error) {

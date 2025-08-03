@@ -6,7 +6,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Avatar,
   Chip,
   Dialog,
@@ -25,18 +24,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Tabs,
-  Tab,
   Alert,
   Snackbar,
   Tooltip,
-  Badge,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
   CircularProgress,
   Pagination,
   InputAdornment
@@ -46,22 +36,13 @@ import {
   Edit,
   Delete,
   Visibility,
-  Lock,
   LockReset,
   History,
   OnlinePrediction,
   Search,
-  FilterList,
   Refresh,
   School,
   Person,
-  Email,
-  Phone,
-  Work,
-  CalendarToday,
-  AttachMoney,
-  CheckCircle,
-  Cancel,
   Warning
 } from '@mui/icons-material';
 
@@ -94,9 +75,7 @@ interface Teacher {
     years: number;
     previousSchools: string[];
   };
-  specialization: string[];
   joiningDate: string;
-  salary: number;
   isActive: boolean;
   contactInfo?: {
     emergencyContact: {
@@ -160,7 +139,6 @@ const TeacherManagement: React.FC = () => {
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
   const [loading, setLoading] = useState(false);
-  const [currentTab, setCurrentTab] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [designationFilter, setDesignationFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -178,7 +156,7 @@ const TeacherManagement: React.FC = () => {
     email: '',
     phone: '',
     designation: 'TGT' as 'TGT' | 'PGT' | 'JBT' | 'NTT',
-    subjects: [] as string[],
+    subjects: '',
     qualification: {
       degree: '',
       institution: '',
@@ -188,8 +166,6 @@ const TeacherManagement: React.FC = () => {
       years: 0,
       previousSchools: [] as string[]
     },
-    specialization: [] as string[],
-    salary: 0,
     joiningDate: '',
     emergencyContact: {
       name: '',
@@ -198,7 +174,7 @@ const TeacherManagement: React.FC = () => {
     }
   });
 
-  const [passwordResetData, setPasswordResetData] = useState({
+  const [passwordResetData] = useState({
     forceReset: true
   });
 
@@ -214,7 +190,7 @@ const TeacherManagement: React.FC = () => {
   useEffect(() => {
     fetchTeachers();
     fetchStatistics();
-  }, [page, searchTerm, designationFilter, statusFilter]);
+  }, [page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTeachers = async () => {
     setLoading(true);
@@ -283,26 +259,44 @@ const TeacherManagement: React.FC = () => {
 
   const handleCreateTeacher = async () => {
     try {
+      // Validate required fields
+      if (!formData.name || !formData.email || !formData.phone || !formData.designation) {
+        showSnackbar('Please fill in all required fields (Name, Email, Phone, Designation)', 'error');
+        return;
+      }
+
+      // Format the data for backend
+      const teacherData = {
+        ...formData,
+        subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
+        salary: 0 // Default salary since we removed the field
+      };
+
+      console.log('Creating teacher with data:', teacherData);
+
       const response = await fetch('/api/admin/teachers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(teacherData)
       });
 
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+
       if (response.ok) {
-        const data = await response.json();
-        showSnackbar(`Teacher created successfully. Temporary password: ${data.data.temporaryPassword}`, 'success');
+        showSnackbar(`Teacher created successfully. Temporary password: ${responseData.data.temporaryPassword}`, 'success');
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create teacher');
+        throw new Error(responseData.message || 'Failed to create teacher');
       }
     } catch (error) {
+      console.error('Error creating teacher:', error);
       showSnackbar(error instanceof Error ? error.message : 'Error creating teacher', 'error');
     }
   };
@@ -311,13 +305,20 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
+      // Format the data for backend
+      const teacherData = {
+        ...formData,
+        subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
+        salary: 0 // Default salary since we removed the field
+      };
+
       const response = await fetch(`/api/admin/teachers/${selectedTeacher._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(teacherData)
       });
 
       if (response.ok) {
@@ -415,11 +416,9 @@ const TeacherManagement: React.FC = () => {
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
-      subjects: teacher.subjects,
+      subjects: teacher.subjects.join(', '),
       qualification: teacher.qualification,
       experience: teacher.experience,
-      specialization: teacher.specialization,
-      salary: teacher.salary,
       joiningDate: teacher.joiningDate,
       emergencyContact: teacher.contactInfo?.emergencyContact || {
         name: '',
@@ -467,7 +466,7 @@ const TeacherManagement: React.FC = () => {
       email: '',
       phone: '',
       designation: 'TGT',
-      subjects: [],
+      subjects: '',
       qualification: {
         degree: '',
         institution: '',
@@ -477,8 +476,6 @@ const TeacherManagement: React.FC = () => {
         years: 0,
         previousSchools: []
       },
-      specialization: [],
-      salary: 0,
       joiningDate: '',
       emergencyContact: {
         name: '',
@@ -504,10 +501,6 @@ const TeacherManagement: React.FC = () => {
       case 'NTT': return 'warning';
       default: return 'default';
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
   };
 
   const formatDateTime = (dateString: string) => {
@@ -886,15 +879,6 @@ const TeacherManagement: React.FC = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Salary"
-                  type="number"
-                  value={formData.salary}
-                  onChange={(e) => setFormData({ ...formData, salary: Number(e.target.value) })}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
                   label="Experience (Years)"
                   type="number"
                   value={formData.experience.years}
@@ -908,24 +892,12 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Subjects (comma separated)"
-                  value={formData.subjects.join(', ')}
+                  value={formData.subjects}
                   onChange={(e) => setFormData({
                     ...formData,
-                    subjects: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                    subjects: e.target.value
                   })}
                   helperText="Enter subjects separated by commas"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Specialization (comma separated)"
-                  value={formData.specialization.join(', ')}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    specialization: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-                  })}
-                  helperText="Enter specializations separated by commas"
                 />
               </Grid>
               <Grid item xs={12} md={6}>

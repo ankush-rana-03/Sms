@@ -52,15 +52,6 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  facialData: {
-    faceId: String,
-    faceDescriptor: [Number], // Array of facial features
-    faceImage: String, // Base64 encoded image
-    isFaceRegistered: {
-      type: Boolean,
-      default: false
-    }
-  },
   attendance: [{
     date: {
       type: String,
@@ -79,10 +70,6 @@ const studentSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
-    },
-    verifiedWithFace: {
-      type: Boolean,
-      default: false
     }
   }]
 }, {

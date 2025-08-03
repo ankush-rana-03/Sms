@@ -12,12 +12,6 @@ export interface Student {
   bloodGroup: string;
   parentName: string;
   parentPhone: string;
-  facialData: {
-    hasFaceData: boolean;
-    isFaceRegistered: boolean;
-    faceId?: string;
-    hasFaceImage: boolean;
-  };
   attendance: AttendanceRecord[];
 }
 
@@ -26,14 +20,12 @@ export interface AttendanceRecord {
   status: 'present' | 'absent' | 'late';
   markedAt: Date;
   markedBy: string;
-  verifiedWithFace: boolean;
 }
 
 export interface AttendanceMarkingData {
   studentId: string;
   status: 'present' | 'absent' | 'late';
   date: string;
-  verifiedWithFace?: boolean;
 }
 
 export interface TodayAttendanceRecord {
@@ -45,7 +37,6 @@ export interface TodayAttendanceRecord {
   rollNumber: string;
   todayStatus: 'present' | 'absent' | 'late' | 'not_marked';
   markedAt?: Date;
-  verifiedWithFace: boolean;
 }
 
 class TeacherService {

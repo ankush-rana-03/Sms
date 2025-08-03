@@ -94,9 +94,7 @@ interface Teacher {
     years: number;
     previousSchools: string[];
   };
-  specialization: string[];
   joiningDate: string;
-  salary: number;
   isActive: boolean;
   contactInfo?: {
     emergencyContact: {
@@ -178,7 +176,7 @@ const TeacherManagement: React.FC = () => {
     email: '',
     phone: '',
     designation: 'TGT' as 'TGT' | 'PGT' | 'JBT' | 'NTT',
-    subjects: [] as string[],
+    subjects: '',
     qualification: {
       degree: '',
       institution: '',
@@ -188,8 +186,6 @@ const TeacherManagement: React.FC = () => {
       years: 0,
       previousSchools: [] as string[]
     },
-    specialization: [] as string[],
-    salary: 0,
     joiningDate: '',
     emergencyContact: {
       name: '',
@@ -283,13 +279,20 @@ const TeacherManagement: React.FC = () => {
 
   const handleCreateTeacher = async () => {
     try {
+      // Format the data for backend
+      const teacherData = {
+        ...formData,
+        subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
+        salary: 0 // Default salary since we removed the field
+      };
+
       const response = await fetch('/api/admin/teachers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(teacherData)
       });
 
       if (response.ok) {
@@ -311,13 +314,20 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
+      // Format the data for backend
+      const teacherData = {
+        ...formData,
+        subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
+        salary: 0 // Default salary since we removed the field
+      };
+
       const response = await fetch(`/api/admin/teachers/${selectedTeacher._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(teacherData)
       });
 
       if (response.ok) {
@@ -415,11 +425,9 @@ const TeacherManagement: React.FC = () => {
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
-      subjects: teacher.subjects,
+      subjects: teacher.subjects.join(', '),
       qualification: teacher.qualification,
       experience: teacher.experience,
-      specialization: teacher.specialization,
-      salary: teacher.salary,
       joiningDate: teacher.joiningDate,
       emergencyContact: teacher.contactInfo?.emergencyContact || {
         name: '',
@@ -467,7 +475,7 @@ const TeacherManagement: React.FC = () => {
       email: '',
       phone: '',
       designation: 'TGT',
-      subjects: [],
+      subjects: '',
       qualification: {
         degree: '',
         institution: '',
@@ -477,8 +485,6 @@ const TeacherManagement: React.FC = () => {
         years: 0,
         previousSchools: []
       },
-      specialization: [],
-      salary: 0,
       joiningDate: '',
       emergencyContact: {
         name: '',
@@ -886,15 +892,6 @@ const TeacherManagement: React.FC = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Salary"
-                  type="number"
-                  value={formData.salary}
-                  onChange={(e) => setFormData({ ...formData, salary: Number(e.target.value) })}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
                   label="Experience (Years)"
                   type="number"
                   value={formData.experience.years}
@@ -908,24 +905,12 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Subjects (comma separated)"
-                  value={formData.subjects.join(', ')}
+                  value={formData.subjects}
                   onChange={(e) => setFormData({
                     ...formData,
-                    subjects: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                    subjects: e.target.value
                   })}
                   helperText="Enter subjects separated by commas"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Specialization (comma separated)"
-                  value={formData.specialization.join(', ')}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    specialization: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-                  })}
-                  helperText="Enter specializations separated by commas"
                 />
               </Grid>
               <Grid item xs={12} md={6}>

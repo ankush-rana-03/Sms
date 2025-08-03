@@ -31,6 +31,7 @@ import {
   Logout,
   Settings,
   WhatsApp,
+  ManageAccounts,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,6 +44,7 @@ const getMenuItems = (userRole: string) => {
     { text: 'Attendance', icon: <People />, path: '/attendance', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
     { text: 'Students', icon: <School />, path: '/students', roles: ['admin', 'principal', 'teacher'] },
     { text: 'Teachers', icon: <Person />, path: '/teachers', roles: ['admin', 'principal'] },
+    { text: 'Teacher Management', icon: <ManageAccounts />, path: '/teacher-management', roles: ['admin'] },
     { text: 'Classes', icon: <Class />, path: '/classes', roles: ['admin', 'principal', 'teacher'] },
     { text: 'Teacher Attendance', icon: <People />, path: '/teacher-attendance', roles: ['teacher', 'admin'] },
     { text: 'WhatsApp Status', icon: <WhatsApp />, path: '/whatsapp-status', roles: ['admin'] },

@@ -95,6 +95,14 @@ const teacherSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
+  },
+  passwordResetRequired: {
+    type: Boolean,
+    default: true
+  },
+  lastPasswordChange: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true

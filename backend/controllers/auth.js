@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Teacher = require('../models/Teacher');
+const LoginLog = require('../models/LoginLog');
 const ErrorResponse = require('../utils/errorResponse');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
@@ -71,6 +73,27 @@ exports.login = async (req, res, next) => {
     // Update last login
     user.lastLogin = Date.now();
     await user.save();
+
+    // Log teacher login if role is teacher
+    if (user.role === 'teacher') {
+      const teacher = await Teacher.findOne({ user: user._id });
+      if (teacher) {
+        // Update teacher online status
+        teacher.onlineStatus.isOnline = true;
+        teacher.onlineStatus.lastSeen = new Date();
+        teacher.onlineStatus.lastActivity = new Date();
+        await teacher.save();
+
+        // Create login log
+        await LoginLog.create({
+          user: user._id,
+          teacher: teacher._id,
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.get('User-Agent') || '',
+          status: 'success'
+        });
+      }
+    }
 
     sendTokenResponse(user, 200, res);
   } catch (err) {

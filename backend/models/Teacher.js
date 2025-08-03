@@ -11,6 +11,24 @@ const teacherSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  name: {
+    type: String,
+    required: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  phone: {
+    type: String,
+    required: true
+  },
+  designation: {
+    type: String,
+    enum: ['TGT', 'PGT', 'JBT', 'NTT'],
+    required: true
+  },
   subjects: [{
     type: String,
     required: true
@@ -21,7 +39,8 @@ const teacherSchema = new mongoose.Schema({
       ref: 'Class'
     },
     section: String,
-    subject: String
+    subject: String,
+    grade: String
   }],
   qualification: {
     degree: String,
@@ -62,6 +81,20 @@ const teacherSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  onlineStatus: {
+    isOnline: {
+      type: Boolean,
+      default: false
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now
+    },
+    lastActivity: {
+      type: Date,
+      default: Date.now
+    }
   }
 }, {
   timestamps: true

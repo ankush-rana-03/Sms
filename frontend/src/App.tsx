@@ -18,11 +18,7 @@ import Layout from './components/Layout';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
 import LoginDebug from './components/LoginDebug';
-import CameraTest from './components/CameraTest';
-import StudentCreationTest from './components/StudentCreationTest';
-import DatabaseTest from './components/DatabaseTest';
-import StudentCreationDebug from './components/StudentCreationDebug';
-import SimpleCameraTest from './components/SimpleCameraTest';
+
 import TeacherAttendance from './pages/TeacherAttendance';
 import WhatsAppStatus from './components/WhatsAppStatus';
 
@@ -64,11 +60,7 @@ const App: React.FC = () => {
         <AuthProvider>
           <Router>
             <Routes>
-              <Route path="/simple-camera" element={<SimpleCameraTest />} />
-              <Route path="/student-test" element={<StudentCreationTest />} />
-              <Route path="/database-test" element={<DatabaseTest />} />
-        <Route path="/student-creation-debug" element={<StudentCreationDebug />} />
-              <Route path="/camera-test" element={<CameraTest />} />
+
               <Route path="/debug" element={<LoginDebug />} />
               <Route path="/login" element={<Login />} />
               <Route

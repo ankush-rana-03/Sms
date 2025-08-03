@@ -13,14 +13,14 @@ import {
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import studentService, { StudentFormData as ServiceStudentFormData } from '../services/studentService';
+import { StudentFormData as ServiceStudentFormData } from '../services/studentService';
 
 const schema = yup.object().shape({
   name: yup.string().required('Name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   phone: yup.string().required('Phone is required'),
   address: yup.string().required('Address is required'),
-  class: yup.string().required('Class is required'),
+  grade: yup.string().required('Grade is required'),
   section: yup.string().required('Section is required'),
   rollNumber: yup.string().required('Roll number is required'),
   dateOfBirth: yup.string().required('Date of birth is required'),
@@ -35,7 +35,7 @@ interface StudentFormData {
   email: string;
   phone: string;
   address: string;
-  class: string;
+  grade: string;
   section: string;
   rollNumber: string;
   dateOfBirth: string;
@@ -79,7 +79,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         phone: data.phone,
         address: data.address,
         dateOfBirth: data.dateOfBirth,
-        grade: data.class, // Map class to grade
+        grade: data.grade,
         parentName: data.parentName,
         parentPhone: data.parentPhone,
         section: data.section,
@@ -163,14 +163,14 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
             <TextField
               fullWidth
               select
-              label="Class"
-              {...register('class')}
-              error={!!errors.class}
-              helperText={errors.class?.message}
+              label="Grade"
+              {...register('grade')}
+              error={!!errors.grade}
+              helperText={errors.grade?.message}
             >
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((grade) => (
                 <MenuItem key={grade} value={grade}>
-                  Class {grade}
+                  Grade {grade}
                 </MenuItem>
               ))}
             </TextField>

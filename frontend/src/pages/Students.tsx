@@ -34,7 +34,7 @@ const Students: React.FC = () => {
     }
   };
 
-  const handleRegisterStudent = async (data: any, faceData: any) => {
+  const handleRegisterStudent = async (data: any) => {
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -45,11 +45,11 @@ const Students: React.FC = () => {
       await fetchStudents();
       
       // Show success toast
-      setToastMessage('Student registered successfully with facial data!');
+      setToastMessage('Student registered successfully!');
       setToastSeverity('success');
       setShowToast(true);
       
-      setSuccess('Student registered successfully with facial data!');
+      setSuccess('Student registered successfully!');
       setOpenRegistration(false);
       
       // Clear success message after 3 seconds
@@ -137,7 +137,7 @@ const Students: React.FC = () => {
                   </Box>
                   <Box sx={{ mt: 1 }}>
                     <Typography variant="body2" color="text.secondary">
-                      Face Registered: {student.facialData?.isFaceRegistered ? '✅ Yes' : '❌ No'}
+  
                     </Typography>
                   </Box>
                 </CardContent>

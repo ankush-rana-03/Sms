@@ -1,3 +1,3 @@
-2025/08/03-11:45:01.839 35bb Reusing MANIFEST /workspace/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
-2025/08/03-11:45:01.840 35bb Recovering log #3
-2025/08/03-11:45:01.840 35bb Reusing old log /workspace/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/000003.log 
+2025/08/03-12:10:51.528 172d Reusing MANIFEST /workspace/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2025/08/03-12:10:51.528 172d Recovering log #3
+2025/08/03-12:10:51.528 172d Reusing old log /workspace/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/000003.log 

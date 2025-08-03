@@ -3,7 +3,7 @@ const nodemailer = require('nodemailer');
 // Email service for sending notifications
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,

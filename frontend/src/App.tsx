@@ -21,7 +21,6 @@ import LoginDebug from './components/LoginDebug';
 
 import TeacherAttendance from './pages/TeacherAttendance';
 import WhatsAppStatus from './components/WhatsAppStatus';
-// import TeacherRegistrationForm from './components/TeacherRegistrationForm';
 
 const queryClient = new QueryClient();
 

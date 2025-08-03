@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiService } from '../services/api';
 import {
   Box,
   Typography,
@@ -128,6 +129,30 @@ interface TeacherStatistics {
   }>;
 }
 
+interface TeachersResponse {
+  success: boolean;
+  data: Teacher[];
+  totalPages: number;
+  count: number;
+  total: number;
+  page: number;
+}
+
+interface StatisticsResponse {
+  success: boolean;
+  data: TeacherStatistics;
+}
+
+interface CreateTeacherResponse {
+  success: boolean;
+  message: string;
+  data: {
+    teacher: Teacher;
+    temporaryPassword: string;
+    message: string;
+  };
+}
+
 const TeacherManagement: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
@@ -203,20 +228,11 @@ const TeacherManagement: React.FC = () => {
         ...(statusFilter && { status: statusFilter })
       });
 
-      const response = await fetch(`/api/admin/teachers?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTeachers(data.data);
-        setTotalPages(data.totalPages);
-      } else {
-        throw new Error('Failed to fetch teachers');
-      }
+      const data = await apiService.get<TeachersResponse>(`/admin/teachers?${params}`);
+      setTeachers(data.data);
+      setTotalPages(data.totalPages);
     } catch (error) {
+      console.error('Error fetching teachers:', error);
       showSnackbar('Error fetching teachers', 'error');
     } finally {
       setLoading(false);
@@ -225,16 +241,8 @@ const TeacherManagement: React.FC = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch('/api/admin/teachers/statistics/overview', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStatistics(data.data);
-      }
+      const data = await apiService.get('/admin/teachers/statistics/overview');
+      setStatistics(data.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
     }
@@ -282,26 +290,17 @@ const TeacherManagement: React.FC = () => {
 
       console.log('Creating teacher with data:', teacherData);
 
-      const response = await fetch('/api/admin/teachers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(teacherData)
-      });
-
-      console.log('Response status:', response.status);
-      const responseData = await response.json();
-      console.log('Response data:', responseData);
-
-      if (response.ok) {
+      try {
+        const responseData = await apiService.post('/admin/teachers', teacherData);
+        console.log('Response data:', responseData);
+        
         showSnackbar(`Teacher created successfully. Temporary password: ${responseData.data.temporaryPassword}`, 'success');
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
-      } else {
-        throw new Error(responseData.message || 'Failed to create teacher');
+      } catch (error: any) {
+        console.error('API Error:', error);
+        throw new Error(error.response?.data?.message || error.message || 'Failed to create teacher');
       }
     } catch (error) {
       console.error('Error creating teacher:', error);

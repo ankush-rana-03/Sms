@@ -267,9 +267,17 @@ const TeacherManagement: React.FC = () => {
 
       // Format the data for backend
       const teacherData = {
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        designation: formData.designation,
         subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
-        salary: 0 // Default salary since we removed the field
+        qualification: formData.qualification,
+        experience: formData.experience,
+        joiningDate: formData.joiningDate || new Date().toISOString().split('T')[0],
+        emergencyContact: formData.emergencyContact,
+        specialization: [], // Empty array as default
+        salary: 0 // Default salary
       };
 
       console.log('Creating teacher with data:', teacherData);
@@ -307,9 +315,17 @@ const TeacherManagement: React.FC = () => {
     try {
       // Format the data for backend
       const teacherData = {
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        designation: formData.designation,
         subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
-        salary: 0 // Default salary since we removed the field
+        qualification: formData.qualification,
+        experience: formData.experience,
+        joiningDate: formData.joiningDate,
+        emergencyContact: formData.emergencyContact,
+        specialization: [], // Empty array as default
+        salary: 0 // Default salary
       };
 
       const response = await fetch(`/api/admin/teachers/${selectedTeacher._id}`, {

@@ -54,14 +54,17 @@ const teacherSchema = new mongoose.Schema({
     },
     previousSchools: [String]
   },
-  specialization: [String],
+  specialization: {
+    type: [String],
+    default: []
+  },
   joiningDate: {
     type: Date,
     default: Date.now
   },
   salary: {
     type: Number,
-    required: true
+    default: 0
   },
   contactInfo: {
     emergencyContact: {

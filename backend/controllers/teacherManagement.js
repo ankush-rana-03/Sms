@@ -163,6 +163,7 @@ exports.createTeacher = async (req, res) => {
       experience: experience || { years: 0, previousSchools: [] },
       specialization: specialization || [],
       salary: salary || 0,
+      joiningDate: req.body.joiningDate || new Date(),
       contactInfo: {
         emergencyContact: emergencyContact || {}
       },

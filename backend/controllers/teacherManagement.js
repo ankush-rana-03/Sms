@@ -143,15 +143,25 @@ exports.createTeacher = async (req, res) => {
     const password = generatePassword();
 
     // Create user account for teacher
-    const user = await User.create({
+    const userData = {
       name,
       email,
       password,
       role: 'teacher',
       phone,
-      address: '',
+      address: 'Not provided', // Set a default address since it's required
       isActive: true
-    });
+    };
+
+    console.log('Creating user with data:', { ...userData, password: '[HIDDEN]' });
+    
+    try {
+      const user = await User.create(userData);
+      console.log('User created successfully:', user._id);
+    } catch (userError) {
+      console.error('User creation failed:', userError);
+      throw userError;
+    }
 
     // Create teacher profile
     const teacherData = {
@@ -173,9 +183,15 @@ exports.createTeacher = async (req, res) => {
       passwordResetRequired: true
     };
 
-    console.log('Creating teacher with data:', teacherData);
+    console.log('Creating teacher with data:', JSON.stringify(teacherData, null, 2));
     
-    const teacher = await Teacher.create(teacherData);
+    try {
+      const teacher = await Teacher.create(teacherData);
+      console.log('Teacher created successfully:', teacher._id);
+    } catch (createError) {
+      console.error('Teacher creation failed:', createError);
+      throw createError;
+    }
 
     const populatedTeacher = await Teacher.findById(teacher._id)
       .populate('user', 'name email role isActive')

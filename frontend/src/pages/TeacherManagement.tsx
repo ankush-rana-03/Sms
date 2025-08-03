@@ -6,7 +6,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Avatar,
   Chip,
   Dialog,
@@ -25,18 +24,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Tabs,
-  Tab,
   Alert,
   Snackbar,
   Tooltip,
-  Badge,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
   CircularProgress,
   Pagination,
   InputAdornment
@@ -46,22 +36,13 @@ import {
   Edit,
   Delete,
   Visibility,
-  Lock,
   LockReset,
   History,
   OnlinePrediction,
   Search,
-  FilterList,
   Refresh,
   School,
   Person,
-  Email,
-  Phone,
-  Work,
-  CalendarToday,
-  AttachMoney,
-  CheckCircle,
-  Cancel,
   Warning
 } from '@mui/icons-material';
 
@@ -158,7 +139,6 @@ const TeacherManagement: React.FC = () => {
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
   const [loading, setLoading] = useState(false);
-  const [currentTab, setCurrentTab] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [designationFilter, setDesignationFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -194,7 +174,7 @@ const TeacherManagement: React.FC = () => {
     }
   });
 
-  const [passwordResetData, setPasswordResetData] = useState({
+  const [passwordResetData] = useState({
     forceReset: true
   });
 
@@ -210,7 +190,7 @@ const TeacherManagement: React.FC = () => {
   useEffect(() => {
     fetchTeachers();
     fetchStatistics();
-  }, [page, searchTerm, designationFilter, statusFilter]);
+  }, [page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTeachers = async () => {
     setLoading(true);
@@ -279,12 +259,20 @@ const TeacherManagement: React.FC = () => {
 
   const handleCreateTeacher = async () => {
     try {
+      // Validate required fields
+      if (!formData.name || !formData.email || !formData.phone || !formData.designation) {
+        showSnackbar('Please fill in all required fields (Name, Email, Phone, Designation)', 'error');
+        return;
+      }
+
       // Format the data for backend
       const teacherData = {
         ...formData,
         subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
         salary: 0 // Default salary since we removed the field
       };
+
+      console.log('Creating teacher with data:', teacherData);
 
       const response = await fetch('/api/admin/teachers', {
         method: 'POST',
@@ -295,17 +283,20 @@ const TeacherManagement: React.FC = () => {
         body: JSON.stringify(teacherData)
       });
 
+      console.log('Response status:', response.status);
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+
       if (response.ok) {
-        const data = await response.json();
-        showSnackbar(`Teacher created successfully. Temporary password: ${data.data.temporaryPassword}`, 'success');
+        showSnackbar(`Teacher created successfully. Temporary password: ${responseData.data.temporaryPassword}`, 'success');
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create teacher');
+        throw new Error(responseData.message || 'Failed to create teacher');
       }
     } catch (error) {
+      console.error('Error creating teacher:', error);
       showSnackbar(error instanceof Error ? error.message : 'Error creating teacher', 'error');
     }
   };
@@ -510,10 +501,6 @@ const TeacherManagement: React.FC = () => {
       case 'NTT': return 'warning';
       default: return 'default';
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
   };
 
   const formatDateTime = (dateString: string) => {

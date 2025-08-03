@@ -181,11 +181,7 @@ const TeacherAttendance: React.FC = () => {
     }
 
     try {
-      await teacherService.markAttendance({
-        studentId,
-        status,
-        date: selectedDate
-      });
+      await teacherService.markAttendance(studentId, status, selectedDate);
       
       setSuccess(`Attendance marked as ${status} successfully! WhatsApp notification sent to parent.`);
       if (viewMode === 'mark') {

@@ -155,8 +155,9 @@ exports.createTeacher = async (req, res) => {
 
     console.log('Creating user with data:', { ...userData, password: '[HIDDEN]' });
     
+    let user;
     try {
-      const user = await User.create(userData);
+      user = await User.create(userData);
       console.log('User created successfully:', user._id);
     } catch (userError) {
       console.error('User creation failed:', userError);
@@ -185,11 +186,16 @@ exports.createTeacher = async (req, res) => {
 
     console.log('Creating teacher with data:', JSON.stringify(teacherData, null, 2));
     
+    let teacher;
     try {
-      const teacher = await Teacher.create(teacherData);
+      teacher = await Teacher.create(teacherData);
       console.log('Teacher created successfully:', teacher._id);
     } catch (createError) {
       console.error('Teacher creation failed:', createError);
+      // Clean up the user if teacher creation fails
+      if (user) {
+        await User.findByIdAndDelete(user._id);
+      }
       throw createError;
     }
 

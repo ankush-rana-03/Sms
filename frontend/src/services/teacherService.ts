@@ -105,20 +105,20 @@ export interface TeacherFormData {
     grade: string;
   }[];
   qualification?: {
-    degree: string;
-    institution: string;
-    yearOfCompletion: number;
+    degree?: string;
+    institution?: string;
+    yearOfCompletion?: number;
   };
   experience?: {
-    years: number;
-    previousSchools: string[];
+    years?: number;
+    previousSchools?: string[];
   };
   specialization?: string[];
   salary: number;
   emergencyContact?: {
-    name: string;
-    phone: string;
-    relationship: string;
+    name?: string;
+    phone?: string;
+    relationship?: string;
   };
 }
 

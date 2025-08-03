@@ -172,32 +172,32 @@ class TeacherManagementService {
     if (params.designation) queryParams.append('designation', params.designation);
     if (params.status) queryParams.append('status', params.status);
 
-    const response = await apiService.get(`/admin/teachers?${queryParams.toString()}`);
+    const response = await apiService.get<TeachersResponse>(`/admin/teachers?${queryParams.toString()}`);
     return response;
   }
 
   // Create new teacher
   async createTeacher(data: CreateTeacherData): Promise<CreateTeacherResponse> {
-    const response = await apiService.post('/admin/teachers', data);
+    const response = await apiService.post<CreateTeacherResponse>('/admin/teachers', data);
     return response;
   }
 
   // Update teacher
   async updateTeacher(teacherId: string, data: UpdateTeacherData): Promise<{ success: boolean; message: string; data: Teacher }> {
-    const response = await apiService.put(`/admin/teachers/${teacherId}`, data);
+    const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(`/admin/teachers/${teacherId}`, data);
     return response;
   }
 
   // Delete (deactivate) teacher
   async deleteTeacher(teacherId: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiService.delete(`/admin/teachers/${teacherId}`);
+    const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${teacherId}`);
     return response;
   }
 
   // Reset teacher password
   async resetTeacherPassword(teacherId: string, forceReset: boolean = true): Promise<PasswordResetResponse> {
-    const response = await api.post(`/admin/teachers/${teacherId}/reset-password`, { forceReset });
-    return response.data;
+    const response = await apiService.post<PasswordResetResponse>(`/admin/teachers/${teacherId}/reset-password`, { forceReset });
+    return response;
   }
 
   // Get teacher login logs
@@ -214,26 +214,26 @@ class TeacherManagementService {
     if (params.startDate) queryParams.append('startDate', params.startDate);
     if (params.endDate) queryParams.append('endDate', params.endDate);
 
-    const response = await api.get(`/admin/teachers/${teacherId}/login-logs?${queryParams.toString()}`);
-    return response.data;
+    const response = await apiService.get<LoginLogsResponse>(`/admin/teachers/${teacherId}/login-logs?${queryParams.toString()}`);
+    return response;
   }
 
   // Get teacher status
   async getTeacherStatus(teacherId: string): Promise<{ success: boolean; data: any }> {
-    const response = await api.get(`/admin/teachers/${teacherId}/status`);
-    return response.data;
+    const response = await apiService.get<{ success: boolean; data: any }>(`/admin/teachers/${teacherId}/status`);
+    return response;
   }
 
   // Update teacher status
   async updateTeacherStatus(teacherId: string, isOnline: boolean): Promise<{ success: boolean; message: string; data: any }> {
-    const response = await api.put(`/admin/teachers/${teacherId}/status`, { isOnline });
-    return response.data;
+    const response = await apiService.put<{ success: boolean; message: string; data: any }>(`/admin/teachers/${teacherId}/status`, { isOnline });
+    return response;
   }
 
   // Get online teachers
   async getOnlineTeachers(): Promise<{ success: boolean; count: number; data: Teacher[] }> {
-    const response = await api.get('/admin/teachers/online/teachers');
-    return response.data;
+    const response = await apiService.get('/admin/teachers/online/teachers');
+    return response;
   }
 
   // Assign classes to teacher
@@ -243,14 +243,14 @@ class TeacherManagementService {
     subject: string;
     grade: string;
   }>): Promise<{ success: boolean; message: string; data: Teacher }> {
-    const response = await api.post(`/admin/teachers/${teacherId}/assign-classes`, { assignedClasses });
-    return response.data;
+    const response = await apiService.post(`/admin/teachers/${teacherId}/assign-classes`, { assignedClasses });
+    return response;
   }
 
   // Get teacher statistics
   async getTeacherStatistics(): Promise<StatisticsResponse> {
-    const response = await api.get('/admin/teachers/statistics/overview');
-    return response.data;
+    const response = await apiService.get('/admin/teachers/statistics/overview');
+    return response;
   }
 }
 

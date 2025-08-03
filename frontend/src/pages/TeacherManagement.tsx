@@ -64,9 +64,7 @@ import {
   Cancel,
   Warning
 } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+
 
 interface Teacher {
   _id: string;
@@ -401,7 +399,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const openEditDialog = (teacher: Teacher) => {
+  const handleOpenEditDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setDialogMode('edit');
     setFormData({
@@ -423,25 +421,25 @@ const TeacherManagement: React.FC = () => {
     setOpenDialog(true);
   };
 
-  const openCreateDialog = () => {
+  const handleOpenCreateDialog = () => {
     setSelectedTeacher(null);
     setDialogMode('create');
     resetForm();
     setOpenDialog(true);
   };
 
-  const openLoginLogsDialog = (teacher: Teacher) => {
+  const handleOpenLoginLogsDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     fetchLoginLogs(teacher._id);
     setOpenLoginLogsDialog(true);
   };
 
-  const openPasswordResetDialog = (teacher: Teacher) => {
+  const handleOpenPasswordResetDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setOpenPasswordResetDialog(true);
   };
 
-  const openClassAssignmentDialog = (teacher: Teacher) => {
+  const handleOpenClassAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setClassAssignmentData({
       assignedClasses: teacher.assignedClasses.map(ac => ({
@@ -520,7 +518,7 @@ const TeacherManagement: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={openCreateDialog}
+          onClick={handleOpenCreateDialog}
         >
           Add Teacher
         </Button>
@@ -751,46 +749,46 @@ const TeacherManagement: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Tooltip title="View Details">
-                              <IconButton
-                                size="small"
-                                onClick={() => openEditDialog(teacher)}
-                              >
-                                <Visibility />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Edit">
-                              <IconButton
-                                size="small"
-                                onClick={() => openEditDialog(teacher)}
-                              >
-                                <Edit />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Login Logs">
-                              <IconButton
-                                size="small"
-                                onClick={() => openLoginLogsDialog(teacher)}
-                              >
-                                <History />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Reset Password">
-                              <IconButton
-                                size="small"
-                                onClick={() => openPasswordResetDialog(teacher)}
-                              >
-                                <LockReset />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Assign Classes">
-                              <IconButton
-                                size="small"
-                                onClick={() => openClassAssignmentDialog(teacher)}
-                              >
-                                <School />
-                              </IconButton>
-                            </Tooltip>
+                                                         <Tooltip title="View Details">
+                               <IconButton
+                                 size="small"
+                                 onClick={() => handleOpenEditDialog(teacher)}
+                               >
+                                 <Visibility />
+                               </IconButton>
+                             </Tooltip>
+                             <Tooltip title="Edit">
+                               <IconButton
+                                 size="small"
+                                 onClick={() => handleOpenEditDialog(teacher)}
+                               >
+                                 <Edit />
+                               </IconButton>
+                             </Tooltip>
+                                                         <Tooltip title="Login Logs">
+                               <IconButton
+                                 size="small"
+                                 onClick={() => handleOpenLoginLogsDialog(teacher)}
+                               >
+                                 <History />
+                               </IconButton>
+                             </Tooltip>
+                                                         <Tooltip title="Reset Password">
+                               <IconButton
+                                 size="small"
+                                 onClick={() => handleOpenPasswordResetDialog(teacher)}
+                               >
+                                 <LockReset />
+                               </IconButton>
+                             </Tooltip>
+                             <Tooltip title="Assign Classes">
+                               <IconButton
+                                 size="small"
+                                 onClick={() => handleOpenClassAssignmentDialog(teacher)}
+                               >
+                                 <School />
+                               </IconButton>
+                             </Tooltip>
                             <Tooltip title="Deactivate">
                               <IconButton
                                 size="small"

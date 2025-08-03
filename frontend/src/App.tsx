@@ -20,6 +20,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import LoginDebug from './components/LoginDebug';
 
 import TeacherAttendance from './pages/TeacherAttendance';
+import TeacherManagement from './pages/TeacherManagement';
 import WhatsAppStatus from './components/WhatsAppStatus';
 
 const queryClient = new QueryClient();
@@ -81,6 +82,11 @@ const App: React.FC = () => {
                 <Route path="teachers" element={
                   <RoleBasedRoute allowedRoles={['admin', 'principal']}>
                     <Teachers />
+                  </RoleBasedRoute>
+                } />
+                <Route path="teacher-management" element={
+                  <RoleBasedRoute allowedRoles={['admin']}>
+                    <TeacherManagement />
                   </RoleBasedRoute>
                 } />
                 <Route path="classes" element={

@@ -409,6 +409,9 @@ exports.resetTeacherPassword = async (req, res) => {
     const { teacherId } = req.params;
     const { newPassword, forceReset = true } = req.body;
 
+    console.log('Password reset request for teacher:', teacherId);
+    console.log('New password length:', newPassword ? newPassword.length : 0);
+
     // Validate new password
     if (!newPassword || newPassword.trim().length < 6) {
       return res.status(400).json({
@@ -437,8 +440,14 @@ exports.resetTeacherPassword = async (req, res) => {
     // Hash the new password
     const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(newPassword.trim(), 12);
-    user.password = hashedPassword;
-    await user.save();
+    
+    // Update password directly to avoid double hashing from pre-save hook
+    await User.findByIdAndUpdate(user._id, { 
+      password: hashedPassword 
+    }, { 
+      new: true,
+      runValidators: false // Skip validation since we're manually hashing
+    });
 
     // Update teacher password reset flag
     await Teacher.findByIdAndUpdate(teacherId, {

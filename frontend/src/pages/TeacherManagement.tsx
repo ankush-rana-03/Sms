@@ -236,11 +236,12 @@ const TeacherManagement: React.FC = () => {
       });
 
       const data = await apiService.get<TeachersResponse>(`/admin/teachers?${params}`);
-      setTeachers(data.data);
+      // Only show active teachers
+      setTeachers((data.data || []).filter(t => t.isActive !== false));
       setTotalPages(data.totalPages);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching teachers:', error);
-      showSnackbar('Error fetching teachers', 'error');
+      showSnackbar(error.response?.data?.message || 'Error fetching teachers', 'error');
     } finally {
       setLoading(false);
     }
@@ -349,7 +350,8 @@ const TeacherManagement: React.FC = () => {
       
       if (response.success) {
         showSnackbar('Teacher deleted successfully', 'success');
-        fetchTeachers();
+        // Remove from UI
+        setTeachers(prev => prev.filter(t => t._id !== teacherId));
       } else {
         showSnackbar(response.message || 'Error deleting teacher', 'error');
       }
@@ -402,7 +404,8 @@ const TeacherManagement: React.FC = () => {
         showSnackbar('Classes assigned successfully', 'success');
         setOpenClassAssignmentDialog(false);
         setSelectedClasses([]);
-        fetchTeachers();
+        // Update teacher in UI
+        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
       } else {
         showSnackbar(response.message || 'Error assigning classes', 'error');
       }

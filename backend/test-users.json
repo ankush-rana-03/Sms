@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Admin User",
+      "email": "admin@school.com",
+      "password": "$2b$10$691Mfia36GX5irwsTE91GOcd2sPx8yaQFDcldvh95KnOvi310XnjC",
+      "role": "admin",
+      "phone": "1234567890",
+      "address": "123 Admin St",
+      "isActive": true,
+      "emailVerified": true
+    },
+    {
+      "id": "2",
+      "name": "Teacher User",
+      "email": "teacher@school.com",
+      "password": "$2b$10$691Mfia36GX5irwsTE91GOcd2sPx8yaQFDcldvh95KnOvi310XnjC",
+      "role": "teacher",
+      "phone": "1234567891",
+      "address": "456 Teacher St",
+      "isActive": true,
+      "emailVerified": true
+    },
+    {
+      "id": "3",
+      "name": "Parent User",
+      "email": "parent@school.com",
+      "password": "$2b$10$691Mfia36GX5irwsTE91GOcd2sPx8yaQFDcldvh95KnOvi310XnjC",
+      "role": "parent",
+      "phone": "1234567893",
+      "address": "321 Parent St",
+      "isActive": true,
+      "emailVerified": true
+    }
+  ]
+}

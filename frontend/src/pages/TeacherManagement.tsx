@@ -599,9 +599,10 @@ const TeacherManagement: React.FC = () => {
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
               transition: 'transform 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-4px)' }
+              '&:hover': { transform: 'translateY(-4px)' },
+              height: '100%'
             }}>
-              <CardContent sx={{ textAlign: 'center' }}>
+              <CardContent sx={{ textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
                   <People sx={{ fontSize: 40, mr: 1 }} />
                 </Box>
@@ -619,9 +620,10 @@ const TeacherManagement: React.FC = () => {
               background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
               color: 'white',
               transition: 'transform 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-4px)' }
+              '&:hover': { transform: 'translateY(-4px)' },
+              height: '100%'
             }}>
-              <CardContent sx={{ textAlign: 'center' }}>
+              <CardContent sx={{ textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
                   <CheckCircle sx={{ fontSize: 40, mr: 1 }} />
                 </Box>
@@ -639,9 +641,10 @@ const TeacherManagement: React.FC = () => {
               background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
               color: '#333',
               transition: 'transform 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-4px)' }
+              '&:hover': { transform: 'translateY(-4px)' },
+              height: '100%'
             }}>
-              <CardContent sx={{ textAlign: 'center' }}>
+              <CardContent sx={{ textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
                   <OnlinePrediction sx={{ fontSize: 40, mr: 1, color: '#2196f3' }} />
                 </Box>
@@ -659,15 +662,21 @@ const TeacherManagement: React.FC = () => {
               background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
               color: '#333',
               transition: 'transform 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-4px)' }
+              '&:hover': { transform: 'translateY(-4px)' },
+              height: '100%'
             }}>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-                  <School sx={{ fontSize: 40, mr: 1, color: '#ff9800' }} />
+              <CardContent sx={{ textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                    <School sx={{ fontSize: 40, mr: 1, color: '#ff9800' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ opacity: 0.8, mb: 1 }}>
+                    Designations
+                  </Typography>
+                  <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#ff9800', mb: 2 }}>
+                    {statistics.designationStats.length}
+                  </Typography>
                 </Box>
-                <Typography variant="h6" sx={{ opacity: 0.8, mb: 1 }}>
-                  Designations
-                </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
                   {statistics.designationStats.map((stat) => (
                     <Chip
@@ -675,7 +684,7 @@ const TeacherManagement: React.FC = () => {
                       label={`${stat._id}: ${stat.count}`}
                       size="small"
                       color={getDesignationColor(stat._id) as any}
-                      sx={{ fontSize: '0.7rem' }}
+                      sx={{ fontSize: '0.7rem', mb: 0.5 }}
                     />
                   ))}
                 </Box>

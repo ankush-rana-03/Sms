@@ -59,6 +59,18 @@ const Profile: React.FC = () => {
     new: false,
     confirm: false,
   });
+
+  // Password reset state
+  const [openResetDialog, setOpenResetDialog] = useState(false);
+  const [resetData, setResetData] = useState({
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showResetPasswords, setShowResetPasswords] = useState({
+    new: false,
+    confirm: false,
+  });
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -186,6 +198,52 @@ const Profile: React.FC = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
+  // Password reset handlers
+  const handleOpenResetDialog = () => {
+    setOpenResetDialog(true);
+    setResetData({
+      newPassword: '',
+      confirmPassword: '',
+    });
+    setShowResetPasswords({
+      new: false,
+      confirm: false,
+    });
+  };
+
+  const handleCloseResetDialog = () => {
+    setOpenResetDialog(false);
+    setResetData({
+      newPassword: '',
+      confirmPassword: '',
+    });
+  };
+
+  const handleResetPasswordChange = (field: string, value: string) => {
+    setResetData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleToggleResetPasswordVisibility = (field: 'new' | 'confirm') => {
+    setShowResetPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      const response = await apiService.post('/auth/forgotpassword', {
+        email: user?.email,
+      });
+
+      if (response.success) {
+        showSnackbar('Password reset email sent! Check your inbox for the reset link.', 'success');
+        handleCloseResetDialog();
+      } else {
+        showSnackbar(response.message || 'Failed to send reset email', 'error');
+      }
+    } catch (error: any) {
+      showSnackbar(error.response?.data?.message || 'Error sending reset email', 'error');
+    }
+  };
+
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'principal': return 'Principal';
@@ -255,8 +313,19 @@ const Profile: React.FC = () => {
                   startIcon={<Lock />}
                   onClick={handleOpenPasswordDialog}
                   color="primary"
+                  sx={{ mr: 1, mb: 1 }}
                 >
                   Change Password
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  startIcon={<Lock />}
+                  onClick={handleOpenResetDialog}
+                  color="secondary"
+                  sx={{ mb: 1 }}
+                >
+                  Reset Password
                 </Button>
               </Box>
             </CardContent>
@@ -458,6 +527,39 @@ const Profile: React.FC = () => {
             disabled={!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword || passwordData.newPassword !== passwordData.confirmPassword}
           >
             Update Password
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={openResetDialog} onClose={handleCloseResetDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Lock sx={{ mr: 1 }} />
+            Reset Password
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Click the button below to send a password reset email to your registered email address. You will receive a link to reset your password.
+          </Typography>
+          
+          <Box sx={{ textAlign: 'center', py: 2 }}>
+            <Typography variant="body1" color="text.secondary">
+              A password reset link will be sent to: <strong>{user?.email}</strong>
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseResetDialog} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleResetPassword} 
+            variant="contained" 
+            color="secondary"
+          >
+            Send Reset Email
           </Button>
         </DialogActions>
       </Dialog>

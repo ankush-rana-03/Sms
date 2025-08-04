@@ -256,6 +256,69 @@ exports.resetPassword = async (req, res, next) => {
   }
 };
 
+// @desc    Reset password directly (for logged-in users)
+// @route   PUT /api/auth/resetpassword-direct
+// @access  Private
+exports.resetPasswordDirect = async (req, res, next) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.trim().length < 6) {
+      return next(new ErrorResponse('New password is required and must be at least 6 characters long', 400));
+    }
+
+    // Get user from the request (set by protect middleware)
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return next(new ErrorResponse('User not found', 404));
+    }
+
+    // Only allow teachers to reset their password without current password
+    if (user.role !== 'teacher') {
+      return next(new ErrorResponse('Only teachers can reset their password without current password verification', 403));
+    }
+
+    // Hash the password manually
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword.trim(), salt);
+
+    // Update password using updateOne to avoid pre-save hooks
+    await User.updateOne(
+      { _id: user._id },
+      { password: hashedPassword }
+    );
+
+    // Send email notification about password change
+    try {
+      const emailService = require('../services/emailService');
+      await emailService.sendPasswordChangeNotification({
+        name: user.name,
+        email: user.email,
+        role: user.role
+      });
+      
+      console.log('Password change notification sent successfully to:', user.email);
+    } catch (emailError) {
+      console.error('Error sending password change notification:', emailError);
+      // Don't fail the password reset if email fails
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. Email notification sent.',
+      data: {
+        message: 'Your password has been updated successfully.',
+        emailSent: true
+      }
+    });
+  } catch (error) {
+    console.error('Error resetting password directly:', error);
+    next(new ErrorResponse('Error resetting password', 500));
+  }
+};
+
 // Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
   // Create token

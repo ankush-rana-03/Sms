@@ -352,7 +352,8 @@ const TeacherManagement: React.FC = () => {
         resetForm();
         // Update the specific teacher in the UI instead of refetching all
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
-        // Removed fetchStatistics here
+        // Refresh statistics to update designation counts and other stats
+        fetchStatistics();
       } else {
         showSnackbar(response.message || 'Error updating teacher', 'error');
       }

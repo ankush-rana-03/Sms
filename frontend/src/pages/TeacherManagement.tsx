@@ -407,10 +407,9 @@ const TeacherManagement: React.FC = () => {
 
   const handleAssignClasses = async () => {
     if (!selectedTeacher) return;
-    if (selectedClasses.length === 0) {
-      showSnackbar('Please select at least one class to assign', 'error');
-      return;
-    }
+    
+    // Allow assigning empty array (no classes)
+    // Remove the validation that requires at least one class
 
     try {
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
@@ -1135,7 +1134,7 @@ const TeacherManagement: React.FC = () => {
         <DialogTitle>Assign Classes - {selectedTeacher?.name}</DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Assign classes and subjects to this teacher. The teacher will be able to manage attendance and other activities for these classes.
+            Assign classes and subjects to this teacher. You can select multiple classes or leave empty to remove all assignments. The teacher will be able to manage attendance and other activities for these classes.
           </Alert>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} md={6}>
@@ -1172,7 +1171,7 @@ const TeacherManagement: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenClassAssignmentDialog(false)}>Cancel</Button>
           <Button onClick={handleAssignClasses} variant="contained">
-            Assign Classes
+            {selectedClasses.length > 0 ? 'Assign Classes' : 'Remove All Classes'}
           </Button>
         </DialogActions>
       </Dialog>

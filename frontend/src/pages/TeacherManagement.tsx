@@ -43,7 +43,9 @@ import {
   Refresh,
   School,
   Person,
-  Warning
+  Warning,
+  People,
+  CheckCircle
 } from '@mui/icons-material';
 
 interface Teacher {
@@ -348,7 +350,8 @@ const TeacherManagement: React.FC = () => {
         showSnackbar('Teacher updated successfully', 'success');
         setOpenDialog(false);
         resetForm();
-        fetchTeachers();
+        // Update the specific teacher in the UI instead of refetching all
+        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
         // Removed fetchStatistics here
       } else {
         showSnackbar(response.message || 'Error updating teacher', 'error');
@@ -592,52 +595,87 @@ const TeacherManagement: React.FC = () => {
       {statistics && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              transition: 'transform 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                  <People sx={{ fontSize: 40, mr: 1 }} />
+                </Box>
+                <Typography variant="h6" sx={{ opacity: 0.9, mb: 1 }}>
                   Total Teachers
                 </Typography>
-                <Typography variant="h4">{statistics.totalTeachers}</Typography>
+                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                  {statistics.totalTeachers}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+              color: 'white',
+              transition: 'transform 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                  <CheckCircle sx={{ fontSize: 40, mr: 1 }} />
+                </Box>
+                <Typography variant="h6" sx={{ opacity: 0.9, mb: 1 }}>
                   Active Teachers
                 </Typography>
-                <Typography variant="h4" color="success.main">
+                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
                   {statistics.activeTeachers}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+              color: '#333',
+              transition: 'transform 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                  <OnlinePrediction sx={{ fontSize: 40, mr: 1, color: '#2196f3' }} />
+                </Box>
+                <Typography variant="h6" sx={{ opacity: 0.8, mb: 1 }}>
                   Online Teachers
                 </Typography>
-                <Typography variant="h4" color="primary.main">
+                <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#2196f3' }}>
                   {statistics.onlineTeachers}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+              color: '#333',
+              transition: 'transform 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                  <School sx={{ fontSize: 40, mr: 1, color: '#ff9800' }} />
+                </Box>
+                <Typography variant="h6" sx={{ opacity: 0.8, mb: 1 }}>
                   Designations
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
                   {statistics.designationStats.map((stat) => (
                     <Chip
                       key={stat._id}
                       label={`${stat._id}: ${stat.count}`}
                       size="small"
                       color={getDesignationColor(stat._id) as any}
+                      sx={{ fontSize: '0.7rem' }}
                     />
                   ))}
                 </Box>

@@ -47,7 +47,6 @@ import {
   Warning
 } from '@mui/icons-material';
 
-
 interface Teacher {
   _id: string;
   teacherId: string;
@@ -76,7 +75,9 @@ interface Teacher {
     years: number;
     previousSchools: string[];
   };
+  specialization: string[];
   joiningDate: string;
+  salary: number;
   isActive: boolean;
   contactInfo?: {
     emergencyContact: {
@@ -181,7 +182,7 @@ const TeacherManagement: React.FC = () => {
     email: '',
     phone: '',
     designation: 'TGT' as 'TGT' | 'PGT' | 'JBT' | 'NTT',
-    subjects: '',
+    subjects: [] as string[],
     qualification: {
       degree: '',
       institution: '',
@@ -191,7 +192,9 @@ const TeacherManagement: React.FC = () => {
       years: 0,
       previousSchools: [] as string[]
     },
+    specialization: [] as string[],
     joiningDate: '',
+    salary: 0,
     emergencyContact: {
       name: '',
       phone: '',
@@ -250,74 +253,38 @@ const TeacherManagement: React.FC = () => {
 
   const fetchLoginLogs = async (teacherId: string) => {
     try {
-      const response = await fetch(`/api/admin/teachers/${teacherId}/login-logs`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setLoginLogs(data.data);
-      }
+      const data = await apiService.get<{ success: boolean; data: LoginLog[] }>(`/admin/teachers/${teacherId}/login-logs`);
+      setLoginLogs(data.data);
     } catch (error) {
+      console.error('Error fetching login logs:', error);
       showSnackbar('Error fetching login logs', 'error');
     }
   };
 
   const handleCreateTeacher = async () => {
     try {
-      // Check authentication
-      const token = localStorage.getItem('token');
-      if (!token) {
-        showSnackbar('Authentication required. Please login again.', 'error');
-        return;
-      }
-
-      // Validate required fields
-      if (!formData.name || !formData.email || !formData.phone || !formData.designation) {
-        showSnackbar('Please fill in all required fields (Name, Email, Phone, Designation)', 'error');
-        return;
-      }
-
-      // Format the data for backend
       const teacherData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        designation: formData.designation,
-        subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
-        qualification: formData.qualification,
-        experience: formData.experience,
-        joiningDate: formData.joiningDate || new Date().toISOString().split('T')[0],
-        emergencyContact: formData.emergencyContact,
-        specialization: [], // Empty array as default
-        salary: 0 // Default salary
+        ...formData,
+        subjects: formData.subjects,
+        specialization: formData.specialization,
+        contactInfo: {
+          emergencyContact: formData.emergencyContact
+        }
       };
 
-      console.log('Frontend sending data:', teacherData);
-
-      try {
-        console.log('Making API call to /admin/teachers...');
-        const responseData = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
-        console.log('Response data:', responseData);
-        
-        showSnackbar(`Teacher created successfully. Temporary password: ${responseData.data.temporaryPassword}`, 'success');
+      const response = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
+      
+      if (response.success) {
+        showSnackbar(`Teacher created successfully. Temporary password: ${response.data.temporaryPassword}`, 'success');
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
-      } catch (error: any) {
-        console.error('API Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-          statusText: error.response?.statusText
-        });
-        throw new Error(error.response?.data?.message || error.message || 'Failed to create teacher');
+      } else {
+        showSnackbar(response.message || 'Error creating teacher', 'error');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating teacher:', error);
-      showSnackbar(error instanceof Error ? error.message : 'Error creating teacher', 'error');
+      showSnackbar(error.response?.data?.message || 'Error creating teacher', 'error');
     }
   };
 
@@ -325,63 +292,49 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
-      // Format the data for backend
       const teacherData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        designation: formData.designation,
-        subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
-        qualification: formData.qualification,
-        experience: formData.experience,
-        joiningDate: formData.joiningDate,
-        emergencyContact: formData.emergencyContact,
-        specialization: [], // Empty array as default
-        salary: 0 // Default salary
+        ...formData,
+        subjects: formData.subjects,
+        specialization: formData.specialization,
+        contactInfo: {
+          emergencyContact: formData.emergencyContact
+        }
       };
 
-      const response = await fetch(`/api/admin/teachers/${selectedTeacher._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(teacherData)
-      });
+      const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher._id}`,
+        teacherData
+      );
 
-      if (response.ok) {
+      if (response.success) {
         showSnackbar('Teacher updated successfully', 'success');
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
       } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update teacher');
+        showSnackbar(response.message || 'Error updating teacher', 'error');
       }
-    } catch (error) {
-      showSnackbar(error instanceof Error ? error.message : 'Error updating teacher', 'error');
+    } catch (error: any) {
+      console.error('Error updating teacher:', error);
+      showSnackbar(error.response?.data?.message || 'Error updating teacher', 'error');
     }
   };
 
   const handleDeleteTeacher = async (teacherId: string) => {
-    if (!window.confirm('Are you sure you want to deactivate this teacher?')) return;
+    if (!window.confirm('Are you sure you want to delete this teacher?')) return;
 
     try {
-      const response = await fetch(`/api/admin/teachers/${teacherId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        showSnackbar('Teacher deactivated successfully', 'success');
+      const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${teacherId}`);
+      
+      if (response.success) {
+        showSnackbar('Teacher deleted successfully', 'success');
         fetchTeachers();
       } else {
-        throw new Error('Failed to deactivate teacher');
+        showSnackbar(response.message || 'Error deleting teacher', 'error');
       }
-    } catch (error) {
-      showSnackbar('Error deactivating teacher', 'error');
+    } catch (error: any) {
+      console.error('Error deleting teacher:', error);
+      showSnackbar(error.response?.data?.message || 'Error deleting teacher', 'error');
     }
   };
 
@@ -389,25 +342,20 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
-      const response = await fetch(`/api/admin/teachers/${selectedTeacher._id}/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(passwordResetData)
-      });
+      const response = await apiService.post<{ success: boolean; message: string; data: { temporaryPassword: string } }>(
+        `/admin/teachers/${selectedTeacher._id}/reset-password`,
+        passwordResetData
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        showSnackbar(`Password reset successfully. New password: ${data.data.temporaryPassword}`, 'success');
+      if (response.success) {
+        showSnackbar(`Password reset successfully. New temporary password: ${response.data.temporaryPassword}`, 'success');
         setOpenPasswordResetDialog(false);
-        fetchTeachers();
       } else {
-        throw new Error('Failed to reset password');
+        showSnackbar(response.message || 'Error resetting password', 'error');
       }
-    } catch (error) {
-      showSnackbar('Error resetting password', 'error');
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      showSnackbar(error.response?.data?.message || 'Error resetting password', 'error');
     }
   };
 
@@ -415,24 +363,21 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
-      const response = await fetch(`/api/admin/teachers/${selectedTeacher._id}/assign-classes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(classAssignmentData)
-      });
+      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher._id}/assign-classes`,
+        classAssignmentData
+      );
 
-      if (response.ok) {
+      if (response.success) {
         showSnackbar('Classes assigned successfully', 'success');
         setOpenClassAssignmentDialog(false);
         fetchTeachers();
       } else {
-        throw new Error('Failed to assign classes');
+        showSnackbar(response.message || 'Error assigning classes', 'error');
       }
-    } catch (error) {
-      showSnackbar('Error assigning classes', 'error');
+    } catch (error: any) {
+      console.error('Error assigning classes:', error);
+      showSnackbar(error.response?.data?.message || 'Error assigning classes', 'error');
     }
   };
 
@@ -444,10 +389,12 @@ const TeacherManagement: React.FC = () => {
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
-      subjects: teacher.subjects.join(', '),
+      subjects: teacher.subjects,
       qualification: teacher.qualification,
       experience: teacher.experience,
-      joiningDate: teacher.joiningDate,
+      specialization: teacher.specialization || [],
+      joiningDate: teacher.joiningDate ? teacher.joiningDate.split('T')[0] : '',
+      salary: teacher.salary || 0,
       emergencyContact: teacher.contactInfo?.emergencyContact || {
         name: '',
         phone: '',
@@ -494,7 +441,7 @@ const TeacherManagement: React.FC = () => {
       email: '',
       phone: '',
       designation: 'TGT',
-      subjects: '',
+      subjects: [],
       qualification: {
         degree: '',
         institution: '',
@@ -504,7 +451,9 @@ const TeacherManagement: React.FC = () => {
         years: 0,
         previousSchools: []
       },
+      specialization: [],
       joiningDate: '',
+      salary: 0,
       emergencyContact: {
         name: '',
         phone: '',
@@ -920,10 +869,10 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Subjects (comma separated)"
-                  value={formData.subjects}
+                  value={formData.subjects.join(', ')}
                   onChange={(e) => setFormData({
                     ...formData,
-                    subjects: e.target.value
+                    subjects: e.target.value.split(',').map(s => s.trim()).filter(s => s)
                   })}
                   helperText="Enter subjects separated by commas"
                 />
@@ -973,6 +922,63 @@ const TeacherManagement: React.FC = () => {
                     joiningDate: e.target.value ? new Date(e.target.value).toISOString() : ''
                   })}
                   InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Salary"
+                  type="number"
+                  value={formData.salary}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    salary: Number(e.target.value)
+                  })}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Specialization (comma separated)"
+                  value={formData.specialization.join(', ')}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    specialization: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                  })}
+                  helperText="Enter specializations separated by commas"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Emergency Contact Name"
+                  value={formData.emergencyContact.name}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    emergencyContact: { ...formData.emergencyContact, name: e.target.value }
+                  })}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Emergency Contact Phone"
+                  value={formData.emergencyContact.phone}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    emergencyContact: { ...formData.emergencyContact, phone: e.target.value }
+                  })}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Emergency Contact Relationship"
+                  value={formData.emergencyContact.relationship}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    emergencyContact: { ...formData.emergencyContact, relationship: e.target.value }
+                  })}
                 />
               </Grid>
             </Grid>

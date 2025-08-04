@@ -347,7 +347,15 @@ exports.deleteTeacher = async (req, res) => {
 exports.resetTeacherPassword = async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { forceReset = true } = req.body;
+    const { newPassword, forceReset = true } = req.body;
+
+    // Validate new password
+    if (!newPassword || newPassword.trim().length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password is required and must be at least 6 characters long'
+      });
+    }
 
     const teacher = await Teacher.findById(teacherId);
     if (!teacher) {
@@ -356,9 +364,6 @@ exports.resetTeacherPassword = async (req, res) => {
         message: 'Teacher not found'
       });
     }
-
-    // Generate new password
-    const newPassword = generatePassword();
 
     // Update user password
     const user = await User.findById(teacher.user);
@@ -369,7 +374,10 @@ exports.resetTeacherPassword = async (req, res) => {
       });
     }
 
-    user.password = newPassword;
+    // Hash the new password
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(newPassword.trim(), 12);
+    user.password = hashedPassword;
     await user.save();
 
     // Update teacher password reset flag
@@ -382,7 +390,7 @@ exports.resetTeacherPassword = async (req, res) => {
       success: true,
       message: 'Teacher password reset successfully',
       data: {
-        temporaryPassword: newPassword,
+        temporaryPassword: newPassword.trim(),
         message: forceReset ? 'Teacher will be required to change password on next login.' : 'Password has been reset.'
       }
     });

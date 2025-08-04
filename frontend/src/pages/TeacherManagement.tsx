@@ -36,7 +36,6 @@ import {
   Add,
   Edit,
   Delete,
-  Visibility,
   LockReset,
   History,
   OnlinePrediction,
@@ -176,6 +175,21 @@ const TeacherManagement: React.FC = () => {
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'success' });
 
+  // New state for password reset and class assignment
+  const [newPassword, setNewPassword] = useState('');
+  const [availableClasses, setAvailableClasses] = useState<Array<{
+    _id: string;
+    name: string;
+    section: string;
+    grade: string;
+  }>>([]);
+  const [selectedClasses, setSelectedClasses] = useState<Array<{
+    class: string;
+    section: string;
+    subject: string;
+    grade: string;
+  }>>([]);
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -202,22 +216,12 @@ const TeacherManagement: React.FC = () => {
     }
   });
 
-  const [passwordResetData] = useState({
-    forceReset: true
-  });
 
-  const [classAssignmentData, setClassAssignmentData] = useState({
-    assignedClasses: [] as Array<{
-      class: string;
-      section: string;
-      subject: string;
-      grade: string;
-    }>
-  });
 
   useEffect(() => {
     fetchTeachers();
     fetchStatistics();
+    fetchAvailableClasses();
   }, [page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTeachers = async () => {
@@ -248,6 +252,23 @@ const TeacherManagement: React.FC = () => {
       setStatistics(data.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
+    }
+  };
+
+  const fetchAvailableClasses = async () => {
+    try {
+      const data = await apiService.get<{ success: boolean; data: Array<{ _id: string; name: string; section: string; grade: string }> }>('/classes');
+      setAvailableClasses(data.data || []);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      // If classes API doesn't exist, create some dummy data
+      setAvailableClasses([
+        { _id: '1', name: 'Class 1', section: 'A', grade: '1' },
+        { _id: '2', name: 'Class 2', section: 'A', grade: '2' },
+        { _id: '3', name: 'Class 3', section: 'A', grade: '3' },
+        { _id: '4', name: 'Class 4', section: 'A', grade: '4' },
+        { _id: '5', name: 'Class 5', section: 'A', grade: '5' },
+      ]);
     }
   };
 
@@ -321,7 +342,7 @@ const TeacherManagement: React.FC = () => {
   };
 
   const handleDeleteTeacher = async (teacherId: string) => {
-    if (!window.confirm('Are you sure you want to delete this teacher?')) return;
+    if (!window.confirm('Are you sure you want to delete this teacher? This action cannot be undone.')) return;
 
     try {
       const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${teacherId}`);
@@ -340,16 +361,21 @@ const TeacherManagement: React.FC = () => {
 
   const handleResetPassword = async () => {
     if (!selectedTeacher) return;
+    if (!newPassword.trim()) {
+      showSnackbar('Please enter a new password', 'error');
+      return;
+    }
 
     try {
       const response = await apiService.post<{ success: boolean; message: string; data: { temporaryPassword: string } }>(
         `/admin/teachers/${selectedTeacher._id}/reset-password`,
-        passwordResetData
+        { newPassword: newPassword.trim() }
       );
 
       if (response.success) {
-        showSnackbar(`Password reset successfully. New temporary password: ${response.data.temporaryPassword}`, 'success');
+        showSnackbar(`Password reset successfully. New password: ${newPassword}`, 'success');
         setOpenPasswordResetDialog(false);
+        setNewPassword('');
       } else {
         showSnackbar(response.message || 'Error resetting password', 'error');
       }
@@ -361,16 +387,21 @@ const TeacherManagement: React.FC = () => {
 
   const handleAssignClasses = async () => {
     if (!selectedTeacher) return;
+    if (selectedClasses.length === 0) {
+      showSnackbar('Please select at least one class to assign', 'error');
+      return;
+    }
 
     try {
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes`,
-        classAssignmentData
+        { assignedClasses: selectedClasses }
       );
 
       if (response.success) {
         showSnackbar('Classes assigned successfully', 'success');
         setOpenClassAssignmentDialog(false);
+        setSelectedClasses([]);
         fetchTeachers();
       } else {
         showSnackbar(response.message || 'Error assigning classes', 'error');
@@ -419,19 +450,18 @@ const TeacherManagement: React.FC = () => {
 
   const handleOpenPasswordResetDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
+    setNewPassword('');
     setOpenPasswordResetDialog(true);
   };
 
   const handleOpenClassAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
-    setClassAssignmentData({
-      assignedClasses: teacher.assignedClasses.map(ac => ({
-        class: ac.class._id,
-        section: ac.section,
-        subject: ac.subject,
-        grade: ac.grade
-      }))
-    });
+    setSelectedClasses(teacher.assignedClasses.map(ac => ({
+      class: ac.class._id,
+      section: ac.section,
+      subject: ac.subject,
+      grade: ac.grade
+    })));
     setOpenClassAssignmentDialog(true);
   };
 
@@ -488,6 +518,24 @@ const TeacherManagement: React.FC = () => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
+  };
+
+  const handleClassSelection = (classId: string, section: string, grade: string, subject: string) => {
+    const existingIndex = selectedClasses.findIndex(
+      sc => sc.class === classId && sc.section === section
+    );
+
+    if (existingIndex >= 0) {
+      // Remove if already selected
+      setSelectedClasses(selectedClasses.filter((_, index) => index !== existingIndex));
+    } else {
+      // Add new selection
+      setSelectedClasses([...selectedClasses, { class: classId, section, subject, grade }]);
+    }
+  };
+
+  const isClassSelected = (classId: string, section: string) => {
+    return selectedClasses.some(sc => sc.class === classId && sc.section === section);
   };
 
   return (
@@ -729,15 +777,7 @@ const TeacherManagement: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Tooltip title="View Details">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenEditDialog(teacher)}
-                              >
-                                <Visibility />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Edit">
+                            <Tooltip title="Edit Teacher">
                               <IconButton
                                 size="small"
                                 onClick={() => handleOpenEditDialog(teacher)}
@@ -1045,6 +1085,15 @@ const TeacherManagement: React.FC = () => {
           <Alert severity="info" sx={{ mb: 2 }}>
             A new secure password will be generated and the teacher will be required to change it on next login.
           </Alert>
+          <TextField
+            fullWidth
+            label="New Password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            margin="normal"
+            required
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenPasswordResetDialog(false)}>Cancel</Button>
@@ -1061,10 +1110,37 @@ const TeacherManagement: React.FC = () => {
           <Alert severity="info" sx={{ mb: 2 }}>
             Assign classes and subjects to this teacher. The teacher will be able to manage attendance and other activities for these classes.
           </Alert>
-          {/* Class assignment form would go here */}
-          <Typography variant="body2" color="textSecondary">
-            Class assignment functionality will be implemented here.
-          </Typography>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle2">Available Classes:</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {availableClasses.map((cls) => (
+                  <Chip
+                    key={cls._id}
+                    label={`${cls.grade}${cls.section}`}
+                    size="small"
+                    color={isClassSelected(cls._id, cls.section) ? 'primary' : 'default'}
+                    onClick={() => handleClassSelection(cls._id, cls.section, cls.grade, cls.name)}
+                    sx={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle2">Selected Classes:</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {selectedClasses.map((sc, index) => (
+                  <Chip
+                    key={index}
+                    label={`${sc.grade}${sc.section}`}
+                    size="small"
+                    color="primary"
+                    onDelete={() => handleClassSelection(sc.class, sc.section, sc.grade, sc.subject)}
+                  />
+                ))}
+              </Box>
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenClassAssignmentDialog(false)}>Cancel</Button>

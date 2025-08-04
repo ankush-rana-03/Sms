@@ -21,6 +21,7 @@ import LoginDebug from './components/LoginDebug';
 
 import TeacherAttendance from './pages/TeacherAttendance';
 import TeacherManagement from './pages/TeacherManagement';
+import ForgotPassword from './pages/ForgotPassword';
 import WhatsAppStatus from './components/WhatsAppStatus';
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App: React.FC = () => {
 
               <Route path="/debug" element={<LoginDebug />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route
                 path="/"
                 element={

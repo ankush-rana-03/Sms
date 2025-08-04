@@ -14,13 +14,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Link,
 } from '@mui/material';
 import { Visibility, VisibilityOff, School } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 const schema = yup.object().shape({
   role: yup.string().oneOf(['teacher', 'admin', 'parent'], 'Please select a valid role').required('Role is required'),
@@ -183,6 +184,20 @@ const Login: React.FC = () => {
             </Button>
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Link
+                component={RouterLink}
+                to="/forgot-password"
+                variant="body2"
+                sx={{ 
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' }
+                }}
+              >
+                Forgot your password?
+              </Link>
+            </Box>
+
+            <Box sx={{ textAlign: 'center', mt: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Secure access to your school management portal
               </Typography>

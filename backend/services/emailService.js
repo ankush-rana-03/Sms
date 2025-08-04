@@ -277,7 +277,7 @@ class EmailService {
   // Send password reset email
   async sendPasswordResetEmail(email, resetToken) {
     try {
-      const resetUrl = `${process.env.FRONTEND_URL || 'https://school-management-app-demo.netlify.app'}/reset-password?token=${resetToken}`;
+      const resetUrl = `${process.env.FRONTEND_URL || 'https://school-management-app-demo.netlify.app'}/forgot-password?token=${resetToken}`;
       
       const mailOptions = {
         from: `"${process.env.SCHOOL_NAME || 'School Management System'}" <${process.env.EMAIL_USER}>`,

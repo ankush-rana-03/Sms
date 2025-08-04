@@ -227,6 +227,12 @@ const TeacherManagement: React.FC = () => {
   const fetchTeachers = async () => {
     setLoading(true);
     try {
+      console.log('Fetching teachers...');
+      console.log('Current page:', page);
+      console.log('Search term:', searchTerm);
+      console.log('Designation filter:', designationFilter);
+      console.log('Status filter:', statusFilter);
+      
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '10',
@@ -235,12 +241,24 @@ const TeacherManagement: React.FC = () => {
         ...(statusFilter && { status: statusFilter })
       });
 
+      console.log('API URL:', `/admin/teachers?${params}`);
+      
       const data = await apiService.get<TeachersResponse>(`/admin/teachers?${params}`);
-      // Only show active teachers
-      setTeachers((data.data || []).filter(t => t.isActive !== false));
+      console.log('Fetched teachers data:', data);
+      console.log('Teachers array:', data.data);
+      console.log('Teachers count:', data.data?.length || 0);
+      
+      // Show all teachers returned by the API
+      setTeachers(data.data || []);
       setTotalPages(data.totalPages);
+      
+      if (!data.data || data.data.length === 0) {
+        console.log('No teachers found - this might be normal if no teachers exist yet');
+      }
     } catch (error: any) {
       console.error('Error fetching teachers:', error);
+      console.error('Error response:', error.response);
+      console.error('Error message:', error.message);
       showSnackbar(error.response?.data?.message || 'Error fetching teachers', 'error');
     } finally {
       setLoading(false);
@@ -684,6 +702,12 @@ const TeacherManagement: React.FC = () => {
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress />
+            </Box>
+          ) : teachers.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <Typography variant="h6" color="textSecondary">
+                No teachers found. {searchTerm || designationFilter || statusFilter ? 'Try adjusting your filters.' : 'Add your first teacher using the "Add Teacher" button above.'}
+              </Typography>
             </Box>
           ) : (
             <>

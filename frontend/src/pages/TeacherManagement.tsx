@@ -319,6 +319,8 @@ const TeacherManagement: React.FC = () => {
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
+        // Refresh statistics to update the count
+        fetchStatistics();
       } else {
         showSnackbar(response.message || 'Error creating teacher', 'error');
       }
@@ -351,6 +353,8 @@ const TeacherManagement: React.FC = () => {
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
+        // Refresh statistics to keep counts updated
+        fetchStatistics();
       } else {
         showSnackbar(response.message || 'Error updating teacher', 'error');
       }
@@ -365,11 +369,12 @@ const TeacherManagement: React.FC = () => {
 
     try {
       const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${teacherId}`);
-      
       if (response.success) {
         showSnackbar('Teacher deleted successfully', 'success');
         // Remove from UI
         setTeachers(prev => prev.filter(t => t._id !== teacherId));
+        // Refresh statistics to update the count
+        fetchStatistics();
       } else {
         showSnackbar(response.message || 'Error deleting teacher', 'error');
       }
@@ -423,6 +428,8 @@ const TeacherManagement: React.FC = () => {
         setSelectedClasses([]);
         // Update teacher in UI
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+        // Refresh statistics to keep counts updated
+        fetchStatistics();
       } else {
         showSnackbar(response.message || 'Error assigning classes', 'error');
       }

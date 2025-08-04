@@ -323,15 +323,17 @@ exports.deleteTeacher = async (req, res) => {
       });
     }
 
-    // Deactivate user account
-    await User.findByIdAndUpdate(teacher.user, { isActive: false });
+    // Delete the user account first
+    if (teacher.user) {
+      await User.findByIdAndDelete(teacher.user);
+    }
 
-    // Deactivate teacher profile
-    await Teacher.findByIdAndUpdate(teacherId, { isActive: false });
+    // Delete the teacher profile
+    await Teacher.findByIdAndDelete(teacherId);
 
     res.status(200).json({
       success: true,
-      message: 'Teacher deactivated successfully'
+      message: 'Teacher deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting teacher:', error);

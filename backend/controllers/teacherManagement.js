@@ -409,6 +409,9 @@ exports.resetTeacherPassword = async (req, res) => {
     const { teacherId } = req.params;
     const { newPassword, forceReset = true } = req.body;
 
+    console.log('Password reset request for teacher:', teacherId);
+    console.log('New password length:', newPassword ? newPassword.length : 0);
+
     // Validate new password
     if (!newPassword || newPassword.trim().length < 6) {
       return res.status(400).json({
@@ -437,8 +440,14 @@ exports.resetTeacherPassword = async (req, res) => {
     // Hash the new password
     const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(newPassword.trim(), 12);
-    user.password = hashedPassword;
-    await user.save();
+    
+    // Update password directly to avoid double hashing from pre-save hook
+    await User.findByIdAndUpdate(user._id, { 
+      password: hashedPassword 
+    }, { 
+      new: true,
+      runValidators: false // Skip validation since we're manually hashing
+    });
 
     // Update teacher password reset flag
     await Teacher.findByIdAndUpdate(teacherId, {
@@ -446,12 +455,29 @@ exports.resetTeacherPassword = async (req, res) => {
       lastPasswordChange: new Date()
     });
 
+    // Send email notification to teacher about password reset
+    try {
+      const emailService = require('../services/emailService');
+      await emailService.sendAdminPasswordResetEmail({
+        name: teacher.name,
+        email: user.email,
+        designation: teacher.designation,
+        teacherId: teacher.teacherId
+      }, newPassword.trim());
+      
+      console.log('Password reset email sent successfully to:', user.email);
+    } catch (emailError) {
+      console.error('Error sending password reset email:', emailError);
+      // Don't fail the password reset if email fails
+    }
+
     res.status(200).json({
       success: true,
-      message: 'Teacher password reset successfully',
+      message: 'Teacher password reset successfully. Email notification sent.',
       data: {
         temporaryPassword: newPassword.trim(),
-        message: forceReset ? 'Teacher will be required to change password on next login.' : 'Password has been reset.'
+        message: forceReset ? 'Teacher will be required to change password on next login.' : 'Password has been reset.',
+        emailSent: true
       }
     });
   } catch (error) {

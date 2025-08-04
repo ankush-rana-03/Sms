@@ -50,15 +50,22 @@ exports.login = async (req, res, next) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
+      console.log('Login failed: User not found for email:', email);
       return next(new ErrorResponse('Invalid credentials', 401));
     }
+
+    console.log('Login attempt for user:', user.email, 'role:', user.role);
+    console.log('Password provided length:', password ? password.length : 0);
 
     // Check if password matches
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
+      console.log('Login failed: Password mismatch for user:', user.email);
       return next(new ErrorResponse('Invalid credentials', 401));
     }
+
+    console.log('Password verification successful for user:', user.email);
 
     // Check if user role matches the requested role
     if (user.role !== role) {

@@ -74,7 +74,6 @@ interface Teacher {
     years: number;
     previousSchools: string[];
   };
-  specialization: string[];
   joiningDate: string;
   salary: number;
   isActive: boolean;
@@ -206,7 +205,6 @@ const TeacherManagement: React.FC = () => {
       years: 0,
       previousSchools: [] as string[]
     },
-    specialization: [] as string[],
     joiningDate: '',
     salary: 0,
     emergencyContact: {
@@ -306,7 +304,6 @@ const TeacherManagement: React.FC = () => {
       const teacherData = {
         ...formData,
         subjects: formData.subjects,
-        specialization: formData.specialization,
         contactInfo: {
           emergencyContact: formData.emergencyContact
         }
@@ -337,7 +334,6 @@ const TeacherManagement: React.FC = () => {
       const teacherData = {
         ...formData,
         subjects: formData.subjects,
-        specialization: formData.specialization,
         contactInfo: {
           emergencyContact: formData.emergencyContact
         }
@@ -445,10 +441,9 @@ const TeacherManagement: React.FC = () => {
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
-      subjects: teacher.subjects,
+      subjects: teacher.subjects || [],
       qualification: teacher.qualification,
       experience: teacher.experience,
-      specialization: teacher.specialization || [],
       joiningDate: teacher.joiningDate ? teacher.joiningDate.split('T')[0] : '',
       salary: teacher.salary || 0,
       emergencyContact: teacher.contactInfo?.emergencyContact || {
@@ -506,7 +501,6 @@ const TeacherManagement: React.FC = () => {
         years: 0,
         previousSchools: []
       },
-      specialization: [],
       joiningDate: '',
       salary: 0,
       emergencyContact: {
@@ -939,13 +933,13 @@ const TeacherManagement: React.FC = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Subjects (comma separated)"
+                  label="Assign Subjects (comma separated)"
                   value={formData.subjects.join(', ')}
                   onChange={(e) => setFormData({
                     ...formData,
-                    subjects: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                    subjects: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
                   })}
-                  helperText="Enter subjects separated by commas"
+                  helperText="Enter subjects separated by commas (e.g. Math, Science, English)"
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -1010,18 +1004,6 @@ const TeacherManagement: React.FC = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Specialization (comma separated)"
-                  value={formData.specialization.join(', ')}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    specialization: e.target.value.split(',').map(s => s.trim()).filter(s => s)
-                  })}
-                  helperText="Enter specializations separated by commas"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
                   label="Emergency Contact Name"
                   value={formData.emergencyContact.name}
                   onChange={(e) => setFormData({
@@ -1042,15 +1024,22 @@ const TeacherManagement: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Emergency Contact Relationship"
-                  value={formData.emergencyContact.relationship}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    emergencyContact: { ...formData.emergencyContact, relationship: e.target.value }
-                  })}
-                />
+                <FormControl fullWidth>
+                  <InputLabel>Emergency Contact Relationship</InputLabel>
+                  <Select
+                    value={formData.emergencyContact.relationship}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      emergencyContact: { ...formData.emergencyContact, relationship: e.target.value as string }
+                    })}
+                    label="Relationship"
+                  >
+                    <MenuItem value="Father">Father</MenuItem>
+                    <MenuItem value="Mother">Mother</MenuItem>
+                    <MenuItem value="Guardian">Guardian</MenuItem>
+                    <MenuItem value="Other">Other</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
         </DialogContent>

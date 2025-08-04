@@ -108,7 +108,6 @@ exports.createTeacher = async (req, res) => {
       assignedClasses,
       qualification,
       experience,
-      specialization,
       salary,
       emergencyContact,
       joiningDate
@@ -176,7 +175,6 @@ exports.createTeacher = async (req, res) => {
       assignedClasses: assignedClasses || [],
       qualification: qualification || {},
       experience: experience || { years: 0, previousSchools: [] },
-      specialization: specialization || [],
       salary: salary || 0,
       joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
       contactInfo: {

@@ -115,8 +115,22 @@ const teacherSchema = new mongoose.Schema({
 teacherSchema.pre('save', async function(next) {
   if (this.isNew && !this.teacherId) {
     const year = new Date().getFullYear();
-    const count = await this.constructor.countDocuments();
-    this.teacherId = `TCH${year}${String(count + 1).padStart(4, '0')}`;
+    // Find the highest teacherId for this year
+    const regex = new RegExp(`^TCH${year}(\\d{4})$`);
+    const latest = await this.constructor.find({ teacherId: { $regex: `^TCH${year}` } })
+      .sort({ teacherId: -1 })
+      .limit(1);
+    let nextNumber = 1;
+    if (latest.length > 0) {
+      const match = latest[0].teacherId.match(/TCH\d{4}(\d{4})/);
+      if (match && match[1]) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      } else {
+        // fallback: extract last 4 digits
+        nextNumber = parseInt(latest[0].teacherId.slice(-4), 10) + 1;
+      }
+    }
+    this.teacherId = `TCH${year}${String(nextNumber).padStart(4, '0')}`;
   }
   next();
 });

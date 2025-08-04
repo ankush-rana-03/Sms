@@ -314,29 +314,89 @@ exports.updateTeacher = async (req, res) => {
 exports.deleteTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
+    console.log('Attempting to delete teacher with ID:', teacherId);
 
     const teacher = await Teacher.findById(teacherId);
     if (!teacher) {
+      console.log('Teacher not found with ID:', teacherId);
       return res.status(404).json({
         success: false,
         message: 'Teacher not found'
       });
     }
 
+    console.log('Found teacher:', {
+      id: teacher._id,
+      name: teacher.name,
+      email: teacher.email,
+      userId: teacher.user
+    });
+
+    // Clean up references to this teacher in other collections
+    console.log('Cleaning up references to teacher...');
+    
+    // Remove teacher from LoginLog collection
+    const LoginLog = require('../models/LoginLog');
+    const loginLogResult = await LoginLog.deleteMany({ teacher: teacherId });
+    console.log('LoginLog cleanup result:', loginLogResult);
+
+    // Remove teacher references from Class collection
+    const Class = require('../models/Class');
+    
+    // Remove teacher from classTeacher field
+    const classTeacherResult = await Class.updateMany(
+      { classTeacher: teacherId },
+      { $unset: { classTeacher: 1 } }
+    );
+    console.log('Class teacher cleanup result:', classTeacherResult);
+
+    // Remove teacher from subjects.teacher field
+    const subjectsResult = await Class.updateMany(
+      { 'subjects.teacher': teacherId },
+      { $pull: { subjects: { teacher: teacherId } } }
+    );
+    console.log('Subjects cleanup result:', subjectsResult);
+
+    // Remove teacher from schedule.periods.teacher field
+    const scheduleResult = await Class.updateMany(
+      { 'schedule.periods.teacher': teacherId },
+      { $pull: { 'schedule.$.periods': { teacher: teacherId } } }
+    );
+    console.log('Schedule cleanup result:', scheduleResult);
+
     // Delete the user account first
     if (teacher.user) {
-      await User.findByIdAndDelete(teacher.user);
+      console.log('Deleting user account:', teacher.user);
+      const userDeleteResult = await User.findByIdAndDelete(teacher.user);
+      console.log('User deletion result:', userDeleteResult ? 'Success' : 'Failed');
+    } else {
+      console.log('No user account found for teacher');
     }
 
     // Delete the teacher profile
-    await Teacher.findByIdAndDelete(teacherId);
+    console.log('Deleting teacher profile:', teacherId);
+    const teacherDeleteResult = await Teacher.findByIdAndDelete(teacherId);
+    console.log('Teacher deletion result:', teacherDeleteResult ? 'Success' : 'Failed');
 
+    if (!teacherDeleteResult) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to delete teacher profile'
+      });
+    }
+
+    console.log('Teacher deletion completed successfully');
     res.status(200).json({
       success: true,
       message: 'Teacher deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting teacher:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     res.status(500).json({
       success: false,
       message: 'Error deleting teacher',

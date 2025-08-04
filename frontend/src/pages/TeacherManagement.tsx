@@ -353,8 +353,7 @@ const TeacherManagement: React.FC = () => {
         setOpenDialog(false);
         resetForm();
         fetchTeachers();
-        // Refresh statistics to keep counts updated
-        fetchStatistics();
+        // Removed fetchStatistics here
       } else {
         showSnackbar(response.message || 'Error updating teacher', 'error');
       }
@@ -428,8 +427,7 @@ const TeacherManagement: React.FC = () => {
         setSelectedClasses([]);
         // Update teacher in UI
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
-        // Refresh statistics to keep counts updated
-        fetchStatistics();
+        // Removed fetchStatistics here
       } else {
         showSnackbar(response.message || 'Error assigning classes', 'error');
       }

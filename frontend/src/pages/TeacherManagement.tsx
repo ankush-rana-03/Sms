@@ -391,13 +391,17 @@ const TeacherManagement: React.FC = () => {
     }
 
     try {
-      const response = await apiService.post<{ success: boolean; message: string; data: { temporaryPassword: string } }>(
+      const response = await apiService.post<{ success: boolean; message: string; data: { temporaryPassword: string; emailSent: boolean } }>(
         `/admin/teachers/${selectedTeacher._id}/reset-password`,
         { newPassword: newPassword.trim() }
       );
 
       if (response.success) {
-        showSnackbar(`Password reset successfully. New password: ${newPassword}`, 'success');
+        const emailMessage = response.data?.emailSent 
+          ? 'Email notification sent to teacher with new password.'
+          : 'Password reset successful.';
+        
+        showSnackbar(`Password reset successfully! ${emailMessage}`, 'success');
         setOpenPasswordResetDialog(false);
         setNewPassword('');
       } else {

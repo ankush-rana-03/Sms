@@ -55,10 +55,7 @@ const teacherSchema = new mongoose.Schema({
     },
     previousSchools: [String]
   },
-  specialization: {
-    type: [String],
-    default: []
-  },
+
   joiningDate: {
     type: Date,
     default: Date.now

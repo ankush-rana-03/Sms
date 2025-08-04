@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Counter = require('./Counter');
 
 const teacherSchema = new mongoose.Schema({
   user: {
@@ -115,8 +116,13 @@ const teacherSchema = new mongoose.Schema({
 teacherSchema.pre('save', async function(next) {
   if (this.isNew && !this.teacherId) {
     const year = new Date().getFullYear();
-    const count = await this.constructor.countDocuments();
-    this.teacherId = `TCH${year}${String(count + 1).padStart(4, '0')}`;
+    // Atomically increment the counter for this year
+    const counter = await Counter.findOneAndUpdate(
+      { name: `teacher_${year}` },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    this.teacherId = `TCH${year}${String(counter.seq).padStart(4, '0')}`;
   }
   next();
 });

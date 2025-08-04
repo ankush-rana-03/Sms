@@ -650,7 +650,7 @@ const TeacherManagement: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {teachers.map((teacher) => (
+                    {(teachers || []).map((teacher) => (
                       <TableRow key={teacher._id}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -658,44 +658,44 @@ const TeacherManagement: React.FC = () => {
                               <Person />
                             </Avatar>
                             <Box>
-                              <Typography variant="subtitle2">{teacher.name}</Typography>
+                              <Typography variant="subtitle2">{teacher.name || ''}</Typography>
                               <Typography variant="body2" color="textSecondary">
-                                {teacher.email}
+                                {teacher.email || ''}
                               </Typography>
                               <Typography variant="body2" color="textSecondary">
-                                {teacher.teacherId}
+                                {teacher.teacherId || ''}
                               </Typography>
                             </Box>
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={teacher.designation}
-                            color={getDesignationColor(teacher.designation)}
+                            label={teacher.designation || ''}
+                            color={getDesignationColor(teacher.designation || '')}
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {teacher.subjects.slice(0, 2).map((subject) => (
+                            {(teacher.subjects || []).slice(0, 2).map((subject) => (
                               <Chip key={subject} label={subject} size="small" variant="outlined" />
                             ))}
-                            {teacher.subjects.length > 2 && (
+                            {(teacher.subjects && teacher.subjects.length > 2) && (
                               <Chip label={`+${teacher.subjects.length - 2}`} size="small" />
                             )}
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {teacher.assignedClasses.slice(0, 2).map((ac, index) => (
+                            {(teacher.assignedClasses || []).slice(0, 2).map((ac, index) => (
                               <Chip
                                 key={index}
-                                label={`${ac.class.grade}${ac.section}`}
+                                label={`${ac.class?.grade || ''}${ac.section || ''}`}
                                 size="small"
                                 color="primary"
                               />
                             ))}
-                            {teacher.assignedClasses.length > 2 && (
+                            {(teacher.assignedClasses && teacher.assignedClasses.length > 2) && (
                               <Chip label={`+${teacher.assignedClasses.length - 2}`} size="small" />
                             )}
                           </Box>
@@ -707,7 +707,7 @@ const TeacherManagement: React.FC = () => {
                               color={teacher.isActive ? 'success' : 'error'}
                               size="small"
                             />
-                            {teacher.onlineStatus.isOnline && (
+                            {teacher.onlineStatus?.isOnline && (
                               <Chip
                                 label="Online"
                                 color="primary"
@@ -724,51 +724,51 @@ const TeacherManagement: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {teacher.user.lastLogin ? formatDateTime(teacher.user.lastLogin) : 'Never'}
+                            {teacher.user?.lastLogin ? formatDateTime(teacher.user.lastLogin) : 'Never'}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                                                         <Tooltip title="View Details">
-                               <IconButton
-                                 size="small"
-                                 onClick={() => handleOpenEditDialog(teacher)}
-                               >
-                                 <Visibility />
-                               </IconButton>
-                             </Tooltip>
-                             <Tooltip title="Edit">
-                               <IconButton
-                                 size="small"
-                                 onClick={() => handleOpenEditDialog(teacher)}
-                               >
-                                 <Edit />
-                               </IconButton>
-                             </Tooltip>
-                                                         <Tooltip title="Login Logs">
-                               <IconButton
-                                 size="small"
-                                 onClick={() => handleOpenLoginLogsDialog(teacher)}
-                               >
-                                 <History />
-                               </IconButton>
-                             </Tooltip>
-                                                         <Tooltip title="Reset Password">
-                               <IconButton
-                                 size="small"
-                                 onClick={() => handleOpenPasswordResetDialog(teacher)}
-                               >
-                                 <LockReset />
-                               </IconButton>
-                             </Tooltip>
-                             <Tooltip title="Assign Classes">
-                               <IconButton
-                                 size="small"
-                                 onClick={() => handleOpenClassAssignmentDialog(teacher)}
-                               >
-                                 <School />
-                               </IconButton>
-                             </Tooltip>
+                            <Tooltip title="View Details">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenEditDialog(teacher)}
+                              >
+                                <Visibility />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Edit">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenEditDialog(teacher)}
+                              >
+                                <Edit />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Login Logs">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenLoginLogsDialog(teacher)}
+                              >
+                                <History />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Reset Password">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenPasswordResetDialog(teacher)}
+                              >
+                                <LockReset />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Assign Classes">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenClassAssignmentDialog(teacher)}
+                              >
+                                <School />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Deactivate">
                               <IconButton
                                 size="small"

@@ -434,24 +434,41 @@ const TeacherManagement: React.FC = () => {
   };
 
   const handleOpenEditDialog = (teacher: Teacher) => {
+    console.log('Opening edit dialog for teacher:', teacher);
+    console.log('Teacher contactInfo:', teacher.contactInfo);
+    console.log('Teacher emergencyContact:', teacher.contactInfo?.emergencyContact);
+    
     setSelectedTeacher(teacher);
     setDialogMode('edit');
-    setFormData({
+    
+    // Better handling of emergency contact data
+    const emergencyContact = teacher.contactInfo?.emergencyContact;
+    const formDataToSet = {
       name: teacher.name,
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
       subjects: teacher.subjects || [],
-      qualification: teacher.qualification,
-      experience: teacher.experience,
+      qualification: teacher.qualification || {
+        degree: '',
+        institution: '',
+        yearOfCompletion: new Date().getFullYear()
+      },
+      experience: teacher.experience || {
+        years: 0,
+        previousSchools: []
+      },
       joiningDate: teacher.joiningDate ? teacher.joiningDate.split('T')[0] : '',
       salary: teacher.salary || 0,
-      emergencyContact: teacher.contactInfo?.emergencyContact || {
-        name: '',
-        phone: '',
-        relationship: ''
+      emergencyContact: {
+        name: emergencyContact?.name || '',
+        phone: emergencyContact?.phone || '',
+        relationship: emergencyContact?.relationship || ''
       }
-    });
+    };
+    
+    console.log('Setting form data:', formDataToSet);
+    setFormData(formDataToSet);
     setOpenDialog(true);
   };
 

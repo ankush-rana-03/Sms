@@ -13,6 +13,8 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Person,
@@ -24,17 +26,35 @@ import {
   Cancel,
   School,
   Work,
+  Lock,
+  Visibility,
+  VisibilityOff,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
     address: user?.address || '',
+  });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error',
   });
 
   const handleEdit = () => {
@@ -59,6 +79,55 @@ const Profile: React.FC = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePasswordInputChange = (field: string, value: string) => {
+    setPasswordForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setSnackbar({
+        open: true,
+        message: 'New passwords do not match',
+        severity: 'error',
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setSnackbar({
+        open: true,
+        message: 'New password must be at least 6 characters long',
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      await authService.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setSnackbar({
+        open: true,
+        message: 'Password updated successfully',
+        severity: 'success',
+      });
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setShowPasswordForm(false);
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'Failed to update password',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -228,10 +297,133 @@ const Profile: React.FC = () => {
                   />
                 </ListItem>
               </List>
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Password Change Section */}
+              <Typography variant="h6" gutterBottom>
+                Password Management
+              </Typography>
+              
+              {!showPasswordForm ? (
+                <Button
+                  variant="outlined"
+                  startIcon={<Lock />}
+                  onClick={() => setShowPasswordForm(true)}
+                  sx={{ mt: 1 }}
+                >
+                  Change Password
+                </Button>
+              ) : (
+                <Box sx={{ mt: 2 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Current Password"
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => handlePasswordInputChange('currentPassword', e.target.value)}
+                        InputProps={{
+                          startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary' }} />,
+                          endAdornment: (
+                            <Button
+                              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                              sx={{ minWidth: 'auto', p: 0.5 }}
+                            >
+                              {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                            </Button>
+                          ),
+                        }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="New Password"
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={passwordForm.newPassword}
+                        onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}
+                        InputProps={{
+                          endAdornment: (
+                            <Button
+                              onClick={() => setShowNewPassword(!showNewPassword)}
+                              sx={{ minWidth: 'auto', p: 0.5 }}
+                            >
+                              {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                            </Button>
+                          ),
+                        }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Confirm New Password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}
+                        InputProps={{
+                          endAdornment: (
+                            <Button
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              sx={{ minWidth: 'auto', p: 0.5 }}
+                            >
+                              {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                            </Button>
+                          ),
+                        }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          onClick={handlePasswordChange}
+                          disabled={!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                        >
+                          Update Password
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            setShowPasswordForm(false);
+                            setPasswordForm({
+                              currentPassword: '',
+                              newPassword: '',
+                              confirmPassword: '',
+                            });
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

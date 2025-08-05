@@ -13,6 +13,12 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Person,
@@ -24,8 +30,12 @@ import {
   Cancel,
   School,
   Work,
+  Lock,
+  VpnKey,
+  Security,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
@@ -36,6 +46,27 @@ const Profile: React.FC = () => {
     phone: user?.phone || '',
     address: user?.address || '',
   });
+
+  // Password change state
+  const [passwordDialog, setPasswordDialog] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  // Forgot password state
+  const [forgotPasswordDialog, setForgotPasswordDialog] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState(user?.email || '');
+
+  // Notification state
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'warning' | 'info',
+  });
+
+  const [loading, setLoading] = useState(false);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -59,6 +90,80 @@ const Profile: React.FC = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setNotification({
+        open: true,
+        message: 'New passwords do not match',
+        severity: 'error',
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setNotification({
+        open: true,
+        message: 'Password must be at least 6 characters long',
+        severity: 'error',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authService.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setNotification({
+        open: true,
+        message: 'Password updated successfully',
+        severity: 'success',
+      });
+      setPasswordDialog(false);
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error: any) {
+      setNotification({
+        open: true,
+        message: error.response?.data?.error || 'Failed to update password',
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotPasswordEmail) {
+      setNotification({
+        open: true,
+        message: 'Please enter your email address',
+        severity: 'error',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authService.forgotPassword(forgotPasswordEmail);
+      setNotification({
+        open: true,
+        message: 'Password reset email sent successfully. Please check your inbox.',
+        severity: 'success',
+      });
+      setForgotPasswordDialog(false);
+    } catch (error: any) {
+      setNotification({
+        open: true,
+        message: error.response?.data?.error || 'Failed to send reset email',
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -122,6 +227,37 @@ const Profile: React.FC = () => {
                     Save
                   </Button>
                 )}
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Security Card */}
+          <Card sx={{ mt: 2 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                <Security sx={{ mr: 1 }} />
+                Security
+              </Typography>
+              
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Lock />}
+                  onClick={() => setPasswordDialog(true)}
+                  fullWidth
+                  sx={{ mb: 1 }}
+                >
+                  Change Password
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  startIcon={<VpnKey />}
+                  onClick={() => setForgotPasswordDialog(true)}
+                  fullWidth
+                >
+                  Reset Password
+                </Button>
               </Box>
             </CardContent>
           </Card>
@@ -232,6 +368,98 @@ const Profile: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordDialog} onClose={() => setPasswordDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Current Password"
+            type="password"
+            value={passwordForm.currentPassword}
+            onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+            margin="normal"
+            required
+          />
+          <TextField
+            fullWidth
+            label="New Password"
+            type="password"
+            value={passwordForm.newPassword}
+            onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+            margin="normal"
+            required
+            helperText="Password must be at least 6 characters long"
+          />
+          <TextField
+            fullWidth
+            label="Confirm New Password"
+            type="password"
+            value={passwordForm.confirmPassword}
+            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+            margin="normal"
+            required
+            error={passwordForm.newPassword !== passwordForm.confirmPassword && passwordForm.confirmPassword !== ''}
+            helperText={passwordForm.newPassword !== passwordForm.confirmPassword && passwordForm.confirmPassword !== '' ? 'Passwords do not match' : ''}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPasswordDialog(false)}>Cancel</Button>
+          <Button 
+            onClick={handlePasswordChange} 
+            variant="contained"
+            disabled={loading || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+          >
+            {loading ? 'Updating...' : 'Update Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={forgotPasswordDialog} onClose={() => setForgotPasswordDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reset Password</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Enter your email address and we'll send you a link to reset your password.
+          </Alert>
+          <TextField
+            fullWidth
+            label="Email Address"
+            type="email"
+            value={forgotPasswordEmail}
+            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+            margin="normal"
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setForgotPasswordDialog(false)}>Cancel</Button>
+          <Button 
+            onClick={handleForgotPassword} 
+            variant="contained"
+            disabled={loading || !forgotPasswordEmail}
+          >
+            {loading ? 'Sending...' : 'Send Reset Email'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))} 
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

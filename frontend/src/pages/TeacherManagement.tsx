@@ -225,6 +225,15 @@ const TeacherManagement: React.FC = () => {
     }
   });
 
+  // New state for Assign Classes & Subjects dialog
+  const [assignments, setAssignments] = useState<{ class: string, section: string, subjects: string[] }[]>([]);
+  const [assignmentForm, setAssignmentForm] = useState({
+    class: '',
+    section: '',
+    subjectsInput: '',
+    editingIndex: -1
+  });
+
 
   useEffect(() => {
     fetchTeachers();
@@ -502,24 +511,22 @@ const TeacherManagement: React.FC = () => {
 
   const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
+    setAssignments(teacher.assignedClasses.map(ac => ({
+      class: ac.class.name,
+      section: ac.section,
+      subjects: [ac.subject]
+    })));
+    setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
     setOpenSubjectAssignmentDialog(true);
   };
 
-  const handleSaveSubjectAssignments = async (assignments: any[]) => {
+  const handleSaveSubjectAssignments = async (assignmentsToSave: { class: string, section: string, subjects: string[] }[]) => {
     if (!selectedTeacher) return;
 
     try {
-      // Convert assignments to the format expected by the backend
-      const assignmentData = assignments.map(assignment => ({
-        class: assignment.classId,
-        section: assignment.section,
-        subject: assignment.subjects.join(', '), // Join subjects for the current structure
-        grade: assignment.grade
-      }));
-
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes`,
-        { assignedClasses: assignmentData }
+        { assignedClasses: assignmentsToSave }
       );
 
       if (response.success) {
@@ -589,6 +596,37 @@ const TeacherManagement: React.FC = () => {
     return selectedClasses.some(sc => sc.class === classId && sc.section === section);
   };
 
+  const handleAddOrUpdateAssignment = () => {
+    if (!selectedTeacher) return;
+
+    const classSection = `${assignmentForm.class} - ${assignmentForm.section}`;
+    const subjects = assignmentForm.subjectsInput.split(',').map(s => s.trim()).filter(Boolean);
+
+    if (assignmentForm.editingIndex === -1) {
+      // Add new assignment
+      setAssignments(prev => [...prev, { class: classSection, section: assignmentForm.section, subjects }]);
+    } else {
+      // Update existing assignment
+      setAssignments(prev => prev.map((a, index) => 
+        index === assignmentForm.editingIndex ? { ...a, class: classSection, section: assignmentForm.section, subjects } : a
+      ));
+    }
+    setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
+  };
+
+  const handleEditAssignment = (index: number) => {
+    const assignment = assignments[index];
+    setAssignmentForm({
+      class: assignment.class,
+      section: assignment.section,
+      subjectsInput: assignment.subjects.join(', '),
+      editingIndex: index
+    });
+  };
+
+  const handleDeleteAssignment = (index: number) => {
+    setAssignments(prev => prev.filter((_, i) => i !== index));
+  };
 
 
   return (
@@ -1201,44 +1239,70 @@ const TeacherManagement: React.FC = () => {
           <DialogContent>
             <Box sx={{ mb: 2 }}>
               <Alert severity="info">
-                Select a class and section, then assign one or more subjects to this teacher for that class.
+                Assign classes and subjects to this teacher. You can edit or delete existing assignments, or add new ones below.
               </Alert>
             </Box>
+            {/* List of current assignments */}
+            {assignments.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                {assignments.map((a, idx) => (
+                  <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography sx={{ minWidth: 120 }}>{a.class} - {a.section}</Typography>
+                    <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
+                    <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
+                    <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
+                  </Box>
+                ))}
+              </Box>
+            )}
+            {/* Add/Edit Assignment Form */}
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={5}>
                 <FormControl fullWidth>
                   <InputLabel>Class</InputLabel>
                   <Select
-                    value={formData.classId || ''}
-                    onChange={e => setFormData({ ...formData, classId: e.target.value })}
+                    value={assignmentForm.class}
+                    onChange={e => setAssignmentForm({ ...assignmentForm, class: e.target.value })}
                     label="Class"
                   >
-                    {availableClasses.map(cls => (
-                      <MenuItem key={cls._id} value={cls._id}>
-                        {cls.name} (Section {cls.section})
-                      </MenuItem>
+                    {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(cls => (
+                      <MenuItem key={cls} value={cls}>{cls}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Section"
-                  value={formData.section || ''}
-                  onChange={e => setFormData({ ...formData, section: e.target.value })}
-                  placeholder="A, B, C, ..."
-                />
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Section</InputLabel>
+                  <Select
+                    value={assignmentForm.section}
+                    onChange={e => setAssignmentForm({ ...assignmentForm, section: e.target.value })}
+                    label="Section"
+                  >
+                    {['A', 'B', 'C', 'D', 'E'].map(sec => (
+                      <MenuItem key={sec} value={sec}>{sec}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
-              <Grid item xs={12}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Subjects (comma separated)"
-                  value={formData.subjectsInput || ''}
-                  onChange={e => setFormData({ ...formData, subjectsInput: e.target.value })}
+                  value={assignmentForm.subjectsInput}
+                  onChange={e => setAssignmentForm({ ...assignmentForm, subjectsInput: e.target.value })}
                   placeholder="Mathematics, Physics, English"
                   helperText="Enter one or more subjects separated by commas."
                 />
+              </Grid>
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  onClick={handleAddOrUpdateAssignment}
+                  sx={{ mt: 1 }}
+                >
+                  {assignmentForm.editingIndex === null ? 'Add Assignment' : 'Update Assignment'}
+                </Button>
               </Grid>
             </Grid>
           </DialogContent>
@@ -1247,35 +1311,11 @@ const TeacherManagement: React.FC = () => {
             <Button
               variant="contained"
               onClick={() => {
-                // Validate
-                if (!formData.classId || !formData.section || !formData.subjectsInput) {
-                  showSnackbar('Please fill all fields', 'error');
-                  return;
-                }
-                const selectedClass = availableClasses.find(cls => cls._id === formData.classId);
-                if (!selectedClass) {
-                  showSnackbar('Selected class not found', 'error');
-                  return;
-                }
-                const subjects = formData.subjectsInput.split(',').map(s => s.trim()).filter(Boolean);
-                if (subjects.length === 0) {
-                  showSnackbar('Please enter at least one subject', 'error');
-                  return;
-                }
-                // Save assignment
-                handleSaveSubjectAssignments([
-                  {
-                    classId: selectedClass._id,
-                    className: selectedClass.name,
-                    grade: selectedClass.grade,
-                    section: formData.section,
-                    subjects
-                  }
-                ]);
+                handleSaveSubjectAssignments(assignments);
                 setOpenSubjectAssignmentDialog(false);
               }}
             >
-              Save Assignment
+              Save All Assignments
             </Button>
           </DialogActions>
         </Dialog>

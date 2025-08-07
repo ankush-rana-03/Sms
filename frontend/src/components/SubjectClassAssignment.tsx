@@ -175,7 +175,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                       <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                         <Box>
                           <Typography variant="h6" color="primary">
-                            {assignment.className} - Section {assignment.section}
+                            Class {assignment.className} - Section {assignment.section}
                           </Typography>
                           <Typography variant="body2" color="textSecondary">
                             Grade {assignment.grade}

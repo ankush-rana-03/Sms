@@ -288,14 +288,7 @@ const TeacherManagement: React.FC = () => {
       setAvailableClasses(data.data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
-      // If classes API doesn't exist, create some dummy data that matches the test classes
-      setAvailableClasses([
-        { _id: '1', name: 'Class 1', section: 'A', grade: '1' },
-        { _id: '2', name: 'Class 2', section: 'A', grade: '2' },
-        { _id: '3', name: 'Class 3', section: 'B', grade: '3' },
-        { _id: '4', name: 'Class 4', section: 'A', grade: '4' },
-        { _id: '5', name: 'Class 5', section: 'B', grade: '5' },
-      ]);
+      setAvailableClasses([]);
     }
   };
 
@@ -614,6 +607,7 @@ const TeacherManagement: React.FC = () => {
         subjects
       };
       setAssignments(prev => [...prev, newAssignment]);
+      showSnackbar('Assignment added successfully', 'success');
     } else {
       // Update existing assignment
       setAssignments(prev => prev.map((a, index) => 
@@ -624,6 +618,7 @@ const TeacherManagement: React.FC = () => {
           subjects 
         } : a
       ));
+      showSnackbar('Assignment updated successfully', 'success');
     }
     setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
   };
@@ -1271,25 +1266,50 @@ const TeacherManagement: React.FC = () => {
             )}
             {/* Add/Edit Assignment Form */}
             <Grid container spacing={2}>
-              <Grid item xs={12} md={8}>
-                <FormControl fullWidth>
-                  <InputLabel>Class & Section</InputLabel>
-                  <Select
-                    value={`${assignmentForm.class}-${assignmentForm.section}`}
-                    onChange={e => {
-                      const [className, section] = e.target.value.split('-');
-                      setAssignmentForm({ ...assignmentForm, class: className, section: section });
-                    }}
-                    label="Class & Section"
-                  >
-                    {availableClasses.map(cls => (
-                      <MenuItem key={`${cls.name}-${cls.section}`} value={`${cls.name}-${cls.section}`}>
-                        {cls.name} - Section {cls.section}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
+              {availableClasses.length === 0 ? (
+                <Grid item xs={12}>
+                  <Alert severity="warning">
+                    No classes available. Please create classes first before assigning subjects to teachers.
+                  </Alert>
+                </Grid>
+              ) : (
+                <>
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                      <InputLabel>Class</InputLabel>
+                      <Select
+                        value={assignmentForm.class}
+                        onChange={e => {
+                          setAssignmentForm({ ...assignmentForm, class: e.target.value });
+                        }}
+                        label="Class"
+                      >
+                        {Array.from(new Set(availableClasses.map(cls => cls.name))).map(className => (
+                          <MenuItem key={className} value={className}>
+                            {className}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                      <InputLabel>Section</InputLabel>
+                      <Select
+                        value={assignmentForm.section}
+                        onChange={e => {
+                          setAssignmentForm({ ...assignmentForm, section: e.target.value });
+                        }}
+                        label="Section"
+                      >
+                        {Array.from(new Set(availableClasses.map(cls => cls.section))).map(section => (
+                          <MenuItem key={section} value={section}>
+                            Section {section}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
@@ -1309,6 +1329,8 @@ const TeacherManagement: React.FC = () => {
                   {assignmentForm.editingIndex === null ? 'Add Assignment' : 'Update Assignment'}
                 </Button>
               </Grid>
+                </>
+              )}
             </Grid>
           </DialogContent>
           <DialogActions>

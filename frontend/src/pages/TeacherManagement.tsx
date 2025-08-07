@@ -307,7 +307,7 @@ const TeacherManagement: React.FC = () => {
     try {
       const teacherData = {
         ...formData,
-        subjects: formData.subjects,
+        subjects: [], // Empty array since subjects are now managed through class assignments
         contactInfo: {
           emergencyContact: formData.emergencyContact
         }
@@ -337,7 +337,7 @@ const TeacherManagement: React.FC = () => {
     try {
       const teacherData = {
         ...formData,
-        subjects: formData.subjects,
+        subjects: selectedTeacher.subjects || [], // Keep existing subjects from teacher data
         contactInfo: {
           emergencyContact: formData.emergencyContact
         }

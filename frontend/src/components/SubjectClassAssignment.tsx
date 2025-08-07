@@ -17,33 +17,24 @@ import {
   MenuItem,
   TextField,
   IconButton,
-  Tooltip,
   Alert,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction
+  Divider
 } from '@mui/material';
 import {
   Add,
   Delete,
-  School,
-  Subject,
-  Class,
   Assignment,
-  CheckCircle,
-  Warning
+  CheckCircle
 } from '@mui/icons-material';
 
-interface Class {
+interface ClassData {
   _id: string;
   name: string;
   grade: string;
   section: string;
 }
 
-interface SubjectClassAssignment {
+interface SubjectClassAssignmentData {
   classId: string;
   className: string;
   grade: string;
@@ -56,9 +47,9 @@ interface SubjectClassAssignmentProps {
   onClose: () => void;
   teacherId: string;
   teacherName: string;
-  availableClasses: Class[];
-  currentAssignments: SubjectClassAssignment[];
-  onSave: (assignments: SubjectClassAssignment[]) => void;
+  availableClasses: ClassData[];
+  currentAssignments: SubjectClassAssignmentData[];
+  onSave: (assignments: SubjectClassAssignmentData[]) => void;
 }
 
 const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
@@ -70,7 +61,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
   currentAssignments,
   onSave
 }) => {
-  const [assignments, setAssignments] = useState<SubjectClassAssignment[]>(currentAssignments);
+  const [assignments, setAssignments] = useState<SubjectClassAssignmentData[]>(currentAssignments);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedSubjects, setSelectedSubjects] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -121,7 +112,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
       return;
     }
 
-    const newAssignment: SubjectClassAssignment = {
+    const newAssignment: SubjectClassAssignmentData = {
       classId: selectedClass,
       className: selectedClassData.name,
       grade: selectedClassData.grade,
@@ -177,7 +168,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                 No classes assigned yet. Add assignments below.
               </Alert>
             ) : (
-              <List>
+              <Box>
                 {assignments.map((assignment) => (
                   <Card key={assignment.classId} sx={{ mb: 2 }}>
                     <CardContent>
@@ -212,7 +203,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                     </CardContent>
                   </Card>
                 ))}
-              </List>
+              </Box>
             )}
           </Grid>
 

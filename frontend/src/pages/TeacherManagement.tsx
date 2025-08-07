@@ -445,6 +445,7 @@ const TeacherManagement: React.FC = () => {
     console.log('Opening edit dialog for teacher:', teacher);
     console.log('Teacher contactInfo:', teacher.contactInfo);
     console.log('Teacher emergencyContact:', teacher.contactInfo?.emergencyContact);
+    console.log('Teacher subjects:', teacher.subjects);
     
     setSelectedTeacher(teacher);
     setDialogMode('edit');
@@ -456,7 +457,7 @@ const TeacherManagement: React.FC = () => {
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
-      subjects: teacher.subjects || [],
+      subjects: Array.isArray(teacher.subjects) ? teacher.subjects : [],
       qualification: teacher.qualification || {
         degree: '',
         institution: '',
@@ -516,7 +517,7 @@ const TeacherManagement: React.FC = () => {
       email: '',
       phone: '',
       designation: 'TGT',
-      subjects: [],
+      subjects: [] as string[],
       qualification: {
         degree: '',
         institution: '',
@@ -580,6 +581,24 @@ const TeacherManagement: React.FC = () => {
 
   const isClassSelected = (classId: string, section: string) => {
     return selectedClasses.some(sc => sc.class === classId && sc.section === section);
+  };
+
+  // Helper function to handle subjects input
+  const handleSubjectsChange = (value: string) => {
+    const subjects = value
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    setFormData({
+      ...formData,
+      subjects: subjects
+    });
+  };
+
+  // Helper function to format subjects for display
+  const formatSubjectsForDisplay = (subjects: string[]) => {
+    if (!Array.isArray(subjects)) return '';
+    return subjects.join(', ');
   };
 
   return (
@@ -1003,12 +1022,19 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Assign Subjects (comma separated)"
-                  value={formData.subjects.join(', ')}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    subjects: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                  })}
-                  helperText="Enter subjects separated by commas (e.g. Math, Science, English)"
+                  value={formatSubjectsForDisplay(formData.subjects)}
+                  onChange={(e) => handleSubjectsChange(e.target.value)}
+                  helperText="Enter subjects separated by commas (e.g. Mathematics, Physics, English)"
+                  placeholder="Mathematics, Physics, English"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title="Enter subjects separated by commas">
+                          <School fontSize="small" color="action" />
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
               <Grid item xs={12} md={6}>

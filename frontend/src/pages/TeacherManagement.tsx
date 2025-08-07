@@ -526,12 +526,13 @@ const TeacherManagement: React.FC = () => {
             class: assignment.className, // Use class name as fallback ID
             section: assignment.section,
             subject: subject,
-            grade: assignment.className.replace('Class ', '') // Extract grade from class name
+            grade: assignment.className // Use full class name as grade
           };
         })
       );
 
       console.log('Transformed assignments:', transformedAssignments);
+      console.log('Sending to API:', { assignedClasses: transformedAssignments });
 
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes`,

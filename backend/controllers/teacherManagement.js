@@ -681,14 +681,47 @@ exports.assignClassesToTeacher = async (req, res) => {
       });
     }
 
-    // Validate that all classes exist
+    // Validate and create classes if they don't exist
     for (const assignment of assignedClasses) {
       if (assignment.class) {
-        const classExists = await Class.findById(assignment.class);
-        if (!classExists) {
+        let classExists = await Class.findById(assignment.class);
+        
+        // If class doesn't exist by ID, try to find by name and section
+        if (!classExists && typeof assignment.class === 'string' && assignment.class.length !== 24) {
+          // This is a class name, not an ObjectId
+          classExists = await Class.findOne({ 
+            name: assignment.class, 
+            section: assignment.section 
+          });
+          
+          // If still not found, create the class
+          if (!classExists) {
+            try {
+              classExists = await Class.create({
+                name: assignment.class,
+                section: assignment.section,
+                academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
+                roomNumber: 'TBD',
+                capacity: 40
+              });
+              console.log(`Created new class: ${assignment.class} - Section ${assignment.section}`);
+            } catch (createError) {
+              console.error('Error creating class:', createError);
+              return res.status(400).json({
+                success: false,
+                message: `Failed to create class ${assignment.class} - Section ${assignment.section}`
+              });
+            }
+          }
+        }
+        
+        // Update the assignment with the actual class ID
+        if (classExists) {
+          assignment.class = classExists._id;
+        } else {
           return res.status(400).json({
             success: false,
-            message: `Class with ID ${assignment.class} not found`
+            message: `Class with ID ${assignment.class} not found and could not be created`
           });
         }
       }

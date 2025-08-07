@@ -194,30 +194,12 @@ const TeacherManagement: React.FC = () => {
     grade: string;
   }>>([]);
 
-  // Form state
+  // Form state for Subject Assignment Dialog
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    designation: 'TGT' as 'TGT' | 'PGT' | 'JBT' | 'NTT',
-    qualification: {
-      degree: '',
-      institution: '',
-      yearOfCompletion: new Date().getFullYear()
-    },
-    experience: {
-      years: 0,
-      previousSchools: [] as string[]
-    },
-    joiningDate: '',
-    salary: 0,
-    emergencyContact: {
-      name: '',
-      phone: '',
-      relationship: ''
-    }
+    classId: '',
+    section: '',
+    subjectsInput: '',
   });
-
 
 
   useEffect(() => {
@@ -549,26 +531,9 @@ const TeacherManagement: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      designation: 'TGT',
-      qualification: {
-        degree: '',
-        institution: '',
-        yearOfCompletion: new Date().getFullYear()
-      },
-      experience: {
-        years: 0,
-        previousSchools: []
-      },
-      joiningDate: '',
-      salary: 0,
-      emergencyContact: {
-        name: '',
-        phone: '',
-        relationship: ''
-      }
+      classId: '',
+      section: '',
+      subjectsInput: '',
     });
   };
 
@@ -933,19 +898,8 @@ const TeacherManagement: React.FC = () => {
                                 <LockReset />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Assign Classes">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenClassAssignmentDialog(teacher)}
-                              >
-                                <School />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Assign Subjects">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
-                              >
+                            <Tooltip title="Assign Classes & Subjects">
+                              <IconButton size="small" onClick={() => handleOpenSubjectAssignmentDialog(teacher)}>
                                 <Assignment />
                               </IconButton>
                             </Tooltip>
@@ -1234,69 +1188,92 @@ const TeacherManagement: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Class Assignment Dialog */}
-      <Dialog open={openClassAssignmentDialog} onClose={() => setOpenClassAssignmentDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Assign Classes - {selectedTeacher?.name}</DialogTitle>
-        <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Assign classes and subjects to this teacher. You can select multiple classes or leave empty to remove all assignments. The teacher will be able to manage attendance and other activities for these classes.
-          </Alert>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2">Available Classes:</Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                {availableClasses.map((cls) => (
-                  <Chip
-                    key={cls._id}
-                    label={`${cls.grade}${cls.section}`}
-                    size="small"
-                    color={isClassSelected(cls._id, cls.section) ? 'primary' : 'default'}
-                    onClick={() => handleClassSelection(cls._id, cls.section, cls.grade, cls.name)}
-                    sx={{ cursor: 'pointer' }}
-                  />
-                ))}
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2">Selected Classes:</Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                {selectedClasses.map((sc, index) => (
-                  <Chip
-                    key={index}
-                    label={`${sc.grade}${sc.section}`}
-                    size="small"
-                    color="primary"
-                    onDelete={() => handleClassSelection(sc.class, sc.section, sc.grade, sc.subject)}
-                  />
-                ))}
-              </Box>
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenClassAssignmentDialog(false)}>Cancel</Button>
-          <Button onClick={handleAssignClasses} variant="contained">
-            {selectedClasses.length > 0 ? 'Assign Classes' : 'Remove All Classes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Subject Assignment Dialog */}
-      <SubjectClassAssignment
-        open={openSubjectAssignmentDialog}
-        onClose={() => setOpenSubjectAssignmentDialog(false)}
-        teacherId={selectedTeacher?._id || ''}
-        teacherName={selectedTeacher?.name || ''}
-        availableClasses={availableClasses}
-        currentAssignments={selectedTeacher?.assignedClasses?.map(ac => ({
-          classId: ac.class._id,
-          className: ac.class.name,
-          grade: ac.grade,
-          section: ac.section,
-          subjects: ac.subject.split(',').map(s => s.trim()).filter(Boolean)
-        })) || []}
-        onSave={handleSaveSubjectAssignments}
-      />
+      {openSubjectAssignmentDialog && selectedTeacher && (
+        <Dialog open={openSubjectAssignmentDialog} onClose={() => setOpenSubjectAssignmentDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Assign Classes & Subjects - {selectedTeacher.name}</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mb: 2 }}>
+              <Alert severity="info">
+                Select a class and section, then assign one or more subjects to this teacher for that class.
+              </Alert>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Class</InputLabel>
+                  <Select
+                    value={formData.classId || ''}
+                    onChange={e => setFormData({ ...formData, classId: e.target.value })}
+                    label="Class"
+                  >
+                    {availableClasses.map(cls => (
+                      <MenuItem key={cls._id} value={cls._id}>
+                        {cls.name} (Section {cls.section})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Section"
+                  value={formData.section || ''}
+                  onChange={e => setFormData({ ...formData, section: e.target.value })}
+                  placeholder="A, B, C, ..."
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Subjects (comma separated)"
+                  value={formData.subjectsInput || ''}
+                  onChange={e => setFormData({ ...formData, subjectsInput: e.target.value })}
+                  placeholder="Mathematics, Physics, English"
+                  helperText="Enter one or more subjects separated by commas."
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenSubjectAssignmentDialog(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                // Validate
+                if (!formData.classId || !formData.section || !formData.subjectsInput) {
+                  showSnackbar('Please fill all fields', 'error');
+                  return;
+                }
+                const selectedClass = availableClasses.find(cls => cls._id === formData.classId);
+                if (!selectedClass) {
+                  showSnackbar('Selected class not found', 'error');
+                  return;
+                }
+                const subjects = formData.subjectsInput.split(',').map(s => s.trim()).filter(Boolean);
+                if (subjects.length === 0) {
+                  showSnackbar('Please enter at least one subject', 'error');
+                  return;
+                }
+                // Save assignment
+                handleSaveSubjectAssignments([
+                  {
+                    classId: selectedClass._id,
+                    className: selectedClass.name,
+                    grade: selectedClass.grade,
+                    section: formData.section,
+                    subjects
+                  }
+                ]);
+                setOpenSubjectAssignmentDialog(false);
+              }}
+            >
+              Save Assignment
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* Snackbar */}
       <Snackbar

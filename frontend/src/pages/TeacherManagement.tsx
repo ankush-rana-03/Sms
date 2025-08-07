@@ -284,16 +284,17 @@ const TeacherManagement: React.FC = () => {
   const fetchAvailableClasses = async () => {
     try {
       const data = await apiService.get<{ success: boolean; data: Array<{ _id: string; name: string; section: string; grade: string }> }>('/classes');
+      console.log('Fetched classes from API:', data);
       setAvailableClasses(data.data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
-      // If classes API doesn't exist, create some dummy data
+      // If classes API doesn't exist, create some dummy data that matches the test classes
       setAvailableClasses([
         { _id: '1', name: 'Class 1', section: 'A', grade: '1' },
         { _id: '2', name: 'Class 2', section: 'A', grade: '2' },
-        { _id: '3', name: 'Class 3', section: 'A', grade: '3' },
+        { _id: '3', name: 'Class 3', section: 'B', grade: '3' },
         { _id: '4', name: 'Class 4', section: 'A', grade: '4' },
-        { _id: '5', name: 'Class 5', section: 'A', grade: '5' },
+        { _id: '5', name: 'Class 5', section: 'B', grade: '5' },
       ]);
     }
   };
@@ -491,26 +492,46 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
+      console.log('Saving assignments:', assignmentsToSave);
+      console.log('Available classes:', availableClasses);
+
       // Transform the data to match the backend expected format
       const transformedAssignments = assignmentsToSave.flatMap(assignment => 
         assignment.subjects.map(subject => {
-          // Find the class ID based on the class name and section
+          // First, try to find the class ID based on the class name and section
           const classData = availableClasses.find(c => 
             c.name === assignment.className && c.section === assignment.section
           );
           
-          if (!classData) {
-            throw new Error(`Class ${assignment.className} - Section ${assignment.section} not found`);
+          console.log(`Looking for class: ${assignment.className} - Section: ${assignment.section}`);
+          console.log('Found class data:', classData);
+          
+          if (classData) {
+            return {
+              class: classData._id, // Use the actual class ID
+              section: assignment.section,
+              subject: subject,
+              grade: classData.grade
+            };
           }
-
-          return {
-            class: classData._id, // Use the actual class ID
-            section: assignment.section,
-            subject: subject,
-            grade: classData.grade
-          };
+          
+          // If we can't find the class in available classes, try to use the class ID directly if it's already an ID
+          if (assignment.class && assignment.class.length === 24) { // MongoDB ObjectId length
+            console.log('Using existing class ID:', assignment.class);
+            return {
+              class: assignment.class,
+              section: assignment.section,
+              subject: subject,
+              grade: assignment.className.replace('Class ', '') // Extract grade from class name
+            };
+          }
+          
+          // If we still can't find it, show an error instead of using fallback
+          throw new Error(`Class ${assignment.className} - Section ${assignment.section} not found. Please make sure the class exists in the system.`);
         })
       );
+
+      console.log('Transformed assignments:', transformedAssignments);
 
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes`,
@@ -526,7 +547,7 @@ const TeacherManagement: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error updating subject assignments:', error);
-      showSnackbar(error.response?.data?.message || 'Error updating subject assignments', 'error');
+      showSnackbar(error.response?.data?.message || error.message || 'Error updating subject assignments', 'error');
     }
   };
 
@@ -585,10 +606,9 @@ const TeacherManagement: React.FC = () => {
     const subjects = assignmentForm.subjectsInput.split(',').map(s => s.trim()).filter(Boolean);
 
     if (assignmentForm.editingIndex === -1) {
-      // Add new assignment - we need to find the class ID based on the class name
-      // For now, we'll use a placeholder approach - in a real app, you'd want to fetch available classes
+      // Add new assignment
       const newAssignment = {
-        class: assignmentForm.class, // This should be a class ID, but we're using name for now
+        class: assignmentForm.class, // This will be the class name, we'll convert to ID when saving
         className: assignmentForm.class,
         section: assignmentForm.section,
         subjects
@@ -873,7 +893,7 @@ const TeacherManagement: React.FC = () => {
                             {(teacher.assignedClasses || []).slice(0, 2).map((ac, index) => (
                               <Chip
                                 key={index}
-                                label={`${ac.class?.grade || ''}${ac.section || ''}`}
+                                label={`Class ${ac.class?.grade || ''}${ac.section || ''}`}
                                 size="small"
                                 color="primary"
                               />
@@ -1241,7 +1261,7 @@ const TeacherManagement: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 120 }}>{a.className} - {a.section}</Typography>
+                    <Typography sx={{ minWidth: 150 }}>Class {a.className} - Section {a.section}</Typography>
                     <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
@@ -1251,30 +1271,21 @@ const TeacherManagement: React.FC = () => {
             )}
             {/* Add/Edit Assignment Form */}
             <Grid container spacing={2}>
-              <Grid item xs={12} md={5}>
+              <Grid item xs={12} md={8}>
                 <FormControl fullWidth>
-                  <InputLabel>Class</InputLabel>
+                  <InputLabel>Class & Section</InputLabel>
                   <Select
-                    value={assignmentForm.class}
-                    onChange={e => setAssignmentForm({ ...assignmentForm, class: e.target.value })}
-                    label="Class"
+                    value={`${assignmentForm.class}-${assignmentForm.section}`}
+                    onChange={e => {
+                      const [className, section] = e.target.value.split('-');
+                      setAssignmentForm({ ...assignmentForm, class: className, section: section });
+                    }}
+                    label="Class & Section"
                   >
-                    {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(cls => (
-                      <MenuItem key={cls} value={cls}>{cls}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Section</InputLabel>
-                  <Select
-                    value={assignmentForm.section}
-                    onChange={e => setAssignmentForm({ ...assignmentForm, section: e.target.value })}
-                    label="Section"
-                  >
-                    {['A', 'B', 'C', 'D', 'E'].map(sec => (
-                      <MenuItem key={sec} value={sec}>{sec}</MenuItem>
+                    {availableClasses.map(cls => (
+                      <MenuItem key={`${cls.name}-${cls.section}`} value={`${cls.name}-${cls.section}`}>
+                        Class {cls.name} - Section {cls.section}
+                      </MenuItem>
                     ))}
                   </Select>
                 </FormControl>

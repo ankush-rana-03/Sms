@@ -105,7 +105,14 @@ const Profile: React.FC = () => {
     }
 
     try {
-      await authService.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      console.log('Attempting to update password...');
+      console.log('Current password length:', passwordForm.currentPassword.length);
+      console.log('New password length:', passwordForm.newPassword.length);
+      
+      const result = await authService.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      
+      console.log('Password update result:', result);
+      
       setSnackbar({
         open: true,
         message: 'Password updated successfully',
@@ -118,9 +125,13 @@ const Profile: React.FC = () => {
       });
       setShowPasswordForm(false);
     } catch (error: any) {
+      console.error('Password update error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Failed to update password',
+        message: error.response?.data?.message || 'Failed to update password. Please try again.',
         severity: 'error',
       });
     }

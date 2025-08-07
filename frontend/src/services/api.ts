@@ -56,7 +56,12 @@ class ApiService {
   }
 
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    console.log('API Service - Making PUT request to:', url);
+    console.log('API Service - Base URL:', this.api.defaults.baseURL);
+    console.log('API Service - Data:', data);
+    
     const response = await this.api.put<T>(url, data, config);
+    console.log('API Service - Response:', response.data);
     return response.data;
   }
 

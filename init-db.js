@@ -10,10 +10,14 @@ async function initDatabase() {
   console.log('🗄️ Initializing Database...\n');
   
   try {
-    // Connect to MongoDB
+    // Connect to MongoDB with increased timeouts
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/school_management', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 30000, // 30 seconds
+      socketTimeoutMS: 45000, // 45 seconds
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2, // Maintain at least 2 socket connections
+      maxIdleTimeMS: 30000, // Close idle connections after 30 seconds
+      connectTimeoutMS: 30000, // Give up initial connection after 30 seconds
     });
     console.log('✅ Connected to MongoDB');
 
@@ -104,4 +108,4 @@ async function initDatabase() {
   }
 }
 
-initDatabase().catch(console.error);
+initDatabase();

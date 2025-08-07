@@ -45,6 +45,7 @@ const Profile: React.FC = () => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -104,8 +105,22 @@ const Profile: React.FC = () => {
       return;
     }
 
+    if (!passwordForm.currentPassword.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Current password is required',
+        severity: 'error',
+      });
+      return;
+    }
+
+    setIsUpdatingPassword(true);
     try {
-      await authService.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      console.log('Attempting password update...');
+      const response = await authService.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      
+      console.log('Password update response:', response);
+      
       setSnackbar({
         open: true,
         message: 'Password updated successfully',
@@ -118,11 +133,42 @@ const Profile: React.FC = () => {
       });
       setShowPasswordForm(false);
     } catch (error: any) {
+      console.error('Password update error:', error);
+      
+      let errorMessage = 'Failed to update password';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Handle specific error cases
+      if (error.response?.status === 401) {
+        if (error.response?.data?.message?.includes('Password is incorrect')) {
+          errorMessage = 'Current password is incorrect';
+        } else {
+          errorMessage = 'Authentication failed. Please log in again.';
+          // Optionally redirect to login
+          // window.location.href = '/login';
+        }
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data.message || 'Invalid password format';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server is currently unavailable. Please try again later.';
+      }
+      
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Failed to update password',
+        message: errorMessage,
         severity: 'error',
       });
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -345,6 +391,7 @@ const Profile: React.FC = () => {
                         type={showNewPassword ? 'text' : 'password'}
                         value={passwordForm.newPassword}
                         onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}
+                        helperText="Password must be at least 6 characters long"
                         InputProps={{
                           endAdornment: (
                             <Button
@@ -365,6 +412,8 @@ const Profile: React.FC = () => {
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={passwordForm.confirmPassword}
                         onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}
+                        helperText={passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword ? "Passwords don't match" : ""}
+                        error={passwordForm.confirmPassword !== '' && passwordForm.newPassword !== passwordForm.confirmPassword}
                         InputProps={{
                           endAdornment: (
                             <Button
@@ -383,9 +432,9 @@ const Profile: React.FC = () => {
                         <Button
                           variant="contained"
                           onClick={handlePasswordChange}
-                          disabled={!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                          disabled={!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword || isUpdatingPassword}
                         >
-                          Update Password
+                          {isUpdatingPassword ? 'Updating...' : 'Update Password'}
                         </Button>
                         <Button
                           variant="outlined"

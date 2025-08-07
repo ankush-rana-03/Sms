@@ -61,10 +61,19 @@ class AuthService {
   }
 
   async updatePassword(currentPassword: string, newPassword: string): Promise<LoginResponse> {
-    return apiService.put<LoginResponse>('/auth/updatepassword', {
-      currentPassword,
-      newPassword,
-    });
+    try {
+      console.log('AuthService: Updating password...');
+      const response = await apiService.put<LoginResponse>('/auth/updatepassword', {
+        currentPassword,
+        newPassword,
+      });
+      
+      console.log('AuthService: Password update response:', response);
+      return response;
+    } catch (error: any) {
+      console.error('AuthService: Password update error:', error);
+      throw error;
+    }
   }
 
   async forgotPassword(email: string): Promise<{ success: boolean; data: string }> {

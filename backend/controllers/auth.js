@@ -165,18 +165,46 @@ exports.updateDetails = async (req, res, next) => {
 // @access  Private
 exports.updatePassword = async (req, res, next) => {
   try {
+    console.log('updatePassword called with user:', req.user?.id);
+    console.log('updatePassword request body:', { 
+      hasCurrentPassword: !!req.body.currentPassword,
+      hasNewPassword: !!req.body.newPassword,
+      currentPasswordLength: req.body.currentPassword?.length,
+      newPasswordLength: req.body.newPassword?.length
+    });
+
+    if (!req.body.currentPassword || !req.body.newPassword) {
+      return next(new ErrorResponse('Current password and new password are required', 400));
+    }
+
+    if (req.body.newPassword.length < 6) {
+      return next(new ErrorResponse('New password must be at least 6 characters long', 400));
+    }
+
     const user = await User.findById(req.user.id).select('+password');
+    
+    if (!user) {
+      return next(new ErrorResponse('User not found', 404));
+    }
+
+    console.log('User found:', user.email);
 
     // Check current password
-    if (!(await user.matchPassword(req.body.currentPassword))) {
+    const isCurrentPasswordValid = await user.matchPassword(req.body.currentPassword);
+    console.log('Current password validation:', isCurrentPasswordValid);
+    
+    if (!isCurrentPasswordValid) {
       return next(new ErrorResponse('Password is incorrect', 401));
     }
 
     user.password = req.body.newPassword;
     await user.save();
 
+    console.log('Password updated successfully for user:', user.email);
+
     sendTokenResponse(user, 200, res);
   } catch (err) {
+    console.error('updatePassword error:', err);
     next(err);
   }
 };

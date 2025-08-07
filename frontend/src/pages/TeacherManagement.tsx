@@ -491,42 +491,35 @@ const TeacherManagement: React.FC = () => {
       // Transform the data to match the backend expected format
       const transformedAssignments = assignmentsToSave.flatMap(assignment => 
         assignment.subjects.map(subject => {
-          // First, try to find the class ID based on the class name and section
-          const classData = availableClasses.find(c => 
-            c.name === assignment.className && c.section === assignment.section
-          );
-          
-          console.log(`Looking for class: ${assignment.className} - Section: ${assignment.section}`);
-          console.log('Found class data:', classData);
-          
-          if (classData) {
-            return {
-              class: classData._id, // Use the actual class ID
-              section: assignment.section,
-              subject: subject,
-              grade: classData.grade
-            };
+          let classId = assignment.class;
+          let grade = assignment.className;
+
+          // If we have a class ID (24 characters = MongoDB ObjectId), use it directly
+          if (assignment.class && assignment.class.length === 24) {
+            classId = assignment.class;
+            grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
+          } else {
+            // Try to find the class in available classes
+            const classData = availableClasses.find(c => 
+              c.name === assignment.className && c.section === assignment.section
+            );
+            
+            if (classData) {
+              classId = classData._id;
+              grade = classData.grade || assignment.className.replace('Class ', '').replace('Class', '').trim();
+            } else {
+              // If class doesn't exist, we'll let the backend create it
+              // Use the class name as a temporary identifier
+              classId = assignment.className;
+              grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
+            }
           }
-          
-          // If we can't find the class in available classes, try to use the class ID directly if it's already an ID
-          if (assignment.class && assignment.class.length === 24) { // MongoDB ObjectId length
-            console.log('Using existing class ID:', assignment.class);
-            return {
-              class: assignment.class,
-              section: assignment.section,
-              subject: subject,
-              grade: assignment.className.replace('Class ', '') // Extract grade from class name
-            };
-          }
-          
-          // If we still can't find it, create a fallback using the class name as ID
-          // This will work for predefined classes that may not exist in the database yet
-          console.log('Creating fallback assignment for:', assignment.className, assignment.section);
+
           return {
-            class: assignment.className, // Use class name as fallback ID
+            class: classId,
             section: assignment.section,
             subject: subject,
-            grade: assignment.className // Use full class name as grade
+            grade: grade
           };
         })
       );
@@ -543,6 +536,10 @@ const TeacherManagement: React.FC = () => {
         showSnackbar('Subject assignments updated successfully', 'success');
         // Update teacher in UI
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+        // Close the dialog
+        setOpenSubjectAssignmentDialog(false);
+        // Refresh available classes in case new ones were created
+        fetchAvailableClasses();
       } else {
         showSnackbar(response.message || 'Error updating subject assignments', 'error');
       }
@@ -621,7 +618,8 @@ const TeacherManagement: React.FC = () => {
       setAssignments(prev => prev.map((a, index) => 
         index === assignmentForm.editingIndex ? { 
           ...a, 
-          className: assignmentForm.class, 
+          class: assignmentForm.class,
+          className: assignmentForm.class,
           section: assignmentForm.section, 
           subjects 
         } : a
@@ -634,7 +632,7 @@ const TeacherManagement: React.FC = () => {
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
     setAssignmentForm({
-      class: assignment.className, // Use className for display in the form
+      class: assignment.className || assignment.class, // Use className if available, otherwise use class
       section: assignment.section,
       subjectsInput: assignment.subjects.join(', '),
       editingIndex: index
@@ -1326,7 +1324,7 @@ const TeacherManagement: React.FC = () => {
                   onClick={handleAddOrUpdateAssignment}
                   sx={{ mt: 1 }}
                 >
-                  {assignmentForm.editingIndex === null ? 'Add Assignment' : 'Update Assignment'}
+                  {assignmentForm.editingIndex === -1 ? 'Add Assignment' : 'Update Assignment'}
                 </Button>
               </Grid>
             </Grid>
@@ -1335,9 +1333,8 @@ const TeacherManagement: React.FC = () => {
             <Button onClick={() => setOpenSubjectAssignmentDialog(false)}>Cancel</Button>
             <Button
               variant="contained"
-              onClick={() => {
-                handleSaveSubjectAssignments(assignments);
-                setOpenSubjectAssignmentDialog(false);
+              onClick={async () => {
+                await handleSaveSubjectAssignments(assignments);
               }}
             >
               Save All Assignments

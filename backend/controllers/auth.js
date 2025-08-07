@@ -175,6 +175,21 @@ exports.updatePassword = async (req, res, next) => {
     user.password = req.body.newPassword;
     await user.save();
 
+    // Send email notification about password change
+    try {
+      const emailService = require('../services/emailService');
+      await emailService.sendPasswordChangeNotification({
+        name: user.name,
+        email: user.email,
+        role: user.role
+      });
+      
+      console.log('Password change notification email sent successfully to:', user.email);
+    } catch (emailError) {
+      console.error('Error sending password change notification email:', emailError);
+      // Don't fail the password update if email fails
+    }
+
     sendTokenResponse(user, 200, res);
   } catch (err) {
     next(err);

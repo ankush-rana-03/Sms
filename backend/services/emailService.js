@@ -1,20 +1,48 @@
 const nodemailer = require('nodemailer');
+const path = require('path');
+
+// Load environment variables from the backend directory
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Email service for sending notifications
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-      }
-    });
+    this.initializeTransporter();
+  }
+
+  initializeTransporter() {
+    // Check if email credentials are available
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.error('⚠️ Email credentials not found in environment variables');
+      console.error('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'Missing');
+      console.error('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? 'Set' : 'Missing');
+      this.transporter = null;
+      return;
+    }
+
+    try {
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD
+        }
+      });
+      console.log('✅ Email transporter initialized successfully');
+    } catch (error) {
+      console.error('❌ Error initializing email transporter:', error);
+      this.transporter = null;
+    }
   }
 
   // Send welcome email to newly registered teacher
   async sendTeacherWelcomeEmail(teacherData, temporaryPassword) {
     try {
+      if (!this.transporter) {
+        console.error('Email transporter not initialized');
+        throw new Error('Email service not configured');
+      }
+
       const {
         name,
         email,
@@ -376,6 +404,11 @@ class EmailService {
   // Send admin password reset notification email
   async sendAdminPasswordResetEmail(teacherData, newPassword) {
     try {
+      if (!this.transporter) {
+        console.error('Email transporter not initialized');
+        throw new Error('Email service not configured');
+      }
+
       const {
         name,
         email,
@@ -609,6 +642,233 @@ class EmailService {
           </div>
 
           <p>Thank you for your understanding and cooperation.</p>
+
+          <p>Best regards,<br>
+          <strong>${process.env.SCHOOL_NAME || 'School Management System'} Administration</strong></p>
+
+          <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p>© ${new Date().getFullYear()} ${process.env.SCHOOL_NAME || 'School Management System'}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Send password change notification email
+  async sendPasswordChangeNotification(userData) {
+    try {
+      if (!this.transporter) {
+        console.error('Email transporter not initialized');
+        throw new Error('Email service not configured');
+      }
+
+      const {
+        name,
+        email,
+        role
+      } = userData;
+
+      const loginUrl = process.env.FRONTEND_URL || 'https://school-management-app-demo.netlify.app';
+      
+      const mailOptions = {
+        from: `"${process.env.SCHOOL_NAME || 'School Management System'}" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Password Changed - ${process.env.SCHOOL_NAME || 'School Management System'}`,
+        html: this.generatePasswordChangeNotificationHTML({
+          name,
+          email,
+          role,
+          loginUrl
+        })
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('Password change notification email sent successfully to:', email);
+      return result;
+    } catch (error) {
+      console.error('Error sending password change notification email:', error);
+      throw error;
+    }
+  }
+
+  // Generate HTML content for password change notification email
+  generatePasswordChangeNotificationHTML(data) {
+    const {
+      name,
+      email,
+      role,
+      loginUrl
+    } = data;
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Changed Notification</title>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+          }
+          .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+          }
+          .header {
+            text-align: center;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .school-name {
+            color: #2E7D32;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          .notification-message {
+            font-size: 18px;
+            color: #666;
+          }
+          .user-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+          }
+          .info-label {
+            font-weight: bold;
+            color: #555;
+          }
+          .info-value {
+            color: #333;
+          }
+          .login-section {
+            background-color: #e8f5e8;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .login-button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px 0;
+            transition: background-color 0.3s;
+          }
+          .login-button:hover {
+            background-color: #45a049;
+          }
+          .important-note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+          }
+          .contact-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="school-name">${process.env.SCHOOL_NAME || 'School Management System'}</div>
+            <div class="notification-message">🔐 Password Changed Successfully</div>
+          </div>
+
+          <p>Dear <strong>${name}</strong>,</p>
+
+          <p>Your password for the <strong>${process.env.SCHOOL_NAME || 'School Management System'}</strong> has been successfully changed.</p>
+
+          <div class="user-info">
+            <h3 style="color: #4CAF50; margin-top: 0;">Account Information</h3>
+            <div class="info-row">
+              <span class="info-label">Name:</span>
+              <span class="info-value">${name}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Email:</span>
+              <span class="info-value">${email}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Role:</span>
+              <span class="info-value">${role}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Change Time:</span>
+              <span class="info-value">${new Date().toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div class="login-section">
+            <h3 style="color: #4CAF50; margin-top: 0;">🔐 Access Your Account</h3>
+            <p>You can now access the School Management System with your new password:</p>
+            
+            <a href="${loginUrl}" class="login-button">Login to School Management System</a>
+          </div>
+
+          <div class="important-note">
+            <h4 style="color: #856404; margin-top: 0;">⚠️ Security Notice</h4>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              <li>Your password has been successfully updated.</li>
+              <li>If you did not make this change, please contact the IT department immediately.</li>
+              <li>Always log out of your account when using shared computers.</li>
+              <li>Keep your password secure and do not share it with anyone.</li>
+            </ul>
+          </div>
+
+          <h3 style="color: #4CAF50;">🎯 Next Steps</h3>
+          <ul>
+            <li><strong>Login:</strong> Use your new password to access your account</li>
+            <li><strong>Security:</strong> Ensure your account information is up to date</li>
+            <li><strong>Contact Support:</strong> If you have any issues accessing your account</li>
+          </ul>
+
+          <div class="contact-info">
+            <h4 style="color: #4CAF50; margin-top: 0;">📞 Need Help?</h4>
+            <p>If you have any questions or need assistance, please don't hesitate to reach out:</p>
+            <p><strong>IT Support:</strong> ${process.env.IT_EMAIL || 'it@school.com'}</p>
+            <p><strong>Administration:</strong> ${process.env.ADMIN_EMAIL || 'admin@school.com'}</p>
+          </div>
+
+          <p>Thank you for keeping your account secure.</p>
 
           <p>Best regards,<br>
           <strong>${process.env.SCHOOL_NAME || 'School Management System'} Administration</strong></p>

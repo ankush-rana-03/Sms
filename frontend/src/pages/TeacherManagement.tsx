@@ -48,7 +48,7 @@ import {
   CheckCircle,
   Assignment
 } from '@mui/icons-material';
-import SubjectClassAssignment from '../components/SubjectClassAssignment';
+
 
 interface Teacher {
   _id: string;
@@ -162,7 +162,7 @@ const TeacherManagement: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openLoginLogsDialog, setOpenLoginLogsDialog] = useState(false);
   const [openPasswordResetDialog, setOpenPasswordResetDialog] = useState(false);
-  const [openClassAssignmentDialog, setOpenClassAssignmentDialog] = useState(false);
+
   const [openSubjectAssignmentDialog, setOpenSubjectAssignmentDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
@@ -187,19 +187,9 @@ const TeacherManagement: React.FC = () => {
     section: string;
     grade: string;
   }>>([]);
-  const [selectedClasses, setSelectedClasses] = useState<Array<{
-    class: string;
-    section: string;
-    subject: string;
-    grade: string;
-  }>>([]);
 
-  // Form state for Subject Assignment Dialog
-  const [formData, setFormData] = useState({
-    classId: '',
-    section: '',
-    subjectsInput: '',
-  });
+
+
 
   // Add teacherFormData state for create/edit dialog
   const [teacherFormData, setTeacherFormData] = useState({
@@ -226,7 +216,7 @@ const TeacherManagement: React.FC = () => {
   });
 
   // New state for Assign Classes & Subjects dialog
-  const [assignments, setAssignments] = useState<{ class: string, section: string, subjects: string[] }[]>([]);
+  const [assignments, setAssignments] = useState<{ class: string, className: string, section: string, subjects: string[] }[]>([]);
   const [assignmentForm, setAssignmentForm] = useState({
     class: '',
     section: '',
@@ -424,33 +414,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleAssignClasses = async () => {
-    if (!selectedTeacher) return;
-    
-    // Allow assigning empty array (no classes)
-    // Remove the validation that requires at least one class
-
-    try {
-      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
-        `/admin/teachers/${selectedTeacher._id}/assign-classes`,
-        { assignedClasses: selectedClasses }
-      );
-
-      if (response.success) {
-        showSnackbar('Classes assigned successfully', 'success');
-        setOpenClassAssignmentDialog(false);
-        setSelectedClasses([]);
-        // Update teacher in UI
-        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
-        // Removed fetchStatistics here
-      } else {
-        showSnackbar(response.message || 'Error assigning classes', 'error');
-      }
-    } catch (error: any) {
-      console.error('Error assigning classes:', error);
-      showSnackbar(error.response?.data?.message || 'Error assigning classes', 'error');
-    }
-  };
+  
 
   const handleOpenEditDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
@@ -498,35 +462,59 @@ const TeacherManagement: React.FC = () => {
     setOpenPasswordResetDialog(true);
   };
 
-  const handleOpenClassAssignmentDialog = (teacher: Teacher) => {
-    setSelectedTeacher(teacher);
-    setSelectedClasses(teacher.assignedClasses.map(ac => ({
-      class: ac.class._id,
-      section: ac.section,
-      subject: ac.subject,
-      grade: ac.grade
-    })));
-    setOpenClassAssignmentDialog(true);
-  };
+
 
   const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
-    setAssignments(teacher.assignedClasses.map(ac => ({
-      class: ac.class.name,
-      section: ac.section,
-      subjects: [ac.subject]
-    })));
+    
+    // Group assignments by class and section to combine subjects
+    const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
+      const key = `${ac.class._id}-${ac.section}`;
+      if (!acc[key]) {
+        acc[key] = {
+          class: ac.class._id, // Use class ID instead of name
+          className: ac.class.name, // Keep class name for display
+          section: ac.section,
+          subjects: []
+        };
+      }
+      acc[key].subjects.push(ac.subject);
+      return acc;
+    }, {} as Record<string, { class: string; className: string; section: string; subjects: string[] }>);
+
+    setAssignments(Object.values(groupedAssignments));
     setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
     setOpenSubjectAssignmentDialog(true);
   };
 
-  const handleSaveSubjectAssignments = async (assignmentsToSave: { class: string, section: string, subjects: string[] }[]) => {
+  const handleSaveSubjectAssignments = async (assignmentsToSave: { class: string, className: string, section: string, subjects: string[] }[]) => {
     if (!selectedTeacher) return;
 
     try {
+      // Transform the data to match the backend expected format
+      const transformedAssignments = assignmentsToSave.flatMap(assignment => 
+        assignment.subjects.map(subject => {
+          // Find the class ID based on the class name and section
+          const classData = availableClasses.find(c => 
+            c.name === assignment.className && c.section === assignment.section
+          );
+          
+          if (!classData) {
+            throw new Error(`Class ${assignment.className} - Section ${assignment.section} not found`);
+          }
+
+          return {
+            class: classData._id, // Use the actual class ID
+            section: assignment.section,
+            subject: subject,
+            grade: classData.grade
+          };
+        })
+      );
+
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes`,
-        { assignedClasses: assignmentsToSave }
+        { assignedClasses: transformedAssignments }
       );
 
       if (response.success) {
@@ -543,10 +531,16 @@ const TeacherManagement: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      classId: '',
-      section: '',
-      subjectsInput: '',
+    setTeacherFormData({
+      name: '',
+      email: '',
+      phone: '',
+      designation: 'TGT',
+      qualification: { degree: '', institution: '', yearOfCompletion: new Date().getFullYear() },
+      experience: { years: 0, previousSchools: [] },
+      joiningDate: '',
+      salary: 0,
+      emergencyContact: { name: '', phone: '', relationship: '' }
     });
   };
 
@@ -578,37 +572,37 @@ const TeacherManagement: React.FC = () => {
     return `${hours}h ${mins}m`;
   };
 
-  const handleClassSelection = (classId: string, section: string, grade: string, subject: string) => {
-    const existingIndex = selectedClasses.findIndex(
-      sc => sc.class === classId && sc.section === section
-    );
 
-    if (existingIndex >= 0) {
-      // Remove if already selected
-      setSelectedClasses(selectedClasses.filter((_, index) => index !== existingIndex));
-    } else {
-      // Add new selection
-      setSelectedClasses([...selectedClasses, { class: classId, section, subject, grade }]);
-    }
-  };
-
-  const isClassSelected = (classId: string, section: string) => {
-    return selectedClasses.some(sc => sc.class === classId && sc.section === section);
-  };
 
   const handleAddOrUpdateAssignment = () => {
     if (!selectedTeacher) return;
 
-    const classSection = `${assignmentForm.class} - ${assignmentForm.section}`;
+    if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectsInput.trim()) {
+      showSnackbar('Please fill in all fields', 'error');
+      return;
+    }
+
     const subjects = assignmentForm.subjectsInput.split(',').map(s => s.trim()).filter(Boolean);
 
     if (assignmentForm.editingIndex === -1) {
-      // Add new assignment
-      setAssignments(prev => [...prev, { class: classSection, section: assignmentForm.section, subjects }]);
+      // Add new assignment - we need to find the class ID based on the class name
+      // For now, we'll use a placeholder approach - in a real app, you'd want to fetch available classes
+      const newAssignment = {
+        class: assignmentForm.class, // This should be a class ID, but we're using name for now
+        className: assignmentForm.class,
+        section: assignmentForm.section,
+        subjects
+      };
+      setAssignments(prev => [...prev, newAssignment]);
     } else {
       // Update existing assignment
       setAssignments(prev => prev.map((a, index) => 
-        index === assignmentForm.editingIndex ? { ...a, class: classSection, section: assignmentForm.section, subjects } : a
+        index === assignmentForm.editingIndex ? { 
+          ...a, 
+          className: assignmentForm.class, 
+          section: assignmentForm.section, 
+          subjects 
+        } : a
       ));
     }
     setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
@@ -617,7 +611,7 @@ const TeacherManagement: React.FC = () => {
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
     setAssignmentForm({
-      class: assignment.class,
+      class: assignment.className, // Use className for display in the form
       section: assignment.section,
       subjectsInput: assignment.subjects.join(', '),
       editingIndex: index
@@ -1247,7 +1241,7 @@ const TeacherManagement: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 120 }}>{a.class} - {a.section}</Typography>
+                    <Typography sx={{ minWidth: 120 }}>{a.className} - {a.section}</Typography>
                     <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>

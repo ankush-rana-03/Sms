@@ -1,3 +1,4 @@
+require('dotenv').config({ path: './backend/.env' });
 const emailService = require('./backend/services/emailService');
 
 async function testEmailService() {

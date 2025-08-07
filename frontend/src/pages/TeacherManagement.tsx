@@ -1280,7 +1280,7 @@ const TeacherManagement: React.FC = () => {
                       <Select
                         value={assignmentForm.class}
                         onChange={e => {
-                          setAssignmentForm({ ...assignmentForm, class: e.target.value, section: '' });
+                          setAssignmentForm({ ...assignmentForm, class: e.target.value });
                         }}
                         label="Class"
                       >
@@ -1292,30 +1292,24 @@ const TeacherManagement: React.FC = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Section</InputLabel>
-                  <Select
-                    value={assignmentForm.section}
-                    onChange={e => {
-                      setAssignmentForm({ ...assignmentForm, section: e.target.value });
-                    }}
-                    label="Section"
-                    disabled={!assignmentForm.class}
-                  >
-                    {availableClasses
-                      .filter(cls => cls.name === assignmentForm.class)
-                      .map(cls => (
-                        <MenuItem key={cls.section} value={cls.section}>
-                          Section {cls.section}
-                        </MenuItem>
-                      ))}
-                    {availableClasses.filter(cls => cls.name === assignmentForm.class).length === 0 && (
-                      <MenuItem disabled>No sections available for this class</MenuItem>
-                    )}
-                  </Select>
-                </FormControl>
-              </Grid>
+                                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                      <InputLabel>Section</InputLabel>
+                      <Select
+                        value={assignmentForm.section}
+                        onChange={e => {
+                          setAssignmentForm({ ...assignmentForm, section: e.target.value });
+                        }}
+                        label="Section"
+                      >
+                        {Array.from(new Set(availableClasses.map(cls => cls.section))).map(section => (
+                          <MenuItem key={section} value={section}>
+                            Section {section}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth

@@ -519,8 +519,15 @@ const TeacherManagement: React.FC = () => {
             };
           }
           
-          // If we still can't find it, show an error instead of using fallback
-          throw new Error(`Class ${assignment.className} - Section ${assignment.section} not found. Please make sure the class exists in the system.`);
+          // If we still can't find it, create a fallback using the class name as ID
+          // This will work for predefined classes that may not exist in the database yet
+          console.log('Creating fallback assignment for:', assignment.className, assignment.section);
+          return {
+            class: assignment.className, // Use class name as fallback ID
+            section: assignment.section,
+            subject: subject,
+            grade: assignment.className.replace('Class ', '') // Extract grade from class name
+          };
         })
       );
 
@@ -1266,14 +1273,6 @@ const TeacherManagement: React.FC = () => {
             )}
             {/* Add/Edit Assignment Form */}
             <Grid container spacing={2}>
-              {availableClasses.length === 0 ? (
-                <Grid item xs={12}>
-                  <Alert severity="warning">
-                    No classes available. Please create classes first before assigning subjects to teachers.
-                  </Alert>
-                </Grid>
-              ) : (
-                <>
                   <Grid item xs={12} md={4}>
                     <FormControl fullWidth>
                       <InputLabel>Class</InputLabel>
@@ -1284,7 +1283,7 @@ const TeacherManagement: React.FC = () => {
                         }}
                         label="Class"
                       >
-                        {Array.from(new Set(availableClasses.map(cls => cls.name))).map(className => (
+                        {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
                           <MenuItem key={className} value={className}>
                             {className}
                           </MenuItem>
@@ -1302,7 +1301,7 @@ const TeacherManagement: React.FC = () => {
                         }}
                         label="Section"
                       >
-                        {Array.from(new Set(availableClasses.map(cls => cls.section))).map(section => (
+                        {['A', 'B', 'C', 'D', 'E'].map(section => (
                           <MenuItem key={section} value={section}>
                             Section {section}
                           </MenuItem>
@@ -1329,8 +1328,6 @@ const TeacherManagement: React.FC = () => {
                   {assignmentForm.editingIndex === null ? 'Add Assignment' : 'Update Assignment'}
                 </Button>
               </Grid>
-                </>
-              )}
             </Grid>
           </DialogContent>
           <DialogActions>

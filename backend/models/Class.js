@@ -6,6 +6,10 @@ const classSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  grade: {
+    type: String,
+    required: false // Optional for backward compatibility
+  },
   section: {
     type: String,
     required: true

@@ -504,7 +504,7 @@ const TeacherManagement: React.FC = () => {
               class: classData._id, // Use the actual class ID
               section: assignment.section,
               subject: subject,
-              grade: classData.grade
+              grade: classData.grade || classData.name
             };
           }
           
@@ -515,7 +515,7 @@ const TeacherManagement: React.FC = () => {
               class: assignment.class,
               section: assignment.section,
               subject: subject,
-              grade: assignment.className.replace('Class ', '') // Extract grade from class name
+              grade: assignment.className // Keep full class name as grade
             };
           }
           
@@ -526,7 +526,8 @@ const TeacherManagement: React.FC = () => {
             class: assignment.className, // Use class name as fallback ID
             section: assignment.section,
             subject: subject,
-            grade: assignment.className // Use full class name as grade
+            grade: assignment.className, // Use full class name as grade
+            isNewClass: true // Flag to indicate this is a new class that needs creation
           };
         })
       );
@@ -543,12 +544,18 @@ const TeacherManagement: React.FC = () => {
         showSnackbar('Subject assignments updated successfully', 'success');
         // Update teacher in UI
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+        // Close the dialog after successful save
+        setOpenSubjectAssignmentDialog(false);
+        // Clear assignments state
+        setAssignments([]);
       } else {
         showSnackbar(response.message || 'Error updating subject assignments', 'error');
       }
     } catch (error: any) {
       console.error('Error updating subject assignments:', error);
-      showSnackbar(error.response?.data?.message || error.message || 'Error updating subject assignments', 'error');
+      const errorMessage = error.response?.data?.message || error.message || 'Error updating subject assignments';
+      console.error('Full error details:', error.response?.data || error);
+      showSnackbar(errorMessage, 'error');
     }
   };
 
@@ -620,7 +627,8 @@ const TeacherManagement: React.FC = () => {
       // Update existing assignment
       setAssignments(prev => prev.map((a, index) => 
         index === assignmentForm.editingIndex ? { 
-          ...a, 
+          ...a,
+          class: assignmentForm.class, // Update the class ID as well
           className: assignmentForm.class, 
           section: assignmentForm.section, 
           subjects 
@@ -896,7 +904,7 @@ const TeacherManagement: React.FC = () => {
                             {(teacher.assignedClasses || []).slice(0, 2).map((ac, index) => (
                               <Chip
                                 key={index}
-                                label={`${ac.class?.grade || ''}${ac.section || ''}`}
+                                label={`Class ${ac.class?.grade || ''}${ac.section ? ` Section ${ac.section}` : ''}`}
                                 size="small"
                                 color="primary"
                               />
@@ -1264,7 +1272,7 @@ const TeacherManagement: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 150 }}>{a.className} - Section {a.section}</Typography>
+                    <Typography sx={{ minWidth: 150 }}>Class {a.className} - Section {a.section}</Typography>
                     <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>

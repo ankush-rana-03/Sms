@@ -699,6 +699,7 @@ exports.assignClassesToTeacher = async (req, res) => {
             try {
               classExists = await Class.create({
                 name: assignment.class,
+                grade: assignment.grade || assignment.class, // Add grade field
                 section: assignment.section,
                 academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
                 roomNumber: 'TBD',

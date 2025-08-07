@@ -3,13 +3,32 @@ const nodemailer = require('nodemailer');
 // Email service for sending notifications
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-      }
-    });
+    this.initializeTransporter();
+  }
+
+  initializeTransporter() {
+    // Check if email credentials are available
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.error('⚠️ Email credentials not found in environment variables');
+      console.error('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'Missing');
+      console.error('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? 'Set' : 'Missing');
+      this.transporter = null;
+      return;
+    }
+
+    try {
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD
+        }
+      });
+      console.log('✅ Email transporter initialized successfully');
+    } catch (error) {
+      console.error('❌ Error initializing email transporter:', error);
+      this.transporter = null;
+    }
   }
 
   // Send welcome email to newly registered teacher

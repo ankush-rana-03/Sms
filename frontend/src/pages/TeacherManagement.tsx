@@ -201,6 +201,30 @@ const TeacherManagement: React.FC = () => {
     subjectsInput: '',
   });
 
+  // Add teacherFormData state for create/edit dialog
+  const [teacherFormData, setTeacherFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    designation: 'TGT' as 'TGT' | 'PGT' | 'JBT' | 'NTT',
+    qualification: {
+      degree: '',
+      institution: '',
+      yearOfCompletion: new Date().getFullYear()
+    },
+    experience: {
+      years: 0,
+      previousSchools: [] as string[]
+    },
+    joiningDate: '',
+    salary: 0,
+    emergencyContact: {
+      name: '',
+      phone: '',
+      relationship: ''
+    }
+  });
+
 
   useEffect(() => {
     fetchTeachers();
@@ -288,11 +312,8 @@ const TeacherManagement: React.FC = () => {
   const handleCreateTeacher = async () => {
     try {
       const teacherData = {
-        ...formData,
+        ...teacherFormData,
         subjects: [], // Empty array since subjects are now managed through class assignments
-        contactInfo: {
-          emergencyContact: formData.emergencyContact
-        }
       };
 
       const response = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
@@ -318,11 +339,8 @@ const TeacherManagement: React.FC = () => {
 
     try {
       const teacherData = {
-        ...formData,
+        ...teacherFormData,
         subjects: selectedTeacher.subjects || [], // Keep existing subjects from teacher data
-        contactInfo: {
-          emergencyContact: formData.emergencyContact
-        }
       };
 
       const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(
@@ -426,48 +444,36 @@ const TeacherManagement: React.FC = () => {
   };
 
   const handleOpenEditDialog = (teacher: Teacher) => {
-    console.log('Opening edit dialog for teacher:', teacher);
-    console.log('Teacher contactInfo:', teacher.contactInfo);
-    console.log('Teacher emergencyContact:', teacher.contactInfo?.emergencyContact);
-    console.log('Teacher subjects:', teacher.subjects);
-    
     setSelectedTeacher(teacher);
     setDialogMode('edit');
-    
-    // Better handling of emergency contact data
-    const emergencyContact = teacher.contactInfo?.emergencyContact;
-    const formDataToSet = {
+    setTeacherFormData({
       name: teacher.name,
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
-      qualification: teacher.qualification || {
-        degree: '',
-        institution: '',
-        yearOfCompletion: new Date().getFullYear()
-      },
-      experience: teacher.experience || {
-        years: 0,
-        previousSchools: []
-      },
+      qualification: teacher.qualification || { degree: '', institution: '', yearOfCompletion: new Date().getFullYear() },
+      experience: teacher.experience || { years: 0, previousSchools: [] },
       joiningDate: teacher.joiningDate ? teacher.joiningDate.split('T')[0] : '',
       salary: teacher.salary || 0,
-      emergencyContact: {
-        name: emergencyContact?.name || '',
-        phone: emergencyContact?.phone || '',
-        relationship: emergencyContact?.relationship || ''
-      }
-    };
-    
-    console.log('Setting form data:', formDataToSet);
-    setFormData(formDataToSet);
+      emergencyContact: teacher.contactInfo?.emergencyContact || { name: '', phone: '', relationship: '' }
+    });
     setOpenDialog(true);
   };
 
   const handleOpenCreateDialog = () => {
     setSelectedTeacher(null);
     setDialogMode('create');
-    resetForm();
+    setTeacherFormData({
+      name: '',
+      email: '',
+      phone: '',
+      designation: 'TGT',
+      qualification: { degree: '', institution: '', yearOfCompletion: new Date().getFullYear() },
+      experience: { years: 0, previousSchools: [] },
+      joiningDate: '',
+      salary: 0,
+      emergencyContact: { name: '', phone: '', relationship: '' }
+    });
     setOpenDialog(true);
   };
 
@@ -947,8 +953,8 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={teacherFormData.name}
+                  onChange={(e) => setTeacherFormData({ ...teacherFormData, name: e.target.value })}
                   required
                 />
               </Grid>
@@ -957,8 +963,8 @@ const TeacherManagement: React.FC = () => {
                   fullWidth
                   label="Email"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={teacherFormData.email}
+                  onChange={(e) => setTeacherFormData({ ...teacherFormData, email: e.target.value })}
                   required
                 />
               </Grid>
@@ -966,8 +972,8 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  value={teacherFormData.phone}
+                  onChange={(e) => setTeacherFormData({ ...teacherFormData, phone: e.target.value })}
                   required
                 />
               </Grid>
@@ -975,8 +981,8 @@ const TeacherManagement: React.FC = () => {
                 <FormControl fullWidth>
                   <InputLabel>Designation</InputLabel>
                   <Select
-                    value={formData.designation}
-                    onChange={(e) => setFormData({ ...formData, designation: e.target.value as any })}
+                    value={teacherFormData.designation}
+                    onChange={(e) => setTeacherFormData({ ...teacherFormData, designation: e.target.value as any })}
                     label="Designation"
                     required
                   >
@@ -992,10 +998,10 @@ const TeacherManagement: React.FC = () => {
                   fullWidth
                   label="Experience (Years)"
                   type="number"
-                  value={formData.experience.years}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    experience: { ...formData.experience, years: Number(e.target.value) }
+                  value={teacherFormData.experience.years}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
+                    experience: { ...teacherFormData.experience, years: Number(e.target.value) }
                   })}
                 />
               </Grid>
@@ -1011,10 +1017,10 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Degree"
-                  value={formData.qualification.degree}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    qualification: { ...formData.qualification, degree: e.target.value }
+                  value={teacherFormData.qualification.degree}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
+                    qualification: { ...teacherFormData.qualification, degree: e.target.value }
                   })}
                 />
               </Grid>
@@ -1022,10 +1028,10 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Institution"
-                  value={formData.qualification.institution}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    qualification: { ...formData.qualification, institution: e.target.value }
+                  value={teacherFormData.qualification.institution}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
+                    qualification: { ...teacherFormData.qualification, institution: e.target.value }
                   })}
                 />
               </Grid>
@@ -1034,10 +1040,10 @@ const TeacherManagement: React.FC = () => {
                   fullWidth
                   label="Year of Completion"
                   type="number"
-                  value={formData.qualification.yearOfCompletion}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    qualification: { ...formData.qualification, yearOfCompletion: Number(e.target.value) }
+                  value={teacherFormData.qualification.yearOfCompletion}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
+                    qualification: { ...teacherFormData.qualification, yearOfCompletion: Number(e.target.value) }
                   })}
                 />
               </Grid>
@@ -1046,9 +1052,9 @@ const TeacherManagement: React.FC = () => {
                   fullWidth
                   label="Joining Date"
                   type="date"
-                  value={formData.joiningDate ? formData.joiningDate.split('T')[0] : ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
+                  value={teacherFormData.joiningDate ? teacherFormData.joiningDate.split('T')[0] : ''}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
                     joiningDate: e.target.value ? new Date(e.target.value).toISOString() : ''
                   })}
                   InputLabelProps={{ shrink: true }}
@@ -1059,9 +1065,9 @@ const TeacherManagement: React.FC = () => {
                   fullWidth
                   label="Salary"
                   type="number"
-                  value={formData.salary}
-                  onChange={(e) => setFormData({
-                    ...formData,
+                  value={teacherFormData.salary}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
                     salary: Number(e.target.value)
                   })}
                 />
@@ -1070,10 +1076,10 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Emergency Contact Name"
-                  value={formData.emergencyContact.name}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    emergencyContact: { ...formData.emergencyContact, name: e.target.value }
+                  value={teacherFormData.emergencyContact.name}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
+                    emergencyContact: { ...teacherFormData.emergencyContact, name: e.target.value }
                   })}
                 />
               </Grid>
@@ -1081,10 +1087,10 @@ const TeacherManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Emergency Contact Phone"
-                  value={formData.emergencyContact.phone}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    emergencyContact: { ...formData.emergencyContact, phone: e.target.value }
+                  value={teacherFormData.emergencyContact.phone}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
+                    emergencyContact: { ...teacherFormData.emergencyContact, phone: e.target.value }
                   })}
                 />
               </Grid>
@@ -1092,10 +1098,10 @@ const TeacherManagement: React.FC = () => {
                 <FormControl fullWidth>
                   <InputLabel>Emergency Contact Relationship</InputLabel>
                   <Select
-                    value={formData.emergencyContact.relationship}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      emergencyContact: { ...formData.emergencyContact, relationship: e.target.value as string }
+                    value={teacherFormData.emergencyContact.relationship}
+                    onChange={(e) => setTeacherFormData({
+                      ...teacherFormData,
+                      emergencyContact: { ...teacherFormData.emergencyContact, relationship: e.target.value as string }
                     })}
                     label="Relationship"
                   >

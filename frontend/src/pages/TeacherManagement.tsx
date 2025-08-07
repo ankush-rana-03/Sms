@@ -893,7 +893,7 @@ const TeacherManagement: React.FC = () => {
                             {(teacher.assignedClasses || []).slice(0, 2).map((ac, index) => (
                               <Chip
                                 key={index}
-                                label={`Class ${ac.class?.grade || ''}${ac.section || ''}`}
+                                label={`${ac.class?.grade || ''}${ac.section || ''}`}
                                 size="small"
                                 color="primary"
                               />
@@ -1261,7 +1261,7 @@ const TeacherManagement: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 150 }}>Class {a.className} - Section {a.section}</Typography>
+                    <Typography sx={{ minWidth: 150 }}>{a.className} - Section {a.section}</Typography>
                     <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
@@ -1284,7 +1284,7 @@ const TeacherManagement: React.FC = () => {
                   >
                     {availableClasses.map(cls => (
                       <MenuItem key={`${cls.name}-${cls.section}`} value={`${cls.name}-${cls.section}`}>
-                        Class {cls.name} - Section {cls.section}
+                        {cls.name} - Section {cls.section}
                       </MenuItem>
                     ))}
                   </Select>

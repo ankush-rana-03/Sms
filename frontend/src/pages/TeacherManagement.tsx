@@ -45,8 +45,10 @@ import {
   Person,
   Warning,
   People,
-  CheckCircle
+  CheckCircle,
+  Assignment
 } from '@mui/icons-material';
+import SubjectClassAssignment from '../components/SubjectClassAssignment';
 
 interface Teacher {
   _id: string;
@@ -161,6 +163,7 @@ const TeacherManagement: React.FC = () => {
   const [openLoginLogsDialog, setOpenLoginLogsDialog] = useState(false);
   const [openPasswordResetDialog, setOpenPasswordResetDialog] = useState(false);
   const [openClassAssignmentDialog, setOpenClassAssignmentDialog] = useState(false);
+  const [openSubjectAssignmentDialog, setOpenSubjectAssignmentDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
@@ -197,7 +200,6 @@ const TeacherManagement: React.FC = () => {
     email: '',
     phone: '',
     designation: 'TGT' as 'TGT' | 'PGT' | 'JBT' | 'NTT',
-    subjects: [] as string[],
     qualification: {
       degree: '',
       institution: '',
@@ -457,7 +459,6 @@ const TeacherManagement: React.FC = () => {
       email: teacher.email,
       phone: teacher.phone,
       designation: teacher.designation,
-      subjects: Array.isArray(teacher.subjects) ? teacher.subjects : [],
       qualification: teacher.qualification || {
         degree: '',
         institution: '',
@@ -511,13 +512,47 @@ const TeacherManagement: React.FC = () => {
     setOpenClassAssignmentDialog(true);
   };
 
+  const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setOpenSubjectAssignmentDialog(true);
+  };
+
+  const handleSaveSubjectAssignments = async (assignments: any[]) => {
+    if (!selectedTeacher) return;
+
+    try {
+      // Convert assignments to the format expected by the backend
+      const assignmentData = assignments.map(assignment => ({
+        class: assignment.classId,
+        section: assignment.section,
+        subject: assignment.subjects.join(', '), // Join subjects for the current structure
+        grade: assignment.grade
+      }));
+
+      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher._id}/assign-classes`,
+        { assignedClasses: assignmentData }
+      );
+
+      if (response.success) {
+        showSnackbar('Subject assignments updated successfully', 'success');
+        // Update teacher in UI
+        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+      } else {
+        showSnackbar(response.message || 'Error updating subject assignments', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error updating subject assignments:', error);
+      showSnackbar(error.response?.data?.message || 'Error updating subject assignments', 'error');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
       email: '',
       phone: '',
       designation: 'TGT',
-      subjects: [] as string[],
       qualification: {
         degree: '',
         institution: '',
@@ -583,23 +618,7 @@ const TeacherManagement: React.FC = () => {
     return selectedClasses.some(sc => sc.class === classId && sc.section === section);
   };
 
-  // Helper function to handle subjects input
-  const handleSubjectsChange = (value: string) => {
-    const subjects = value
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    setFormData({
-      ...formData,
-      subjects: subjects
-    });
-  };
 
-  // Helper function to format subjects for display
-  const formatSubjectsForDisplay = (subjects: string[]) => {
-    if (!Array.isArray(subjects)) return '';
-    return subjects.join(', ');
-  };
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
@@ -922,6 +941,14 @@ const TeacherManagement: React.FC = () => {
                                 <School />
                               </IconButton>
                             </Tooltip>
+                            <Tooltip title="Assign Subjects">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
+                              >
+                                <Assignment />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Deactivate">
                               <IconButton
                                 size="small"
@@ -1019,23 +1046,12 @@ const TeacherManagement: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Assign Subjects (comma separated)"
-                  value={formatSubjectsForDisplay(formData.subjects)}
-                  onChange={(e) => handleSubjectsChange(e.target.value)}
-                  helperText="Enter subjects separated by commas (e.g. Mathematics, Physics, English)"
-                  placeholder="Mathematics, Physics, English"
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Tooltip title="Enter subjects separated by commas">
-                          <School fontSize="small" color="action" />
-                        </Tooltip>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                <Alert severity="info">
+                  <Typography variant="body2">
+                    <strong>Note:</strong> Subject assignments are now managed through the "Assign Subjects" button in the teacher list. 
+                    This allows you to assign specific subjects to specific classes and sections.
+                  </Typography>
+                </Alert>
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
@@ -1264,6 +1280,23 @@ const TeacherManagement: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Subject Assignment Dialog */}
+      <SubjectClassAssignment
+        open={openSubjectAssignmentDialog}
+        onClose={() => setOpenSubjectAssignmentDialog(false)}
+        teacherId={selectedTeacher?._id || ''}
+        teacherName={selectedTeacher?.name || ''}
+        availableClasses={availableClasses}
+        currentAssignments={selectedTeacher?.assignedClasses?.map(ac => ({
+          classId: ac.class._id,
+          className: ac.class.name,
+          grade: ac.grade,
+          section: ac.section,
+          subjects: ac.subject.split(',').map(s => s.trim()).filter(Boolean)
+        })) || []}
+        onSave={handleSaveSubjectAssignments}
+      />
 
       {/* Snackbar */}
       <Snackbar

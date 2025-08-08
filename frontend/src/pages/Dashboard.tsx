@@ -78,7 +78,7 @@ const Dashboard: React.FC = () => {
       case 'teacher':
         return [
           { text: 'Mark Attendance', action: '/attendance' },
-          { text: 'Assign Homework', action: '/homework' },
+          { text: 'class Assign Homework', action: '/homework' },
           { text: 'Create Test', action: '/tests' },
           { text: 'View Results', action: '/results' },
         ];

@@ -846,7 +846,7 @@ const TeacherManagement: React.FC = () => {
                     <TableRow>
                       <TableCell>Teacher</TableCell>
                       <TableCell>Designation</TableCell>
-                      <TableCell>Subjects</TableCell>
+                      <TableCell>class Subjects</TableCell>
                       <TableCell>Classes</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Last Login</TableCell>
@@ -957,7 +957,7 @@ const TeacherManagement: React.FC = () => {
                                 <LockReset />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Assign Classes & Subjects">
+                            <Tooltip title="class Assign Classes & Subjects">
                               <IconButton size="small" onClick={() => handleOpenSubjectAssignmentDialog(teacher)}>
                                 <Assignment />
                               </IconButton>
@@ -1061,7 +1061,7 @@ const TeacherManagement: React.FC = () => {
               <Grid item xs={12}>
                 <Alert severity="info">
                   <Typography variant="body2">
-                    <strong>Note:</strong> Subject assignments are now managed through the "Assign Subjects" button in the teacher list. 
+                    <strong>Note:</strong> class Subject assignments are now managed through the "class Assign Subjects" button in the teacher list. 
                     This allows you to assign specific subjects to specific classes and sections.
                   </Typography>
                 </Alert>
@@ -1250,11 +1250,11 @@ const TeacherManagement: React.FC = () => {
       {/* Subject Assignment Dialog */}
       {openSubjectAssignmentDialog && selectedTeacher && (
         <Dialog open={openSubjectAssignmentDialog} onClose={() => setOpenSubjectAssignmentDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Assign Classes & Subjects - {selectedTeacher.name}</DialogTitle>
+          <DialogTitle>class Assign Classes & Subjects - {selectedTeacher.name}</DialogTitle>
           <DialogContent>
             <Box sx={{ mb: 2 }}>
               <Alert severity="info">
-                Assign classes and subjects to this teacher. You can edit or delete existing assignments, or add new ones below.
+                class Assign classes and subjects to this teacher. You can edit or delete existing assignments, or add new ones below.
               </Alert>
             </Box>
             {/* List of current assignments */}
@@ -1262,8 +1262,8 @@ const TeacherManagement: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 150 }}>{a.className} - Section {a.section}</Typography>
-                    <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
+                    <Typography sx={{ minWidth: 150 }}>class {a.className} - Section {a.section}</Typography>
+                    <Typography sx={{ flex: 1, ml: 2 }}>class {a.subjects.join(', ')}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
                   </Box>
@@ -1324,7 +1324,7 @@ const TeacherManagement: React.FC = () => {
                   onClick={handleAddOrUpdateAssignment}
                   sx={{ mt: 1 }}
                 >
-                  {assignmentForm.editingIndex === -1 ? 'Add Assignment' : 'Update Assignment'}
+                  {assignmentForm.editingIndex === -1 ? 'class Add Assignment' : 'class Update Assignment'}
                 </Button>
               </Grid>
             </Grid>
@@ -1337,7 +1337,7 @@ const TeacherManagement: React.FC = () => {
                 await handleSaveSubjectAssignments(assignments);
               }}
             >
-              Save All Assignments
+              class Save All Assignments
             </Button>
           </DialogActions>
         </Dialog>

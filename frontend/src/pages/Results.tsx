@@ -104,7 +104,7 @@ const Results: React.FC = () => {
 
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>
-                    Subject-wise Performance:
+                    class Subject-wise Performance:
                   </Typography>
                   {result.subjects.map((subject, index) => (
                     <Box key={index} sx={{ mb: 1 }}>

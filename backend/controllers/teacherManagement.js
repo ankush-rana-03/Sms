@@ -684,34 +684,42 @@ exports.assignClassesToTeacher = async (req, res) => {
     // Validate and create classes if they don't exist
     for (const assignment of assignedClasses) {
       if (assignment.class) {
-        let classExists = await Class.findById(assignment.class);
+        let classExists = null;
         
-        // If class doesn't exist by ID, try to find by name and section
-        if (!classExists && typeof assignment.class === 'string' && assignment.class.length !== 24) {
-          // This is a class name, not an ObjectId
+        // First, try to find by ID if it's a valid ObjectId
+        if (assignment.class.length === 24) {
+          try {
+            classExists = await Class.findById(assignment.class);
+          } catch (error) {
+            console.log('Invalid ObjectId format:', assignment.class);
+          }
+        }
+        
+        // If not found by ID, try to find by name and section
+        if (!classExists) {
           classExists = await Class.findOne({ 
             name: assignment.class, 
             section: assignment.section 
           });
-          
-          // If still not found, create the class
-          if (!classExists) {
-            try {
-              classExists = await Class.create({
-                name: assignment.class,
-                section: assignment.section,
-                academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
-                roomNumber: 'TBD',
-                capacity: 40
-              });
-              console.log(`Created new class: ${assignment.class} - Section ${assignment.section}`);
-            } catch (createError) {
-              console.error('Error creating class:', createError);
-              return res.status(400).json({
-                success: false,
-                message: `Failed to create class ${assignment.class} - Section ${assignment.section}`
-              });
-            }
+        }
+        
+        // If still not found, create the class
+        if (!classExists) {
+          try {
+            classExists = await Class.create({
+              name: assignment.class,
+              section: assignment.section,
+              academicYear: new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString(),
+              roomNumber: 'TBD',
+              capacity: 40
+            });
+            console.log(`Created new class: ${assignment.class} - Section ${assignment.section}`);
+          } catch (createError) {
+            console.error('Error creating class:', createError);
+            return res.status(400).json({
+              success: false,
+              message: `Failed to create class ${assignment.class} - Section ${assignment.section}: ${createError.message}`
+            });
           }
         }
         
@@ -727,6 +735,7 @@ exports.assignClassesToTeacher = async (req, res) => {
       }
     }
 
+    // Clear existing assignments and set new ones
     teacher.assignedClasses = assignedClasses;
     await teacher.save();
 

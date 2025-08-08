@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 const classSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   section: {
     type: String,

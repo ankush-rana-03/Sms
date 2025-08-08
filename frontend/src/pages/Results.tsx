@@ -104,12 +104,12 @@ const Results: React.FC = () => {
 
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>
-                    Subject-wise Performance:
+                    class Subject-wise Performance:
                   </Typography>
                   {result.subjects.map((subject, index) => (
                     <Box key={index} sx={{ mb: 1 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Typography variant="body2">{subject.name}</Typography>
+                        <Typography variant="body2">class {subject.name}</Typography>
                         <Typography variant="body2">
                           {subject.marks}/{subject.maxMarks}
                         </Typography>

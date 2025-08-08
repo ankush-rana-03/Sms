@@ -77,7 +77,7 @@ const Homework: React.FC = () => {
                   <Box sx={{ flexGrow: 1 }}>
                     <Typography variant="h6">{homework.title}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {homework.subject} - {homework.class}
+                      class {homework.subject} - {homework.class}
                     </Typography>
                   </Box>
                   {getStatusIcon(homework.status)}
@@ -124,7 +124,7 @@ const Homework: React.FC = () => {
                     size="small"
                   />
                   <Chip
-                    label={homework.subject}
+                    label={`class ${homework.subject}`}
                     variant="outlined"
                     size="small"
                   />

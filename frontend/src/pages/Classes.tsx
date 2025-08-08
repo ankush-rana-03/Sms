@@ -64,11 +64,11 @@ const Classes: React.FC = () => {
 
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Subjects:
+                    class Subjects:
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                     {cls.subjects.map((subject) => (
-                      <Chip key={subject} label={subject} size="small" variant="outlined" />
+                      <Chip key={subject} label={`class ${subject}`} size="small" variant="outlined" />
                     ))}
                   </Box>
                 </Box>

@@ -79,7 +79,7 @@ const Tests: React.FC = () => {
                   <Box sx={{ flexGrow: 1 }}>
                     <Typography variant="h6">{test.title}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {test.subject} - {test.class}
+                      class {test.subject} - {test.class}
                     </Typography>
                   </Box>
                 </Box>
@@ -109,7 +109,7 @@ const Tests: React.FC = () => {
                     size="small"
                   />
                   <Chip
-                    label={test.subject}
+                    label={`class ${test.subject}`}
                     variant="outlined"
                     size="small"
                   />

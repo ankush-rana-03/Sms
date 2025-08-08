@@ -151,7 +151,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
         <Box display="flex" alignItems="center" gap={1}>
           <Assignment color="primary" />
           <Typography variant="h6">
-            Subject & Class Assignment for {teacherName}
+            class Subject & Class Assignment for {teacherName}
           </Typography>
         </Box>
       </DialogTitle>
@@ -161,7 +161,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
           {/* Current Assignments */}
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom>
-              Current Assignments
+              class Current Assignments
             </Typography>
             {assignments.length === 0 ? (
               <Alert severity="info">
@@ -184,7 +184,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                             {assignment.subjects.map((subject, index) => (
                               <Chip
                                 key={index}
-                                label={subject}
+                                label={`class ${subject}`}
                                 size="small"
                                 color="secondary"
                                 sx={{ mr: 0.5, mb: 0.5 }}
@@ -214,7 +214,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
           {/* Add New Assignment */}
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom>
-              Add New Assignment
+              class Add New Assignment
             </Typography>
             
             {error && (
@@ -244,7 +244,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Subjects (comma separated)"
+                  label="class Subjects (comma separated)"
                   value={selectedSubjects}
                   onChange={(e) => setSelectedSubjects(e.target.value)}
                   placeholder="Mathematics, Physics, English"
@@ -254,7 +254,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
 
               <Grid item xs={12}>
                 <Typography variant="body2" color="textSecondary" gutterBottom>
-                  Common Subjects:
+                  class Common Subjects:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {commonSubjects.map((subject) => (
@@ -283,7 +283,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                   onClick={handleAddAssignment}
                   disabled={!selectedClass || !selectedSubjects.trim()}
                 >
-                  Add Assignment
+                  class Add Assignment
                 </Button>
               </Grid>
             </Grid>
@@ -300,7 +300,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                 • Total Classes Assigned: {assignments.length}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                • Total Subjects: {assignments.reduce((total, a) => total + a.subjects.length, 0)}
+                • class Total Subjects: {assignments.reduce((total, a) => total + a.subjects.length, 0)}
               </Typography>
               <Typography variant="body2" color="textSecondary">
                 • Available Classes: {getUnassignedClasses().length}
@@ -317,7 +317,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
           onClick={handleSave}
           startIcon={<CheckCircle />}
         >
-          Save Assignments
+          class Save Assignments
         </Button>
       </DialogActions>
     </Dialog>

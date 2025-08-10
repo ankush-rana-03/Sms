@@ -46,7 +46,8 @@ import {
   Warning,
   People,
   CheckCircle,
-  Assignment
+  Assignment,
+  Lock
 } from '@mui/icons-material';
 
 
@@ -327,17 +328,17 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleUpdateTeacher = async () => {
-    if (!selectedTeacher) return;
+  const handleUpdateTeacher = async (teacher: Teacher) => { // Added teacher parameter
+    if (!teacher) return;
 
     try {
       const teacherData = {
         ...teacherFormData,
-        subjects: selectedTeacher.subjects || [], // Keep existing subjects from teacher data
+        subjects: teacher.subjects || [], // Keep existing subjects from teacher data
       };
 
       const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(
-        `/admin/teachers/${selectedTeacher._id}`,
+        `/admin/teachers/${teacher._id}`,
         teacherData
       );
 
@@ -346,7 +347,7 @@ const TeacherManagement: React.FC = () => {
         setOpenDialog(false);
         resetForm();
         // Update the specific teacher in the UI instead of refetching all
-        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+        setTeachers(prev => prev.map(t => t._id === teacher._id ? response.data : t));
         // Refresh statistics to update designation counts and other stats
         fetchStatistics();
       } else {
@@ -378,8 +379,8 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!selectedTeacher) return;
+  const handleResetPassword = async (teacherId: string) => { // Added teacherId parameter
+    if (!teacherId) return;
     if (!newPassword.trim()) {
       showSnackbar('Please enter a new password', 'error');
       return;
@@ -387,7 +388,7 @@ const TeacherManagement: React.FC = () => {
 
     try {
       const response = await apiService.post<{ success: boolean; message: string; data: { temporaryPassword: string; emailSent: boolean } }>(
-        `/admin/teachers/${selectedTeacher._id}/reset-password`,
+        `/admin/teachers/${teacherId}/reset-password`,
         { newPassword: newPassword.trim() }
       );
 
@@ -466,7 +467,7 @@ const TeacherManagement: React.FC = () => {
       const key = `${ac.class._id}-${ac.section}`;
       if (!acc[key]) {
         acc[key] = {
-          class: ac.class._id, // Use class ID instead of name
+          class: ac.class, // Store the whole class object
           className: ac.class.name, // Keep class name for display
           section: ac.section,
           subjects: []
@@ -474,7 +475,7 @@ const TeacherManagement: React.FC = () => {
       }
       acc[key].subjects.push(ac.subject);
       return acc;
-    }, {} as Record<string, { class: string; className: string; section: string; subjects: string[] }>);
+    }, {} as Record<string, { class: any; className: string; section: string; subjects: string[] }>);
 
     setAssignments(Object.values(groupedAssignments));
     setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
@@ -495,9 +496,9 @@ const TeacherManagement: React.FC = () => {
           let grade = assignment.className;
 
           // If we have a class ID (24 characters = MongoDB ObjectId), use it directly
-          if (assignment.class && assignment.class.length === 24) {
-            classId = assignment.class;
-            grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
+          if (assignment.class && typeof assignment.class === 'object' && assignment.class._id && assignment.class._id.length === 24) {
+            classId = assignment.class._id;
+            grade = assignment.class.name.replace('Class ', '').replace('Class', '').trim();
           } else {
             // Try to find the class in available classes
             const classData = availableClasses.find(c =>
@@ -559,7 +560,7 @@ const TeacherManagement: React.FC = () => {
       if (!teacher) return;
 
       // Remove assignments for the specific class and section
-      const updatedAssignments = teacher.assignedClasses.filter(ac => 
+      const updatedAssignments = teacher.assignedClasses.filter(ac =>
         !(ac.class._id === classId && ac.section === section)
       );
 
@@ -887,9 +888,9 @@ const TeacherManagement: React.FC = () => {
                       <TableCell>Teacher</TableCell>
                       <TableCell>Designation</TableCell>
                       <TableCell>Subjects</TableCell>
-                      <TableCell>Class & Subject Assignments</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Last Login</TableCell>
+                      <TableCell>Phone</TableCell>
+                      <TableCell>Experience</TableCell>
+                      <TableCell>Salary</TableCell>
                       <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -929,195 +930,43 @@ const TeacherManagement: React.FC = () => {
                             )}
                           </Box>
                         </TableCell>
-                        <TableCell>
-                          {(teacher.assignedClasses && teacher.assignedClasses.length > 0) ? (
-                            <Box sx={{ maxWidth: 400 }}>
-                              <Table size="small" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                                <TableHead>
-                                  <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                    <TableCell sx={{ padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                      Class
-                                    </TableCell>
-                                    <TableCell sx={{ padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                      Subjects
-                                    </TableCell>
-                                    <TableCell sx={{ padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold', width: 80 }}>
-                                      Actions
-                                    </TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {(() => {
-                                    // Group assignments by class and section
-                                    const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
-                                      const key = `${ac.class?._id || ''}-${ac.section}`;
-                                      if (!acc[key]) {
-                                        acc[key] = {
-                                          class: ac.class,
-                                          section: ac.section,
-                                          subjects: []
-                                        };
-                                      }
-                                      acc[key].subjects.push(ac.subject);
-                                      return acc;
-                                    }, {} as Record<string, { class: any; section: string; subjects: string[] }>);
-
-                                    return Object.values(groupedAssignments).map((group, index) => (
-                                      <TableRow key={index} sx={{ '&:hover': { backgroundColor: '#f9f9f9' } }}>
-                                        <TableCell sx={{ padding: '6px 8px', fontSize: '0.8rem' }}>
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <Chip
-                                              label={`Class ${group.class?.name || group.class?.grade || ''}`}
-                                              size="small"
-                                              color="primary"
-                                              variant="outlined"
-                                              sx={{ fontSize: '0.7rem', height: 20 }}
-                                            />
-                                            <Chip
-                                              label={`Section ${group.section}`}
-                                              size="small"
-                                              color="secondary"
-                                              variant="outlined"
-                                              sx={{ fontSize: '0.7rem', height: 20 }}
-                                            />
-                                          </Box>
-                                        </TableCell>
-                                        <TableCell sx={{ padding: '6px 8px', fontSize: '0.8rem' }}>
-                                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                            {group.subjects.slice(0, 3).map((subject, subIndex) => (
-                                              <Chip
-                                                key={subIndex}
-                                                label={subject}
-                                                size="small"
-                                                variant="outlined"
-                                                sx={{ fontSize: '0.65rem', height: 18 }}
-                                              />
-                                            ))}
-                                            {group.subjects.length > 3 && (
-                                              <Chip
-                                                label={`+${group.subjects.length - 3}`}
-                                                size="small"
-                                                sx={{ fontSize: '0.65rem', height: 18 }}
-                                              />
-                                            )}
-                                          </Box>
-                                        </TableCell>
-                                        <TableCell sx={{ padding: '6px 8px' }}>
-                                          <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                            <Tooltip title="Edit Assignment">
-                                              <IconButton
-                                                size="small"
-                                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
-                                                sx={{ padding: '2px' }}
-                                              >
-                                                <Edit sx={{ fontSize: 14 }} />
-                                              </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Delete Assignment">
-                                              <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() => handleDeleteSpecificAssignment(teacher._id, group.class?._id, group.section)}
-                                                sx={{ padding: '2px' }}
-                                              >
-                                                <Delete sx={{ fontSize: 14 }} />
-                                              </IconButton>
-                                            </Tooltip>
-                                          </Box>
-                                        </TableCell>
-                                      </TableRow>
-                                    ));
-                                  })()}
-                                </TableBody>
-                              </Table>
-                              <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  startIcon={<Assignment />}
-                                  onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
-                                  sx={{ fontSize: '0.7rem', padding: '2px 8px' }}
-                                >
-                                  Manage Assignments
-                                </Button>
-                              </Box>
-                            </Box>
-                          ) : (
-                            <Box sx={{ textAlign: 'center', py: 2 }}>
-                              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                                No assignments
-                              </Typography>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<Assignment />}
-                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
-                                sx={{ fontSize: '0.7rem' }}
-                              >
-                                Assign Classes
-                              </Button>
-                            </Box>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Chip
-                              label={teacher.isActive ? 'Active' : 'Inactive'}
-                              color={teacher.isActive ? 'success' : 'error'}
-                              size="small"
-                            />
-                            {teacher.onlineStatus?.isOnline && (
-                              <Chip
-                                label="Online"
-                                color="primary"
-                                size="small"
-                                icon={<OnlinePrediction />}
-                              />
-                            )}
-                            {teacher.passwordResetRequired && (
-                              <Tooltip title="Password reset required">
-                                <Warning color="warning" />
-                              </Tooltip>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {teacher.user?.lastLogin ? formatDateTime(teacher.user.lastLogin) : 'Never'}
-                          </Typography>
-                        </TableCell>
+                        <TableCell>{teacher.phone || ''}</TableCell>
+                        <TableCell>{teacher.experience?.years || 0} years</TableCell>
+                        <TableCell>${teacher.salary?.toLocaleString() || 0}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <Tooltip title="Edit Teacher">
                               <IconButton
                                 size="small"
                                 onClick={() => handleOpenEditDialog(teacher)}
+                                color="primary"
                               >
                                 <Edit />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Login Logs">
+                            <Tooltip title="Assign Classes & Subjects">
                               <IconButton
                                 size="small"
-                                onClick={() => handleOpenLoginLogsDialog(teacher)}
+                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
+                                color="secondary"
                               >
-                                <History />
+                                <Assignment />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Reset Password">
                               <IconButton
                                 size="small"
-                                onClick={() => handleOpenPasswordResetDialog(teacher)}
+                                onClick={() => handleResetPassword(teacher._id)}
+                                color="warning"
                               >
-                                <LockReset />
+                                <Lock />
                               </IconButton>
                             </Tooltip>
-                            
-                            <Tooltip title="Deactivate">
+                            <Tooltip title="Delete Teacher">
                               <IconButton
                                 size="small"
-                                color="error"
                                 onClick={() => handleDeleteTeacher(teacher._id)}
+                                color="error"
                               >
                                 <Delete />
                               </IconButton>
@@ -1212,7 +1061,7 @@ const TeacherManagement: React.FC = () => {
             <Grid item xs={12}>
               <Alert severity="info">
                 <Typography variant="body2">
-                  <strong>Note:</strong> Subject assignments are now managed through the "Assign Subjects" button in the teacher list.
+                  <strong>Note:</strong> Subject assignments are now managed through the "Assign Classes & Subjects" button in the teacher list.
                   This allows you to assign specific subjects to specific classes and sections.
                 </Typography>
               </Alert>
@@ -1321,7 +1170,7 @@ const TeacherManagement: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
           <Button
-            onClick={dialogMode === 'create' ? handleCreateTeacher : handleUpdateTeacher}
+            onClick={dialogMode === 'create' ? handleCreateTeacher : () => handleUpdateTeacher(selectedTeacher!)}
             variant="contained"
           >
             {dialogMode === 'create' ? 'Create' : 'Update'}
@@ -1392,7 +1241,7 @@ const TeacherManagement: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenPasswordResetDialog(false)}>Cancel</Button>
-          <Button onClick={handleResetPassword} variant="contained" color="warning">
+          <Button onClick={() => handleResetPassword(selectedTeacher?._id!)} variant="contained" color="warning">
             Reset Password
           </Button>
         </DialogActions>
@@ -1413,7 +1262,7 @@ const TeacherManagement: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 150 }}>Class {a.className} - Section {a.section}</Typography>
+                    <Typography sx={{ minWidth: 150 }}>Class {a.className} - {a.section}</Typography>
                     <Typography sx={{ flex: 1, ml: 2 }}>Subjects: {a.subjects.join(', ')}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
@@ -1429,7 +1278,7 @@ const TeacherManagement: React.FC = () => {
                   <Select
                     value={assignmentForm.class}
                     onChange={e => {
-                      setAssignmentForm({ ...assignmentForm, class: e.target.value });
+                      setAssignmentForm({ ...assignmentForm, class: e.target.value as string });
                     }}
                     label="Class"
                   >

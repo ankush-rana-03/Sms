@@ -23,7 +23,8 @@ import {
   TableHead,
   TableBody,
   TableRow,
-  TableCell
+  TableCell,
+  Tooltip
 } from '@mui/material';
 import {
   Add,
@@ -168,55 +169,49 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
             <Typography variant="h6" gutterBottom>
               Current Assignments
             </Typography>
-            {assignments.length === 0 ? (
-              <Alert severity="info">
-                No classes assigned yet. Add assignments below.
-              </Alert>
-            ) : (
-              <Box sx={{ overflowX: 'auto' }}>
-                <Table size="small">
+            {assignments.length > 0 ? (
+              <Box sx={{ mb: 3 }}>
+                <Table size="small" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
                   <TableHead>
-                    <TableRow>
-                      <TableCell><strong>Class</strong></TableCell>
-                      <TableCell><strong>Section</strong></TableCell>
-                      <TableCell><strong>Grade</strong></TableCell>
-                      <TableCell><strong>Subjects</strong></TableCell>
-                      <TableCell align="center"><strong>Actions</strong></TableCell>
+                    <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Class</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Section</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Subjects</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', width: 100 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {assignments.map((assignment) => (
-                      <TableRow key={assignment.classId}>
+                    {assignments.map((assignment, index) => (
+                      <TableRow key={index}>
                         <TableCell>{assignment.className}</TableCell>
                         <TableCell>{assignment.section}</TableCell>
-                        <TableCell>{assignment.grade}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {assignment.subjects.map((subject, index) => (
-                              <Chip
-                                key={index}
-                                label={subject}
-                                size="small"
-                                color="secondary"
-                                variant="outlined"
-                              />
+                            {assignment.subjects.map((subject, idx) => (
+                              <Chip key={idx} label={subject} size="small" />
                             ))}
                           </Box>
                         </TableCell>
-                        <TableCell align="center">
-                          <IconButton
-                            color="error"
-                            onClick={() => handleRemoveAssignment(assignment.classId)}
-                            size="small"
-                          >
-                            <Delete />
-                          </IconButton>
+                        <TableCell>
+                          <Tooltip title="Delete Assignment">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleRemoveAssignment(assignment.classId)}
+                            >
+                              <Delete />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </Box>
+            ) : (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                No class assignments yet. Add assignments below.
+              </Alert>
             )}
           </Grid>
 
@@ -229,7 +224,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
             <Typography variant="h6" gutterBottom>
               Add New Assignment
             </Typography>
-            
+
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {error}

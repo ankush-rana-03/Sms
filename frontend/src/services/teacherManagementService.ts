@@ -14,7 +14,7 @@ export interface Teacher {
       name: string;
       grade: string;
       section: string;
-    };
+    } | null;
     section: string;
     subject: string;
     grade: string;

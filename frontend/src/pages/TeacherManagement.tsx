@@ -498,7 +498,7 @@ const TeacherManagement: React.FC = () => {
           // If we have a class ID (24 characters = MongoDB ObjectId), use it directly
           if (assignment.class && typeof assignment.class === 'object' && assignment.class._id && assignment.class._id.length === 24) {
             classId = assignment.class._id;
-            grade = assignment.class.name.replace('Class ', '').replace('Class', '').trim();
+            grade = assignment.class.name?.replace('Class ', '') || assignment.grade;
           } else {
             // Try to find the class in available classes
             const classData = availableClasses.find(c =>

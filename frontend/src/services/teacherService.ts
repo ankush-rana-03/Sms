@@ -86,7 +86,7 @@ export interface AssignedClass {
     name: string;
     grade: string;
     section: string;
-  };
+  } | null;
   section: string;
   subject: string;
   grade: string;

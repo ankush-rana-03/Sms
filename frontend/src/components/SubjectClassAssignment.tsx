@@ -175,10 +175,13 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                       <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                         <Box>
                           <Typography variant="h6" color="primary">
-                            {assignment.className} - Section {assignment.section}
+                            Class {assignment.className} - Section {assignment.section}
                           </Typography>
                           <Typography variant="body2" color="textSecondary">
                             Grade {assignment.grade}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
+                            Subjects Assigned: {assignment.subjects.join(', ')}
                           </Typography>
                           <Box sx={{ mt: 1 }}>
                             {assignment.subjects.map((subject, index) => (
@@ -234,7 +237,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                   >
                     {getAvailableClassesForSelection().map((cls) => (
                       <MenuItem key={cls._id} value={cls._id}>
-                        {cls.name} - Section {cls.section} (Grade {cls.grade})
+                        Class {cls.name} - Section {cls.section} (Grade {cls.grade})
                       </MenuItem>
                     ))}
                   </Select>
@@ -305,6 +308,18 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
               <Typography variant="body2" color="textSecondary">
                 • Available Classes: {getUnassignedClasses().length}
               </Typography>
+              {assignments.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" color="textSecondary">
+                    • Assignment Details:
+                  </Typography>
+                  {assignments.map((assignment, index) => (
+                    <Typography key={index} variant="caption" color="textSecondary" sx={{ display: 'block', ml: 2 }}>
+                      - Class {assignment.className} Section {assignment.section}: {assignment.subjects.join(', ')}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
             </Box>
           </Grid>
         </Grid>

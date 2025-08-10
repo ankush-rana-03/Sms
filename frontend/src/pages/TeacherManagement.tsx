@@ -1262,8 +1262,8 @@ const TeacherManagement: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 150 }}>{a.className} - Section {a.section}</Typography>
-                    <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
+                    <Typography sx={{ minWidth: 150 }}>Class {a.className} - Section {a.section}</Typography>
+                    <Typography sx={{ flex: 1, ml: 2 }}>Subjects: {a.subjects.join(', ')}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
                   </Box>

@@ -239,7 +239,7 @@ const TeacherManagement: React.FC = () => {
       console.log('Search term:', searchTerm);
       console.log('Designation filter:', designationFilter);
       console.log('Status filter:', statusFilter);
-      
+
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '10',
@@ -249,16 +249,16 @@ const TeacherManagement: React.FC = () => {
       });
 
       console.log('API URL:', `/admin/teachers?${params}`);
-      
+
       const data = await apiService.get<TeachersResponse>(`/admin/teachers?${params}`);
       console.log('Fetched teachers data:', data);
       console.log('Teachers array:', data.data);
       console.log('Teachers count:', data.data?.length || 0);
-      
+
       // Show all teachers returned by the API
       setTeachers(data.data || []);
       setTotalPages(data.totalPages);
-      
+
       if (!data.data || data.data.length === 0) {
         console.log('No teachers found - this might be normal if no teachers exist yet');
       }
@@ -310,7 +310,7 @@ const TeacherManagement: React.FC = () => {
       };
 
       const response = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
-      
+
       if (response.success) {
         showSnackbar(`Teacher created successfully. Temporary password: ${response.data.temporaryPassword}`, 'success');
         setOpenDialog(false);
@@ -392,10 +392,10 @@ const TeacherManagement: React.FC = () => {
       );
 
       if (response.success) {
-        const emailMessage = response.data?.emailSent 
+        const emailMessage = response.data?.emailSent
           ? 'Email notification sent to teacher with new password.'
           : 'Password reset successful.';
-        
+
         showSnackbar(`Password reset successfully! ${emailMessage}`, 'success');
         setOpenPasswordResetDialog(false);
         setNewPassword('');
@@ -408,7 +408,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  
+
 
   const handleOpenEditDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
@@ -460,7 +460,7 @@ const TeacherManagement: React.FC = () => {
 
   const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
-    
+
     // Group assignments by class and section to combine subjects
     const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
       const key = `${ac.class._id}-${ac.section}`;
@@ -489,7 +489,7 @@ const TeacherManagement: React.FC = () => {
       console.log('Available classes:', availableClasses);
 
       // Transform the data to match the backend expected format
-      const transformedAssignments = assignmentsToSave.flatMap(assignment => 
+      const transformedAssignments = assignmentsToSave.flatMap(assignment =>
         assignment.subjects.map(subject => {
           let classId = assignment.class;
           let grade = assignment.className;
@@ -500,10 +500,10 @@ const TeacherManagement: React.FC = () => {
             grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
           } else {
             // Try to find the class in available classes
-            const classData = availableClasses.find(c => 
+            const classData = availableClasses.find(c =>
               c.name === assignment.className && c.section === assignment.section
             );
-            
+
             if (classData) {
               classId = classData._id;
               grade = classData.grade || assignment.className.replace('Class ', '').replace('Class', '').trim();
@@ -615,13 +615,13 @@ const TeacherManagement: React.FC = () => {
       showSnackbar('Assignment added successfully', 'success');
     } else {
       // Update existing assignment
-      setAssignments(prev => prev.map((a, index) => 
-        index === assignmentForm.editingIndex ? { 
-          ...a, 
+      setAssignments(prev => prev.map((a, index) =>
+        index === assignmentForm.editingIndex ? {
+          ...a,
           class: assignmentForm.class,
           className: assignmentForm.class,
-          section: assignmentForm.section, 
-          subjects 
+          section: assignmentForm.section,
+          subjects
         } : a
       ));
       showSnackbar('Assignment updated successfully', 'success');
@@ -662,7 +662,7 @@ const TeacherManagement: React.FC = () => {
       {statistics && (
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ 
+            <Card sx={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
               transition: 'transform 0.2s ease-in-out',
@@ -683,7 +683,7 @@ const TeacherManagement: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ 
+            <Card sx={{
               background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
               color: 'white',
               transition: 'transform 0.2s ease-in-out',
@@ -704,7 +704,7 @@ const TeacherManagement: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ 
+            <Card sx={{
               background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
               color: '#333',
               transition: 'transform 0.2s ease-in-out',
@@ -725,7 +725,7 @@ const TeacherManagement: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ 
+            <Card sx={{
               background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
               color: '#333',
               transition: 'transform 0.2s ease-in-out',
@@ -847,7 +847,7 @@ const TeacherManagement: React.FC = () => {
                       <TableCell>Teacher</TableCell>
                       <TableCell>Designation</TableCell>
                       <TableCell>Subjects</TableCell>
-                      <TableCell>Classes</TableCell>
+                      <TableCell>Class & Subject Assignments</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Last Login</TableCell>
                       <TableCell>Actions</TableCell>
@@ -1002,170 +1002,170 @@ const TeacherManagement: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  value={teacherFormData.name}
-                  onChange={(e) => setTeacherFormData({ ...teacherFormData, name: e.target.value })}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  value={teacherFormData.email}
-                  onChange={(e) => setTeacherFormData({ ...teacherFormData, email: e.target.value })}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Phone"
-                  value={teacherFormData.phone}
-                  onChange={(e) => setTeacherFormData({ ...teacherFormData, phone: e.target.value })}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Designation</InputLabel>
-                  <Select
-                    value={teacherFormData.designation}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, designation: e.target.value as any })}
-                    label="Designation"
-                    required
-                  >
-                    <MenuItem value="TGT">TGT</MenuItem>
-                    <MenuItem value="PGT">PGT</MenuItem>
-                    <MenuItem value="JBT">JBT</MenuItem>
-                    <MenuItem value="NTT">NTT</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Experience (Years)"
-                  type="number"
-                  value={teacherFormData.experience.years}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    experience: { ...teacherFormData.experience, years: Number(e.target.value) }
-                  })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  <Typography variant="body2">
-                    <strong>Note:</strong> Subject assignments are now managed through the "Assign Subjects" button in the teacher list. 
-                    This allows you to assign specific subjects to specific classes and sections.
-                  </Typography>
-                </Alert>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Degree"
-                  value={teacherFormData.qualification.degree}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    qualification: { ...teacherFormData.qualification, degree: e.target.value }
-                  })}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Institution"
-                  value={teacherFormData.qualification.institution}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    qualification: { ...teacherFormData.qualification, institution: e.target.value }
-                  })}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Year of Completion"
-                  type="number"
-                  value={teacherFormData.qualification.yearOfCompletion}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    qualification: { ...teacherFormData.qualification, yearOfCompletion: Number(e.target.value) }
-                  })}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Joining Date"
-                  type="date"
-                  value={teacherFormData.joiningDate ? teacherFormData.joiningDate.split('T')[0] : ''}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    joiningDate: e.target.value ? new Date(e.target.value).toISOString() : ''
-                  })}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Salary"
-                  type="number"
-                  value={teacherFormData.salary}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    salary: Number(e.target.value)
-                  })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Emergency Contact Name"
-                  value={teacherFormData.emergencyContact.name}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    emergencyContact: { ...teacherFormData.emergencyContact, name: e.target.value }
-                  })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Emergency Contact Phone"
-                  value={teacherFormData.emergencyContact.phone}
-                  onChange={(e) => setTeacherFormData({
-                    ...teacherFormData,
-                    emergencyContact: { ...teacherFormData.emergencyContact, phone: e.target.value }
-                  })}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Emergency Contact Relationship</InputLabel>
-                  <Select
-                    value={teacherFormData.emergencyContact.relationship}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      emergencyContact: { ...teacherFormData.emergencyContact, relationship: e.target.value as string }
-                    })}
-                    label="Relationship"
-                  >
-                    <MenuItem value="Father">Father</MenuItem>
-                    <MenuItem value="Mother">Mother</MenuItem>
-                    <MenuItem value="Guardian">Guardian</MenuItem>
-                    <MenuItem value="Other">Other</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Name"
+                value={teacherFormData.name}
+                onChange={(e) => setTeacherFormData({ ...teacherFormData, name: e.target.value })}
+                required
+              />
             </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={teacherFormData.email}
+                onChange={(e) => setTeacherFormData({ ...teacherFormData, email: e.target.value })}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Phone"
+                value={teacherFormData.phone}
+                onChange={(e) => setTeacherFormData({ ...teacherFormData, phone: e.target.value })}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Designation</InputLabel>
+                <Select
+                  value={teacherFormData.designation}
+                  onChange={(e) => setTeacherFormData({ ...teacherFormData, designation: e.target.value as any })}
+                  label="Designation"
+                  required
+                >
+                  <MenuItem value="TGT">TGT</MenuItem>
+                  <MenuItem value="PGT">PGT</MenuItem>
+                  <MenuItem value="JBT">JBT</MenuItem>
+                  <MenuItem value="NTT">NTT</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Experience (Years)"
+                type="number"
+                value={teacherFormData.experience.years}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  experience: { ...teacherFormData.experience, years: Number(e.target.value) }
+                })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Alert severity="info">
+                <Typography variant="body2">
+                  <strong>Note:</strong> Subject assignments are now managed through the "Assign Subjects" button in the teacher list.
+                  This allows you to assign specific subjects to specific classes and sections.
+                </Typography>
+              </Alert>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Degree"
+                value={teacherFormData.qualification.degree}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  qualification: { ...teacherFormData.qualification, degree: e.target.value }
+                })}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Institution"
+                value={teacherFormData.qualification.institution}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  qualification: { ...teacherFormData.qualification, institution: e.target.value }
+                })}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Year of Completion"
+                type="number"
+                value={teacherFormData.qualification.yearOfCompletion}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  qualification: { ...teacherFormData.qualification, yearOfCompletion: Number(e.target.value) }
+                })}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Joining Date"
+                type="date"
+                value={teacherFormData.joiningDate ? teacherFormData.joiningDate.split('T')[0] : ''}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  joiningDate: e.target.value ? new Date(e.target.value).toISOString() : ''
+                })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Salary"
+                type="number"
+                value={teacherFormData.salary}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  salary: Number(e.target.value)
+                })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Emergency Contact Name"
+                value={teacherFormData.emergencyContact.name}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  emergencyContact: { ...teacherFormData.emergencyContact, name: e.target.value }
+                })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Emergency Contact Phone"
+                value={teacherFormData.emergencyContact.phone}
+                onChange={(e) => setTeacherFormData({
+                  ...teacherFormData,
+                  emergencyContact: { ...teacherFormData.emergencyContact, phone: e.target.value }
+                })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Emergency Contact Relationship</InputLabel>
+                <Select
+                  value={teacherFormData.emergencyContact.relationship}
+                  onChange={(e) => setTeacherFormData({
+                    ...teacherFormData,
+                    emergencyContact: { ...teacherFormData.emergencyContact, relationship: e.target.value as string }
+                  })}
+                  label="Relationship"
+                >
+                  <MenuItem value="Father">Father</MenuItem>
+                  <MenuItem value="Mother">Mother</MenuItem>
+                  <MenuItem value="Guardian">Guardian</MenuItem>
+                  <MenuItem value="Other">Other</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
@@ -1272,42 +1272,42 @@ const TeacherManagement: React.FC = () => {
             )}
             {/* Add/Edit Assignment Form */}
             <Grid container spacing={2}>
-                  <Grid item xs={12} md={4}>
-                    <FormControl fullWidth>
-                      <InputLabel>Class</InputLabel>
-                      <Select
-                        value={assignmentForm.class}
-                        onChange={e => {
-                          setAssignmentForm({ ...assignmentForm, class: e.target.value });
-                        }}
-                        label="Class"
-                      >
-                        {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
-                          <MenuItem key={className} value={className}>
-                            {className}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                                <Grid item xs={12} md={4}>
-                    <FormControl fullWidth>
-                      <InputLabel>Section</InputLabel>
-                      <Select
-                        value={assignmentForm.section}
-                        onChange={e => {
-                          setAssignmentForm({ ...assignmentForm, section: e.target.value });
-                        }}
-                        label="Section"
-                      >
-                        {['A', 'B', 'C', 'D', 'E'].map(section => (
-                          <MenuItem key={section} value={section}>
-                            Section {section}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Class</InputLabel>
+                  <Select
+                    value={assignmentForm.class}
+                    onChange={e => {
+                      setAssignmentForm({ ...assignmentForm, class: e.target.value });
+                    }}
+                    label="Class"
+                  >
+                    {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
+                      <MenuItem key={className} value={className}>
+                        {className}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Section</InputLabel>
+                  <Select
+                    value={assignmentForm.section}
+                    onChange={e => {
+                      setAssignmentForm({ ...assignmentForm, section: e.target.value });
+                    }}
+                    label="Section"
+                  >
+                    {['A', 'B', 'C', 'D', 'E'].map(section => (
+                      <MenuItem key={section} value={section}>
+                        Section {section}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth

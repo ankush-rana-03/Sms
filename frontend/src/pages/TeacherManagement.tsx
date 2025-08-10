@@ -217,7 +217,15 @@ const TeacherManagement: React.FC = () => {
   });
 
   // New state for Assign Classes & Subjects dialog
-  const [assignments, setAssignments] = useState<{ class: string, className: string, section: string, subjects: string[] }[]>([]);
+  // Define the type for assignments for clarity
+  interface Assignment {
+    class?: string | { _id?: string; name?: string; grade?: string; section?: string }; // Allow string or object with _id
+    className?: string; // Store class name for display if class is just an ID
+    section: string;
+    subjects: string[];
+  }
+
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [assignmentForm, setAssignmentForm] = useState({
     class: '',
     section: '',
@@ -482,7 +490,7 @@ const TeacherManagement: React.FC = () => {
     setOpenSubjectAssignmentDialog(true);
   };
 
-  const handleSaveSubjectAssignments = async (assignmentsToSave: { class: string, className: string, section: string, subjects: string[] }[]) => {
+  const handleSaveSubjectAssignments = async (assignmentsToSave: Assignment[]) => {
     if (!selectedTeacher) return;
 
     try {
@@ -490,40 +498,38 @@ const TeacherManagement: React.FC = () => {
       console.log('Available classes:', availableClasses);
 
       // Transform the data to match the backend expected format
-      const transformedAssignments = assignmentsToSave.flatMap(assignment =>
-        assignment.subjects.map(subject => {
-          let classId = assignment.class;
-          let grade = assignment.className;
+      const transformedAssignments = assignmentsToSave.flatMap(assignment => {
+        const subjects = assignment.subjects || [];
+        return subjects.map(subject => {
+          let classId = '';
+          let grade = '';
+          let section = assignment.section;
 
-          // If we have a class ID (24 characters = MongoDB ObjectId), use it directly
-          if (assignment.class && typeof assignment.class === 'object' && assignment.class._id && assignment.class._id.length === 24) {
+          // If we have a class object with an _id, use it
+          if (assignment.class && typeof assignment.class === 'object' && assignment.class._id) {
             classId = assignment.class._id;
-            grade = assignment.class.name?.replace('Class ', '') || assignment.grade;
-          } else {
-            // Try to find the class in available classes
-            const classData = availableClasses.find(c =>
-              c.name === assignment.className && c.section === assignment.section
-            );
-
+            grade = assignment.class.name?.replace('Class ', '') || assignment.className || '';
+          } else if (typeof assignment.class === 'string') {
+            // If class is just a string (e.g., a class name), try to find it
+            const classData = availableClasses.find(c => c.name === assignment.class || c.grade === assignment.class);
             if (classData) {
               classId = classData._id;
-              grade = classData.grade || assignment.className.replace('Class ', '').replace('Class', '').trim();
+              grade = classData.grade || classData.name?.replace('Class ', '') || '';
             } else {
-              // If class doesn't exist, we'll let the backend create it
-              // Use the class name as a temporary identifier
-              classId = assignment.className;
-              grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
+              // If not found, use the string as class name and derive grade
+              classId = assignment.class; // Use the name as ID for now, backend might handle creation
+              grade = assignment.className || assignment.class; // Infer grade from name
             }
           }
 
           return {
             class: classId,
-            section: assignment.section,
+            section: section,
             subject: subject,
             grade: grade
           };
-        })
-      );
+        });
+      });
 
       console.log('Transformed assignments:', transformedAssignments);
       console.log('Sending to API:', { assignedClasses: transformedAssignments });
@@ -550,45 +556,47 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleDeleteSpecificAssignment = async (teacherId: string, classId: string, section: string) => {
-    if (!window.confirm(`Are you sure you want to delete the assignment for Class ${classId} Section ${section}?`)) {
-      return;
-    }
-
-    try {
-      const teacher = teachers.find(t => t._id === teacherId);
-      if (!teacher) return;
-
-      // Remove assignments for the specific class and section
-      const updatedAssignments = teacher.assignedClasses.filter(ac =>
-        !(ac.class._id === classId && ac.section === section)
-      );
-
-      // Transform to the format expected by the backend
-      const transformedAssignments = updatedAssignments.map(ac => ({
-        class: ac.class._id,
-        section: ac.section,
-        subject: ac.subject,
-        grade: ac.grade || ac.class.grade
-      }));
-
-      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
-        `/admin/teachers/${teacherId}/assign-classes`,
-        { assignedClasses: transformedAssignments }
-      );
-
-      if (response.success) {
-        showSnackbar('Assignment deleted successfully', 'success');
-        // Update teacher in UI
-        setTeachers(prev => prev.map(t => t._id === teacherId ? response.data : t));
-      } else {
-        showSnackbar(response.message || 'Error deleting assignment', 'error');
-      }
-    } catch (error: any) {
-      console.error('Error deleting assignment:', error);
-      showSnackbar(error.response?.data?.message || 'Error deleting assignment', 'error');
-    }
-  };
+  // This function is not directly used in the UI but might be intended for deletion of specific assignments.
+  // It's kept here for completeness but commented out as it's not explicitly called.
+  // const handleDeleteSpecificAssignment = async (teacherId: string, classId: string, section: string) => {
+  //   if (!window.confirm(`Are you sure you want to delete the assignment for Class ${classId} Section ${section}?`)) {
+  //     return;
+  //   }
+  //
+  //   try {
+  //     const teacher = teachers.find(t => t._id === teacherId);
+  //     if (!teacher) return;
+  //
+  //     // Remove assignments for the specific class and section
+  //     const updatedAssignments = teacher.assignedClasses.filter(ac =>
+  //       !(ac.class._id === classId && ac.section === section)
+  //     );
+  //
+  //     // Transform to the format expected by the backend
+  //     const transformedAssignments = updatedAssignments.map(ac => ({
+  //       class: ac.class._id,
+  //       section: ac.section,
+  //       subject: ac.subject,
+  //       grade: ac.grade || ac.class.grade
+  //     }));
+  //
+  //     const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
+  //       `/admin/teachers/${teacherId}/assign-classes`,
+  //       { assignedClasses: transformedAssignments }
+  //     );
+  //
+  //     if (response.success) {
+  //       showSnackbar('Assignment deleted successfully', 'success');
+  //       // Update teacher in UI
+  //       setTeachers(prev => prev.map(t => t._id === teacherId ? response.data : t));
+  //     } else {
+  //       showSnackbar(response.message || 'Error deleting assignment', 'error');
+  //     }
+  //   } catch (error: any) {
+  //     console.error('Error deleting assignment:', error);
+  //     showSnackbar(error.response?.data?.message || 'Error deleting assignment', 'error');
+  //   }
+  // };
 
   const resetForm = () => {
     setTeacherFormData({
@@ -646,7 +654,7 @@ const TeacherManagement: React.FC = () => {
 
     if (assignmentForm.editingIndex === -1) {
       // Add new assignment
-      const newAssignment = {
+      const newAssignment: Assignment = {
         class: assignmentForm.class, // This will be the class name, we'll convert to ID when saving
         className: assignmentForm.class,
         section: assignmentForm.section,

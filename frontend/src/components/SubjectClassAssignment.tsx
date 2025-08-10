@@ -18,7 +18,12 @@ import {
   TextField,
   IconButton,
   Alert,
-  Divider
+  Divider,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell
 } from '@mui/material';
 import {
   Add,
@@ -168,44 +173,49 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                 No classes assigned yet. Add assignments below.
               </Alert>
             ) : (
-              <Box>
-                {assignments.map((assignment) => (
-                  <Card key={assignment.classId} sx={{ mb: 2 }}>
-                    <CardContent>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box>
-                          <Typography variant="h6" color="primary">
-                            Class {assignment.className} - Section {assignment.section}
-                          </Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            Grade {assignment.grade}
-                          </Typography>
-                          <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
-                            Subjects Assigned: {assignment.subjects.join(', ')}
-                          </Typography>
-                          <Box sx={{ mt: 1 }}>
+              <Box sx={{ overflowX: 'auto' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Class</strong></TableCell>
+                      <TableCell><strong>Section</strong></TableCell>
+                      <TableCell><strong>Grade</strong></TableCell>
+                      <TableCell><strong>Subjects</strong></TableCell>
+                      <TableCell align="center"><strong>Actions</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {assignments.map((assignment) => (
+                      <TableRow key={assignment.classId}>
+                        <TableCell>{assignment.className}</TableCell>
+                        <TableCell>{assignment.section}</TableCell>
+                        <TableCell>{assignment.grade}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {assignment.subjects.map((subject, index) => (
                               <Chip
                                 key={index}
                                 label={subject}
                                 size="small"
                                 color="secondary"
-                                sx={{ mr: 0.5, mb: 0.5 }}
+                                variant="outlined"
                               />
                             ))}
                           </Box>
-                        </Box>
-                        <IconButton
-                          color="error"
-                          onClick={() => handleRemoveAssignment(assignment.classId)}
-                          size="small"
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton
+                            color="error"
+                            onClick={() => handleRemoveAssignment(assignment.classId)}
+                            size="small"
+                          >
+                            <Delete />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </Box>
             )}
           </Grid>

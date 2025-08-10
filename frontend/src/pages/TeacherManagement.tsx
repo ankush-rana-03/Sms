@@ -549,6 +549,46 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
+  const handleDeleteSpecificAssignment = async (teacherId: string, classId: string, section: string) => {
+    if (!window.confirm(`Are you sure you want to delete the assignment for Class ${classId} Section ${section}?`)) {
+      return;
+    }
+
+    try {
+      const teacher = teachers.find(t => t._id === teacherId);
+      if (!teacher) return;
+
+      // Remove assignments for the specific class and section
+      const updatedAssignments = teacher.assignedClasses.filter(ac => 
+        !(ac.class._id === classId && ac.section === section)
+      );
+
+      // Transform to the format expected by the backend
+      const transformedAssignments = updatedAssignments.map(ac => ({
+        class: ac.class._id,
+        section: ac.section,
+        subject: ac.subject,
+        grade: ac.grade || ac.class.grade
+      }));
+
+      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${teacherId}/assign-classes`,
+        { assignedClasses: transformedAssignments }
+      );
+
+      if (response.success) {
+        showSnackbar('Assignment deleted successfully', 'success');
+        // Update teacher in UI
+        setTeachers(prev => prev.map(t => t._id === teacherId ? response.data : t));
+      } else {
+        showSnackbar(response.message || 'Error deleting assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error deleting assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error deleting assignment', 'error');
+    }
+  };
+
   const resetForm = () => {
     setTeacherFormData({
       name: '',
@@ -890,19 +930,134 @@ const TeacherManagement: React.FC = () => {
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {(teacher.assignedClasses || []).slice(0, 2).map((ac, index) => (
-                              <Chip
-                                key={index}
-                                label={`${ac.class?.grade || ''}${ac.section || ''}`}
+                          {(teacher.assignedClasses && teacher.assignedClasses.length > 0) ? (
+                            <Box sx={{ maxWidth: 400 }}>
+                              <Table size="small" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                                <TableHead>
+                                  <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                                    <TableCell sx={{ padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                      Class
+                                    </TableCell>
+                                    <TableCell sx={{ padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                      Subjects
+                                    </TableCell>
+                                    <TableCell sx={{ padding: '4px 8px', fontSize: '0.75rem', fontWeight: 'bold', width: 80 }}>
+                                      Actions
+                                    </TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {(() => {
+                                    // Group assignments by class and section
+                                    const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
+                                      const key = `${ac.class?._id || ''}-${ac.section}`;
+                                      if (!acc[key]) {
+                                        acc[key] = {
+                                          class: ac.class,
+                                          section: ac.section,
+                                          subjects: []
+                                        };
+                                      }
+                                      acc[key].subjects.push(ac.subject);
+                                      return acc;
+                                    }, {} as Record<string, { class: any; section: string; subjects: string[] }>);
+
+                                    return Object.values(groupedAssignments).map((group, index) => (
+                                      <TableRow key={index} sx={{ '&:hover': { backgroundColor: '#f9f9f9' } }}>
+                                        <TableCell sx={{ padding: '6px 8px', fontSize: '0.8rem' }}>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Chip
+                                              label={`Class ${group.class?.name || group.class?.grade || ''}`}
+                                              size="small"
+                                              color="primary"
+                                              variant="outlined"
+                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                            />
+                                            <Chip
+                                              label={`Section ${group.section}`}
+                                              size="small"
+                                              color="secondary"
+                                              variant="outlined"
+                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                            />
+                                          </Box>
+                                        </TableCell>
+                                        <TableCell sx={{ padding: '6px 8px', fontSize: '0.8rem' }}>
+                                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                            {group.subjects.slice(0, 3).map((subject, subIndex) => (
+                                              <Chip
+                                                key={subIndex}
+                                                label={subject}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{ fontSize: '0.65rem', height: 18 }}
+                                              />
+                                            ))}
+                                            {group.subjects.length > 3 && (
+                                              <Chip
+                                                label={`+${group.subjects.length - 3}`}
+                                                size="small"
+                                                sx={{ fontSize: '0.65rem', height: 18 }}
+                                              />
+                                            )}
+                                          </Box>
+                                        </TableCell>
+                                        <TableCell sx={{ padding: '6px 8px' }}>
+                                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                            <Tooltip title="Edit Assignment">
+                                              <IconButton
+                                                size="small"
+                                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
+                                                sx={{ padding: '2px' }}
+                                              >
+                                                <Edit sx={{ fontSize: 14 }} />
+                                              </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete Assignment">
+                                              <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={() => handleDeleteSpecificAssignment(teacher._id, group.class?._id, group.section)}
+                                                sx={{ padding: '2px' }}
+                                              >
+                                                <Delete sx={{ fontSize: 14 }} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          </Box>
+                                        </TableCell>
+                                      </TableRow>
+                                    ));
+                                  })()}
+                                </TableBody>
+                              </Table>
+                              <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={<Assignment />}
+                                  onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
+                                  sx={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                                >
+                                  Manage Assignments
+                                </Button>
+                              </Box>
+                            </Box>
+                          ) : (
+                            <Box sx={{ textAlign: 'center', py: 2 }}>
+                              <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                                No assignments
+                              </Typography>
+                              <Button
                                 size="small"
-                                color="primary"
-                              />
-                            ))}
-                            {(teacher.assignedClasses && teacher.assignedClasses.length > 2) && (
-                              <Chip label={`+${teacher.assignedClasses.length - 2}`} size="small" />
-                            )}
-                          </Box>
+                                variant="outlined"
+                                startIcon={<Assignment />}
+                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
+                                sx={{ fontSize: '0.7rem' }}
+                              >
+                                Assign Classes
+                              </Button>
+                            </Box>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -957,11 +1112,7 @@ const TeacherManagement: React.FC = () => {
                                 <LockReset />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Assign Classes & Subjects">
-                              <IconButton size="small" onClick={() => handleOpenSubjectAssignmentDialog(teacher)}>
-                                <Assignment />
-                              </IconButton>
-                            </Tooltip>
+                            
                             <Tooltip title="Deactivate">
                               <IconButton
                                 size="small"

@@ -1070,7 +1070,6 @@ const TeacherManagement: React.FC = () => {
                     <TableRow>
                       <TableCell>Teacher</TableCell>
                       <TableCell>Designation</TableCell>
-                      <TableCell>Classes</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Last Login</TableCell>
                       <TableCell>Actions</TableCell>
@@ -1103,21 +1102,7 @@ const TeacherManagement: React.FC = () => {
                           />
                         </TableCell>
 
-                        <TableCell>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {(teacher.assignedClasses || []).slice(0, 2).map((ac, index) => (
-                              <Chip
-                                key={index}
-                                label={`${ac.class?.grade || ''}${ac.section || ''}`}
-                                size="small"
-                                color="primary"
-                              />
-                            ))}
-                            {(teacher.assignedClasses && teacher.assignedClasses.length > 2) && (
-                              <Chip label={`+${teacher.assignedClasses.length - 2}`} size="small" />
-                            )}
-                          </Box>
-                        </TableCell>
+
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Chip

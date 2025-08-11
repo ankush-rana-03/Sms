@@ -681,7 +681,7 @@ const TeacherManagement: React.FC = () => {
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
     setAssignmentForm({
-      class: assignment.className || assignment.class, // Use className if available, otherwise use class
+      class: assignment.className || assignment.class || '', // Provide empty string as fallback
       section: assignment.section,
       subjectsInput: assignment.subjects.join(', '),
       editingIndex: index

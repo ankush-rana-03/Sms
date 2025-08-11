@@ -1,6 +1,22 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://sms-38ap.onrender.com/api';
+// Determine API base URL with sensible defaults
+const getApiBaseUrl = (): string => {
+  if (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim().length > 0) {
+    return process.env.REACT_APP_API_URL;
+  }
+  // Use localhost when running in development on a local host
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:5000/api';
+    }
+  }
+  // Fallback to production demo API
+  return 'https://sms-38ap.onrender.com/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   private api: AxiosInstance;
@@ -49,7 +65,6 @@ class ApiService {
     console.log('API Service - Making POST request to:', url);
     console.log('API Service - Base URL:', this.api.defaults.baseURL);
     console.log('API Service - Data:', data);
-    
     const response = await this.api.post<T>(url, data, config);
     console.log('API Service - Response:', response.data);
     return response.data;

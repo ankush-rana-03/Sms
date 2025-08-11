@@ -758,11 +758,24 @@ exports.assignClassesToTeacher = async (req, res) => {
       .populate('user', 'name email role isActive');
 
     console.log('Populated teacher response:', JSON.stringify(populatedTeacher.assignedClasses, null, 2));
+    
+    // Ensure time and day fields are explicitly included in the response
+    const responseData = populatedTeacher.toObject();
+    responseData.assignedClasses = responseData.assignedClasses.map(ac => ({
+      class: ac.class,
+      section: ac.section,
+      subject: ac.subject,
+      grade: ac.grade,
+      time: ac.time || '9:00 AM',
+      day: ac.day || 'Monday'
+    }));
+    
+    console.log('Final response data:', JSON.stringify(responseData.assignedClasses, null, 2));
 
     res.status(200).json({
       success: true,
       message: 'Classes assigned to teacher successfully',
-      data: populatedTeacher
+      data: responseData
     });
   } catch (error) {
     console.error('Error assigning classes to teacher:', error);

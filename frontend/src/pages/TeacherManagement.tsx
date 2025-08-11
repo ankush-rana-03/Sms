@@ -216,11 +216,18 @@ const TeacherManagement: React.FC = () => {
   });
 
   // New state for Assign Classes & Subjects dialog
-  const [assignments, setAssignments] = useState<{ class: string, className: string, section: string, subjects: string[] }[]>([]);
+  const [assignments, setAssignments] = useState<{ 
+    class: string, 
+    className: string, 
+    section: string, 
+    subjects: Array<{ name: string, time: string, day: string }> 
+  }[]>([]);
   const [assignmentForm, setAssignmentForm] = useState({
     class: '',
     section: '',
-    subjectsInput: '',
+    subjectName: '',
+    subjectTime: '',
+    subjectDay: '',
     editingIndex: -1
   });
 
@@ -472,16 +479,26 @@ const TeacherManagement: React.FC = () => {
           subjects: []
         };
       }
-      acc[key].subjects.push(ac.subject);
+      // Convert string subject to object with time and day (default values for existing data)
+      acc[key].subjects.push({
+        name: ac.subject,
+        time: '9:00 AM', // Default time for existing subjects
+        day: 'Monday'    // Default day for existing subjects
+      });
       return acc;
-    }, {} as Record<string, { class: string; className: string; section: string; subjects: string[] }>);
+    }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
 
     setAssignments(Object.values(groupedAssignments));
-    setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
+    setAssignmentForm({ class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 });
     setOpenSubjectAssignmentDialog(true);
   };
 
-  const handleSaveSubjectAssignments = async (assignmentsToSave: { class: string, className: string, section: string, subjects: string[] }[]) => {
+  const handleSaveSubjectAssignments = async (assignmentsToSave: { 
+    class: string, 
+    className: string, 
+    section: string, 
+    subjects: Array<{ name: string, time: string, day: string }> 
+  }[]) => {
     if (!selectedTeacher) return;
 
     try {
@@ -518,8 +535,10 @@ const TeacherManagement: React.FC = () => {
           return {
             class: classId,
             section: assignment.section,
-            subject: subject,
-            grade: grade
+            subject: subject.name, // Extract just the subject name for backend
+            grade: grade,
+            time: subject.time, // Include time
+            day: subject.day    // Include day
           };
         })
       );
@@ -561,6 +580,16 @@ const TeacherManagement: React.FC = () => {
       salary: 0,
       emergencyContact: { name: '', phone: '', relationship: '' }
     });
+    
+    // Reset assignment form
+    setAssignmentForm({
+      class: '',
+      section: '',
+      subjectName: '',
+      subjectTime: '',
+      subjectDay: '',
+      editingIndex: -1
+    });
   };
 
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
@@ -596,23 +625,56 @@ const TeacherManagement: React.FC = () => {
   const handleAddOrUpdateAssignment = () => {
     if (!selectedTeacher) return;
 
-    if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectsInput.trim()) {
+    if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectName.trim() || !assignmentForm.subjectTime.trim() || !assignmentForm.subjectDay.trim()) {
       showSnackbar('Please fill in all fields', 'error');
       return;
     }
 
-    const subjects = assignmentForm.subjectsInput.split(',').map(s => s.trim()).filter(Boolean);
+    const newSubject = {
+      name: assignmentForm.subjectName.trim(),
+      time: assignmentForm.subjectTime.trim(),
+      day: assignmentForm.subjectDay.trim()
+    };
+
+    // Check for time conflicts (same class, section, day, and time)
+    const hasTimeConflict = assignments.some(assignment => 
+      assignment.class === assignmentForm.class && 
+      assignment.section === assignmentForm.section &&
+      assignment.subjects.some(subject => 
+        subject.day === newSubject.day && subject.time === newSubject.time
+      )
+    );
+
+    if (hasTimeConflict) {
+      showSnackbar('Time conflict detected! Another subject is already scheduled at this time for this class and section.', 'error');
+      return;
+    }
 
     if (assignmentForm.editingIndex === -1) {
-      // Add new assignment
-      const newAssignment = {
-        class: assignmentForm.class, // This will be the class name, we'll convert to ID when saving
-        className: assignmentForm.class,
-        section: assignmentForm.section,
-        subjects
-      };
-      setAssignments(prev => [...prev, newAssignment]);
-      showSnackbar('Assignment added successfully', 'success');
+      // Check if class and section combination already exists
+      const existingAssignmentIndex = assignments.findIndex(a => 
+        a.class === assignmentForm.class && a.section === assignmentForm.section
+      );
+
+      if (existingAssignmentIndex !== -1) {
+        // Add subject to existing assignment
+        setAssignments(prev => prev.map((a, index) => 
+          index === existingAssignmentIndex ? {
+            ...a,
+            subjects: [...a.subjects, newSubject]
+          } : a
+        ));
+      } else {
+        // Create new assignment
+        const newAssignment = {
+          class: assignmentForm.class,
+          className: assignmentForm.class,
+          section: assignmentForm.section,
+          subjects: [newSubject]
+        };
+        setAssignments(prev => [...prev, newAssignment]);
+      }
+      showSnackbar('Subject assignment added successfully', 'success');
     } else {
       // Update existing assignment
       setAssignments(prev => prev.map((a, index) => 
@@ -620,27 +682,54 @@ const TeacherManagement: React.FC = () => {
           ...a, 
           class: assignmentForm.class,
           className: assignmentForm.class,
-          section: assignmentForm.section, 
-          subjects 
+          section: assignmentForm.section,
+          subjects: [newSubject]
         } : a
       ));
-      showSnackbar('Assignment updated successfully', 'success');
+      showSnackbar('Subject assignment updated successfully', 'success');
     }
-    setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
+    
+    // Reset form
+    setAssignmentForm({ 
+      class: '', 
+      section: '', 
+      subjectName: '', 
+      subjectTime: '', 
+      subjectDay: '', 
+      editingIndex: -1 
+    });
   };
 
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
+    if (!assignment || assignment.subjects.length === 0) return;
+    
+    // For editing, we'll edit the first subject (you can enhance this to edit specific subjects)
+    const firstSubject = assignment.subjects[0];
     setAssignmentForm({
-      class: assignment.className || assignment.class, // Use className if available, otherwise use class
+      class: assignment.className || assignment.class,
       section: assignment.section,
-      subjectsInput: assignment.subjects.join(', '),
+      subjectName: firstSubject.name,
+      subjectTime: firstSubject.time,
+      subjectDay: firstSubject.day,
       editingIndex: index
     });
   };
 
-  const handleDeleteAssignment = (index: number) => {
-    setAssignments(prev => prev.filter((_, i) => i !== index));
+
+
+  const handleDeleteSubject = (assignmentIndex: number, subjectIndex: number) => {
+    setAssignments(prev => prev.map((assignment, idx) => {
+      if (idx === assignmentIndex) {
+        const newSubjects = assignment.subjects.filter((_, subIdx) => subIdx !== subjectIndex);
+        if (newSubjects.length === 0) {
+          // If no subjects left, remove the entire assignment
+          return null;
+        }
+        return { ...assignment, subjects: newSubjects };
+      }
+      return assignment;
+    }).filter(Boolean) as typeof assignments);
   };
 
 
@@ -1257,66 +1346,158 @@ const TeacherManagement: React.FC = () => {
                 Assign classes and subjects to this teacher. You can edit or delete existing assignments, or add new ones below.
               </Alert>
             </Box>
+            {/* Assignment Summary */}
+            {assignments.length > 0 && (
+              <Box sx={{ mb: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Assignment Summary
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Total Classes: {assignments.length} | Total Subjects: {assignments.reduce((acc, a) => acc + a.subjects.length, 0)}
+                </Typography>
+              </Box>
+            )}
+
             {/* List of current assignments */}
             {assignments.length > 0 && (
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
-                  <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ minWidth: 150 }}>Class {a.className} - Section {a.section}</Typography>
-                    <Typography sx={{ flex: 1, ml: 2 }}>{a.subjects.join(', ')}</Typography>
-                    <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
-                    <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
+                  <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                    <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+                      Class {a.className} - Section {a.section}
+                    </Typography>
+                    <Box sx={{ ml: 2 }}>
+                      {a.subjects.map((subject, subjectIdx) => (
+                        <Box key={subjectIdx} sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          mb: 1, 
+                          p: 1, 
+                          backgroundColor: '#f5f5f5', 
+                          borderRadius: 1 
+                        }}>
+                          <Typography sx={{ minWidth: 120, fontWeight: 'bold' }}>
+                            {subject.name}
+                          </Typography>
+                          <Typography sx={{ minWidth: 100, color: 'text.secondary' }}>
+                            {subject.day}
+                          </Typography>
+                          <Typography sx={{ minWidth: 80, color: 'text.secondary' }}>
+                            {subject.time}
+                          </Typography>
+                          <Box sx={{ ml: 'auto' }}>
+                            <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
+                            <Button size="small" color="error" onClick={() => handleDeleteSubject(idx, subjectIdx)}>Delete</Button>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
                   </Box>
                 ))}
               </Box>
             )}
+            {/* Common Subjects Quick Selection */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                Quick Subject Selection:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Hindi', 'History', 'Geography', 'Computer Science', 'Physical Education'].map((subject) => (
+                  <Chip
+                    key={subject}
+                    label={subject}
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setAssignmentForm({ ...assignmentForm, subjectName: subject })}
+                    sx={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
             {/* Add/Edit Assignment Form */}
             <Grid container spacing={2}>
-                  <Grid item xs={12} md={4}>
-                    <FormControl fullWidth>
-                      <InputLabel>Class</InputLabel>
-                      <Select
-                        value={assignmentForm.class}
-                        onChange={e => {
-                          setAssignmentForm({ ...assignmentForm, class: e.target.value });
-                        }}
-                        label="Class"
-                      >
-                        {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
-                          <MenuItem key={className} value={className}>
-                            {className}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                                <Grid item xs={12} md={4}>
-                    <FormControl fullWidth>
-                      <InputLabel>Section</InputLabel>
-                      <Select
-                        value={assignmentForm.section}
-                        onChange={e => {
-                          setAssignmentForm({ ...assignmentForm, section: e.target.value });
-                        }}
-                        label="Section"
-                      >
-                        {['A', 'B', 'C', 'D', 'E'].map(section => (
-                          <MenuItem key={section} value={section}>
-                            Section {section}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Class</InputLabel>
+                  <Select
+                    value={assignmentForm.class}
+                    onChange={e => {
+                      setAssignmentForm({ ...assignmentForm, class: e.target.value });
+                    }}
+                    label="Class"
+                  >
+                    {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
+                      <MenuItem key={className} value={className}>
+                        {className}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Section</InputLabel>
+                  <Select
+                    value={assignmentForm.section}
+                    onChange={e => {
+                      setAssignmentForm({ ...assignmentForm, section: e.target.value });
+                    }}
+                    label="Section"
+                  >
+                    {['A', 'B', 'C', 'D', 'E'].map(section => (
+                      <MenuItem key={section} value={section}>
+                        Section {section}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={2}>
                 <TextField
                   fullWidth
-                  label="Subjects (comma separated)"
-                  value={assignmentForm.subjectsInput}
-                  onChange={e => setAssignmentForm({ ...assignmentForm, subjectsInput: e.target.value })}
-                  placeholder="Mathematics, Physics, English"
-                  helperText="Enter one or more subjects separated by commas."
+                  label="Subject Name"
+                  value={assignmentForm.subjectName}
+                  onChange={e => setAssignmentForm({ ...assignmentForm, subjectName: e.target.value })}
+                  placeholder="Mathematics"
+                  helperText="Enter subject name"
                 />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <FormControl fullWidth>
+                  <InputLabel>Day</InputLabel>
+                  <Select
+                    value={assignmentForm.subjectDay}
+                    onChange={e => setAssignmentForm({ ...assignmentForm, subjectDay: e.target.value })}
+                    label="Day"
+                  >
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                      <MenuItem key={day} value={day}>
+                        {day}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <FormControl fullWidth>
+                  <InputLabel>Time</InputLabel>
+                  <Select
+                    value={assignmentForm.subjectTime}
+                    onChange={e => setAssignmentForm({ ...assignmentForm, subjectTime: e.target.value })}
+                    label="Time"
+                  >
+                    {[
+                      '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM',
+                      '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
+                      '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
+                    ].map(time => (
+                      <MenuItem key={time} value={time}>
+                        {time}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <Button
@@ -1324,7 +1505,7 @@ const TeacherManagement: React.FC = () => {
                   onClick={handleAddOrUpdateAssignment}
                   sx={{ mt: 1 }}
                 >
-                  {assignmentForm.editingIndex === -1 ? 'Add Assignment' : 'Update Assignment'}
+                  {assignmentForm.editingIndex === -1 ? 'Add Subject Assignment' : 'Update Subject Assignment'}
                 </Button>
               </Grid>
             </Grid>

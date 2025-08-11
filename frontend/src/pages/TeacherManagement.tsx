@@ -468,6 +468,9 @@ const TeacherManagement: React.FC = () => {
   const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     
+    console.log('Opening dialog for teacher:', teacher);
+    console.log('Teacher assigned classes:', teacher.assignedClasses);
+    
     // Group assignments by class and section to combine subjects
     const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
       const key = `${ac.class._id}-${ac.section}`;
@@ -488,9 +491,14 @@ const TeacherManagement: React.FC = () => {
       return acc;
     }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
 
-    setAssignments(Object.values(groupedAssignments));
+    const transformedAssignments = Object.values(groupedAssignments);
+    console.log('Transformed assignments:', transformedAssignments);
+    
+    setAssignments(transformedAssignments);
     setAssignmentForm({ class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 });
     setOpenSubjectAssignmentDialog(true);
+    
+    console.log('Form reset to:', { class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 });
   };
 
   const handleSaveSubjectAssignments = async (assignmentsToSave: { 
@@ -625,6 +633,9 @@ const TeacherManagement: React.FC = () => {
   const handleAddOrUpdateAssignment = () => {
     if (!selectedTeacher) return;
 
+    console.log('Form data:', assignmentForm);
+    console.log('Current assignments:', assignments);
+
     if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectName.trim() || !assignmentForm.subjectTime.trim() || !assignmentForm.subjectDay.trim()) {
       showSnackbar('Please fill in all fields', 'error');
       return;
@@ -635,6 +646,8 @@ const TeacherManagement: React.FC = () => {
       time: assignmentForm.subjectTime.trim(),
       day: assignmentForm.subjectDay.trim()
     };
+
+    console.log('New subject to add/update:', newSubject);
 
     // Check for time conflicts (same class, section, day, and time)
     const hasTimeConflict = assignments.some(assignment => 
@@ -651,6 +664,9 @@ const TeacherManagement: React.FC = () => {
     }
 
     if (assignmentForm.editingIndex === -1) {
+      // Adding new subject
+      console.log('Adding new subject to existing or new assignment');
+      
       // Check if class and section combination already exists
       const existingAssignmentIndex = assignments.findIndex(a => 
         a.class === assignmentForm.class && a.section === assignmentForm.section
@@ -676,16 +692,27 @@ const TeacherManagement: React.FC = () => {
       }
       showSnackbar('Subject assignment added successfully', 'success');
     } else {
-      // Update existing assignment
-      setAssignments(prev => prev.map((a, index) => 
-        index === assignmentForm.editingIndex ? { 
-          ...a, 
-          class: assignmentForm.class,
-          className: assignmentForm.class,
-          section: assignmentForm.section,
-          subjects: [newSubject]
-        } : a
-      ));
+      // Updating existing subject
+      console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
+      
+      setAssignments(prev => prev.map((a, index) => {
+        if (index === assignmentForm.editingIndex) {
+          // Update the first subject (since we're editing the first one)
+          const updatedSubjects = [...a.subjects];
+          if (updatedSubjects.length > 0) {
+            updatedSubjects[0] = newSubject;
+          }
+          
+          return {
+            ...a,
+            class: assignmentForm.class,
+            className: assignmentForm.class,
+            section: assignmentForm.section,
+            subjects: updatedSubjects
+          };
+        }
+        return a;
+      }));
       showSnackbar('Subject assignment updated successfully', 'success');
     }
     
@@ -707,6 +734,16 @@ const TeacherManagement: React.FC = () => {
     // For editing, we'll edit the first subject (you can enhance this to edit specific subjects)
     const firstSubject = assignment.subjects[0];
     setAssignmentForm({
+      class: assignment.className || assignment.class,
+      section: assignment.section,
+      subjectName: firstSubject.name,
+      subjectTime: firstSubject.time,
+      subjectDay: firstSubject.day,
+      editingIndex: index
+    });
+    
+    console.log('Editing assignment:', assignment);
+    console.log('Form set to:', {
       class: assignment.className || assignment.class,
       section: assignment.section,
       subjectName: firstSubject.name,

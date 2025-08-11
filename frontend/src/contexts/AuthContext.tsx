@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('Initializing authentication...');
         const token = localStorage.getItem('token');
         console.log('Token found:', !!token);
-        
+
         if (token) {
           console.log('Attempting to get user data...');
           const userData = await authService.getMe();
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.login(email, password, role);
       localStorage.setItem('token', response.token);
-      
+
       // If user data is not included in login response, fetch it separately
       if (!response.user) {
         const userData = await authService.getMe();

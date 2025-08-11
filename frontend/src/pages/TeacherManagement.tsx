@@ -673,7 +673,7 @@ const TeacherManagement: React.FC = () => {
       setAssignments(prev => [...prev, newAssignment]);
     } else {
       // Editing existing assignment
-      setAssignments(prev => prev.map((assignment, index) => 
+      setAssignments(prev => prev.map((assignment, index) =>
         index === assignmentForm.editingIndex ? newAssignment : assignment
       ));
     }

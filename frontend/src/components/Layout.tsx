@@ -128,13 +128,13 @@ const Layout: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
-          
+
           <IconButton color="inherit">
             <Badge badgeContent={4} color="error">
               <Notifications />
             </Badge>
           </IconButton>
-          
+
           <IconButton
             onClick={handleProfileMenuOpen}
             sx={{ ml: 1 }}

@@ -297,6 +297,8 @@ const TeacherManagement: React.FC = () => {
       setAvailableClasses(data.data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
+      // If we can't fetch classes, we'll work with empty array
+      // The UI will still work by using class IDs directly
       setAvailableClasses([]);
     }
   };
@@ -484,11 +486,11 @@ const TeacherManagement: React.FC = () => {
           subjects: []
         };
       }
-      // Convert string subject to object with time and day (default values for existing data)
+      // Convert string subject to object with time and day (preserve actual values if they exist)
       acc[key].subjects.push({
         name: ac.subject,
-        time: '9:00 AM', // Default time for existing subjects
-        day: 'Monday'    // Default day for existing subjects
+        time: ac.time || '9:00 AM', // Use actual time if available, otherwise default
+        day: ac.day || 'Monday'     // Use actual day if available, otherwise default
       });
       return acc;
     }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
@@ -518,29 +520,11 @@ const TeacherManagement: React.FC = () => {
       // Transform the data to match the backend expected format
       const transformedAssignments = assignmentsToSave.flatMap(assignment => 
         assignment.subjects.map(subject => {
-          let classId = assignment.class;
-          let grade = assignment.className;
-
-          // If we have a class ID (24 characters = MongoDB ObjectId), use it directly
-          if (assignment.class && assignment.class.length === 24) {
-            classId = assignment.class;
-            grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
-          } else {
-            // Try to find the class in available classes
-            const classData = availableClasses.find(c => 
-              c.name === assignment.className && c.section === assignment.section
-            );
-            
-            if (classData) {
-              classId = classData._id;
-              grade = classData.grade || assignment.className.replace('Class ', '').replace('Class', '').trim();
-            } else {
-              // If class doesn't exist, we'll let the backend create it
-              // Use the class name as a temporary identifier
-              classId = assignment.className;
-              grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
-            }
-          }
+          // Since we're now properly storing class IDs, we can use them directly
+          const classId = assignment.class;
+          
+          // Extract grade from class name or use a default
+          const grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
 
           return {
             class: classId,
@@ -591,6 +575,7 @@ const TeacherManagement: React.FC = () => {
 
         const transformedLocalAssignments = Object.values(updatedLocalAssignments);
         console.log('Updated local assignments:', transformedLocalAssignments);
+        console.log('Response data assignedClasses:', response.data.assignedClasses);
         setAssignments(transformedLocalAssignments);
         
         // Refresh available classes in case new ones were created
@@ -718,10 +703,13 @@ const TeacherManagement: React.FC = () => {
             } : a
           );
         } else {
-          // Create new assignment
+          // Create new assignment - need to find the actual class name
+          const classData = availableClasses.find(c => c._id === assignmentForm.class);
+          const className = classData ? classData.name : `Class ${assignmentForm.class}`;
+          
           const newAssignment = {
-            class: assignmentForm.class,
-            className: assignmentForm.class,
+            class: assignmentForm.class, // This should be the class ID
+            className: className,        // This should be the actual class name
             section: assignmentForm.section,
             subjects: [newSubject]
           };
@@ -741,10 +729,14 @@ const TeacherManagement: React.FC = () => {
               updatedSubjects[0] = newSubject;
             }
             
+            // Find the actual class name for display
+            const classData = availableClasses.find(c => c._id === assignmentForm.class);
+            const className = classData ? classData.name : `Class ${assignmentForm.class}`;
+            
             const updatedAssignment = {
               ...a,
-              class: assignmentForm.class,
-              className: assignmentForm.class,
+              class: assignmentForm.class, // This should be the class ID
+              className: className,        // This should be the actual class name
               section: assignmentForm.section,
               subjects: updatedSubjects
             };
@@ -760,6 +752,8 @@ const TeacherManagement: React.FC = () => {
 
       // Update local state immediately for real-time UI update
       setAssignments(updatedAssignments);
+      
+      console.log('About to save assignments:', updatedAssignments);
 
       // Save to database
       await handleSaveSubjectAssignments(updatedAssignments);
@@ -796,7 +790,7 @@ const TeacherManagement: React.FC = () => {
     // For editing, we'll edit the first subject (you can enhance this to edit specific subjects)
     const firstSubject = assignment.subjects[0];
     setAssignmentForm({
-      class: assignment.className || assignment.class,
+      class: assignment.class, // Use class ID for editing
       section: assignment.section,
       subjectName: firstSubject.name,
       subjectTime: firstSubject.time,
@@ -806,7 +800,7 @@ const TeacherManagement: React.FC = () => {
     
     console.log('Editing assignment:', assignment);
     console.log('Form set to:', {
-      class: assignment.className || assignment.class,
+      class: assignment.class, // Use class ID for editing
       section: assignment.section,
       subjectName: firstSubject.name,
       subjectTime: firstSubject.time,

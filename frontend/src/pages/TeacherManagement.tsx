@@ -560,11 +560,8 @@ const TeacherManagement: React.FC = () => {
       );
 
       if (response.success) {
-        showSnackbar('Subject assignments updated successfully', 'success');
         // Update teacher in UI
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
-        // Close the dialog
-        setOpenSubjectAssignmentDialog(false);
         // Refresh available classes in case new ones were created
         fetchAvailableClasses();
       } else {
@@ -630,7 +627,7 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  const handleAddOrUpdateAssignment = () => {
+  const handleAddOrUpdateAssignment = async () => {
     if (!selectedTeacher) return;
 
     console.log('Form data:', assignmentForm);
@@ -663,68 +660,86 @@ const TeacherManagement: React.FC = () => {
       return;
     }
 
-    if (assignmentForm.editingIndex === -1) {
-      // Adding new subject
-      console.log('Adding new subject to existing or new assignment');
-      
-      // Check if class and section combination already exists
-      const existingAssignmentIndex = assignments.findIndex(a => 
-        a.class === assignmentForm.class && a.section === assignmentForm.section
-      );
+    try {
+      let updatedAssignments: typeof assignments;
 
-      if (existingAssignmentIndex !== -1) {
-        // Add subject to existing assignment
-        setAssignments(prev => prev.map((a, index) => 
-          index === existingAssignmentIndex ? {
-            ...a,
-            subjects: [...a.subjects, newSubject]
-          } : a
-        ));
-      } else {
-        // Create new assignment
-        const newAssignment = {
-          class: assignmentForm.class,
-          className: assignmentForm.class,
-          section: assignmentForm.section,
-          subjects: [newSubject]
-        };
-        setAssignments(prev => [...prev, newAssignment]);
-      }
-      showSnackbar('Subject assignment added successfully', 'success');
-    } else {
-      // Updating existing subject
-      console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
-      
-      setAssignments(prev => prev.map((a, index) => {
-        if (index === assignmentForm.editingIndex) {
-          // Update the first subject (since we're editing the first one)
-          const updatedSubjects = [...a.subjects];
-          if (updatedSubjects.length > 0) {
-            updatedSubjects[0] = newSubject;
-          }
-          
-          return {
-            ...a,
+      if (assignmentForm.editingIndex === -1) {
+        // Adding new subject
+        console.log('Adding new subject to existing or new assignment');
+        
+        // Check if class and section combination already exists
+        const existingAssignmentIndex = assignments.findIndex(a => 
+          a.class === assignmentForm.class && a.section === assignmentForm.section
+        );
+
+        if (existingAssignmentIndex !== -1) {
+          // Add subject to existing assignment
+          updatedAssignments = assignments.map((a, index) => 
+            index === existingAssignmentIndex ? {
+              ...a,
+              subjects: [...a.subjects, newSubject]
+            } : a
+          );
+        } else {
+          // Create new assignment
+          const newAssignment = {
             class: assignmentForm.class,
             className: assignmentForm.class,
             section: assignmentForm.section,
-            subjects: updatedSubjects
+            subjects: [newSubject]
           };
+          updatedAssignments = [...assignments, newAssignment];
         }
-        return a;
-      }));
-      showSnackbar('Subject assignment updated successfully', 'success');
+      } else {
+        // Updating existing subject
+        console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
+        
+        updatedAssignments = assignments.map((a, index) => {
+          if (index === assignmentForm.editingIndex) {
+            // Update the first subject (since we're editing the first one)
+            const updatedSubjects = [...a.subjects];
+            if (updatedSubjects.length > 0) {
+              updatedSubjects[0] = newSubject;
+            }
+            
+            return {
+              ...a,
+              class: assignmentForm.class,
+              className: assignmentForm.class,
+              section: assignmentForm.section,
+              subjects: updatedSubjects
+            };
+          }
+          return a;
+        });
+      }
+
+      // Update local state immediately for real-time UI update
+      setAssignments(updatedAssignments);
+
+      // Save to database
+      await handleSaveSubjectAssignments(updatedAssignments);
+
+      // Reset form
+      setAssignmentForm({ 
+        class: '', 
+        section: '', 
+        subjectName: '', 
+        subjectTime: '', 
+        subjectDay: '', 
+        editingIndex: -1 
+      });
+
+      showSnackbar(
+        assignmentForm.editingIndex === -1 
+          ? 'Subject assignment added successfully' 
+          : 'Subject assignment updated successfully', 
+        'success'
+      );
+    } catch (error: any) {
+      console.error('Error saving subject assignment:', error);
+      showSnackbar('Error saving subject assignment. Please try again.', 'error');
     }
-    
-    // Reset form
-    setAssignmentForm({ 
-      class: '', 
-      section: '', 
-      subjectName: '', 
-      subjectTime: '', 
-      subjectDay: '', 
-      editingIndex: -1 
-    });
   };
 
   const handleEditAssignment = (index: number) => {
@@ -755,18 +770,31 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  const handleDeleteSubject = (assignmentIndex: number, subjectIndex: number) => {
-    setAssignments(prev => prev.map((assignment, idx) => {
-      if (idx === assignmentIndex) {
-        const newSubjects = assignment.subjects.filter((_, subIdx) => subIdx !== subjectIndex);
-        if (newSubjects.length === 0) {
-          // If no subjects left, remove the entire assignment
-          return null;
+  const handleDeleteSubject = async (assignmentIndex: number, subjectIndex: number) => {
+    try {
+      // Update local state immediately for real-time UI update
+      const updatedAssignments = assignments.map((assignment, idx) => {
+        if (idx === assignmentIndex) {
+          const newSubjects = assignment.subjects.filter((_, subIdx) => subIdx !== subjectIndex);
+          if (newSubjects.length === 0) {
+            // If no subjects left, remove the entire assignment
+            return null;
+          }
+          return { ...assignment, subjects: newSubjects };
         }
-        return { ...assignment, subjects: newSubjects };
-      }
-      return assignment;
-    }).filter(Boolean) as typeof assignments);
+        return assignment;
+      }).filter(Boolean) as typeof assignments;
+
+      setAssignments(updatedAssignments);
+
+      // Save to database
+      await handleSaveSubjectAssignments(updatedAssignments);
+
+      showSnackbar('Subject deleted successfully', 'success');
+    } catch (error: any) {
+      console.error('Error deleting subject:', error);
+      showSnackbar('Error deleting subject. Please try again.', 'error');
+    }
   };
 
 
@@ -1549,14 +1577,6 @@ const TeacherManagement: React.FC = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenSubjectAssignmentDialog(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              onClick={async () => {
-                await handleSaveSubjectAssignments(assignments);
-              }}
-            >
-              Save All Assignments
-            </Button>
           </DialogActions>
         </Dialog>
       )}

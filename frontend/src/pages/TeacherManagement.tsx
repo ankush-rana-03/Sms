@@ -1070,6 +1070,7 @@ const TeacherManagement: React.FC = () => {
                     <TableRow>
                       <TableCell>Teacher</TableCell>
                       <TableCell>Designation</TableCell>
+                      <TableCell>Phone</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Last Login</TableCell>
                       <TableCell>Actions</TableCell>
@@ -1101,7 +1102,11 @@ const TeacherManagement: React.FC = () => {
                             size="small"
                           />
                         </TableCell>
-
+                        <TableCell>
+                          <Typography variant="body2">
+                            {teacher.phone || 'N/A'}
+                          </Typography>
+                        </TableCell>
 
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

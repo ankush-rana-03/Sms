@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Box,
   Typography,
@@ -159,6 +160,7 @@ interface CreateTeacherResponse {
 }
 
 const TeacherManagement: React.FC = () => {
+  const { user } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -235,10 +237,12 @@ const TeacherManagement: React.FC = () => {
 
 
   useEffect(() => {
-    fetchTeachers();
-    fetchStatistics();
-    fetchAvailableClasses();
-  }, [page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (user) {
+      fetchTeachers();
+      fetchStatistics();
+      fetchAvailableClasses();
+    }
+  }, [user, page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTeachers = async () => {
     setLoading(true);
@@ -477,11 +481,15 @@ const TeacherManagement: React.FC = () => {
     
     // Group assignments by class and section to combine subjects
     const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
-      const key = `${ac.class._id}-${ac.section}`;
+      // Handle both populated and unpopulated class data
+      const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
+      const className = typeof ac.class === 'object' ? ac.class.name : `Class ${ac.class}`;
+      
+      const key = `${classId}-${ac.section}`;
       if (!acc[key]) {
         acc[key] = {
-          class: ac.class._id, // Use class ID instead of name
-          className: ac.class.name, // Keep class name for display
+          class: classId, // Use class ID instead of name
+          className: className, // Keep class name for display
           section: ac.section,
           subjects: []
         };
@@ -555,11 +563,15 @@ const TeacherManagement: React.FC = () => {
         // Update local assignments state to reflect the new data structure
         // Transform the response data back to our local format
         const updatedLocalAssignments = response.data.assignedClasses.reduce((acc, ac) => {
-          const key = `${ac.class._id}-${ac.section}`;
+          // Handle both populated and unpopulated class data
+          const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
+          const className = typeof ac.class === 'object' ? ac.class.name : `Class ${ac.class}`;
+          
+          const key = `${classId}-${ac.section}`;
           if (!acc[key]) {
             acc[key] = {
-              class: ac.class._id,
-              className: ac.class.name,
+              class: classId,
+              className: className,
               section: ac.section,
               subjects: []
             };
@@ -838,6 +850,15 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>

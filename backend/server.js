@@ -6,6 +6,8 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const whatsappService = require('./services/whatsappService');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJSDoc = require('swagger-jsdoc');
 require('dotenv').config();
 
 const app = express();
@@ -73,6 +75,37 @@ app.use('/api/tests', require('./routes/tests'));
 app.use('/api/results', require('./routes/results'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/whatsapp', require('./routes/whatsapp'));
+
+// Swagger UI and swagger-jsdoc setup
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'School Management System API',
+    version: '1.0.0',
+    description: 'API documentation for the School Management System',
+  },
+  servers: [
+    { url: 'http://localhost:5000/api', description: 'Local server' },
+  ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+  },
+  security: [{ bearerAuth: [] }],
+};
+
+const swaggerOptions = {
+  swaggerDefinition,
+  apis: ['./routes/*.js'], // Scan all route files for JSDoc
+};
+
+const swaggerSpec = swaggerJSDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -92,7 +92,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
     const subjects = selectedSubjects
       .split(',')
       .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .filter(s => s.length > 0 && s.length <= 100); // Add length validation
 
     if (subjects.length === 0) {
       setError('Please enter at least one subject');

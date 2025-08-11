@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import SubjectClassAssignment from '../components/SubjectClassAssignment';
 import {
   Box,
   Typography,
@@ -219,21 +220,8 @@ const TeacherManagement: React.FC = () => {
     }
   });
 
-  // New state for Assign Classes & Subjects dialog
-  const [assignments, setAssignments] = useState<{ 
-    class: string, 
-    className: string, 
-    section: string, 
-    subjects: Array<{ name: string, time: string, day: string }> 
-  }[]>([]);
-  const [assignmentForm, setAssignmentForm] = useState({
-    class: '',
-    section: '',
-    subjectName: '',
-    subjectTime: '',
-    subjectDay: '',
-    editingIndex: -1
-  });
+  // Subject assignment dialog state (simplified)
+  // Note: Assignment logic is now handled by SubjectClassAssignment component
 
 
   useEffect(() => {
@@ -479,77 +467,34 @@ const TeacherManagement: React.FC = () => {
     console.log('Opening dialog for teacher:', teacher);
     console.log('Teacher assigned classes:', teacher.assignedClasses);
     
-    // Group assignments by class and section to combine subjects
-    const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
-      // Handle both populated and unpopulated class data
-      const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
-      const className = typeof ac.class === 'object' ? ac.class.name : `Class ${ac.class}`;
-      
-      const key = `${classId}-${ac.section}`;
-      if (!acc[key]) {
-        acc[key] = {
-          class: classId, // Use class ID instead of name
-          className: className, // Keep class name for display
-          section: ac.section,
-          subjects: []
-        };
-      }
-      // Convert string subject to object with time and day (preserve actual values if they exist)
-      acc[key].subjects.push({
-        name: ac.subject,
-        time: ac.time || '9:00 AM', // Use actual time if available, otherwise default
-        day: ac.day || 'Monday'     // Use actual day if available, otherwise default
-      });
-      return acc;
-    }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
-
-    const transformedAssignments = Object.values(groupedAssignments);
-    console.log('Transformed assignments:', transformedAssignments);
-    
-    setAssignments(transformedAssignments);
-    setAssignmentForm({ class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 });
     setOpenSubjectAssignmentDialog(true);
-    
-    console.log('Form reset to:', { class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 });
   };
 
-  const handleSaveSubjectAssignments = async (assignmentsToSave: { 
-    class: string, 
-    className: string, 
-    section: string, 
-    subjects: Array<{ name: string, time: string, day: string }> 
-  }[]) => {
+  const handleSaveSubjectAssignments = async (assignmentsToSave: Array<{
+    classId: string;
+    className: string;
+    grade: string;
+    section: string;
+    subjects: string[];
+  }>) => {
     if (!selectedTeacher) return;
 
     try {
-      console.log('Saving assignments:', assignmentsToSave);
-      console.log('Available classes:', availableClasses);
+      console.log('Saving assignments from SubjectClassAssignment component:', assignmentsToSave);
 
-      // Transform the data to match the backend expected format
+      // Transform the data from SubjectClassAssignment component to backend format
       const transformedAssignments = assignmentsToSave.flatMap(assignment => 
-        assignment.subjects.map(subject => {
-          // Since we're now properly storing class IDs, we can use them directly
-          const classId = assignment.class;
-          
-          // Extract grade from class name or use a default
-          const grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
-
-          return {
-            class: classId,
-            section: assignment.section,
-            subject: subject.name, // Extract just the subject name for backend
-            grade: grade,
-            time: subject.time, // Include time
-            day: subject.day    // Include day
-          };
-        })
+        assignment.subjects.map(subject => ({
+          class: assignment.classId,
+          section: assignment.section,
+          subject: subject,
+          grade: assignment.grade,
+          time: '9:00 AM', // Default time - can be enhanced later
+          day: 'Monday'    // Default day - can be enhanced later
+        }))
       );
 
-      console.log('Transformed assignments:', transformedAssignments);
-      console.log('Sending to API:', { assignedClasses: transformedAssignments });
-
-      console.log('Sending request to:', `/admin/teachers/${selectedTeacher._id}/assign-classes`);
-      console.log('Request payload:', { assignedClasses: transformedAssignments });
+      console.log('Transformed assignments for backend:', transformedAssignments);
       
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes`,
@@ -565,38 +510,7 @@ const TeacherManagement: React.FC = () => {
         // Update the selected teacher with the new data
         setSelectedTeacher(response.data);
         
-        // Update local assignments state to reflect the new data structure
-        // Transform the response data back to our local format
-        const updatedLocalAssignments = response.data.assignedClasses.reduce((acc, ac) => {
-          // Handle both populated and unpopulated class data
-          const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
-          const className = typeof ac.class === 'object' ? ac.class.name : `Class ${ac.class}`;
-          
-          const key = `${classId}-${ac.section}`;
-          if (!acc[key]) {
-            acc[key] = {
-              class: classId,
-              className: className,
-              section: ac.section,
-              subjects: []
-            };
-          }
-          // Use the time and day from response, or default values if not present
-          acc[key].subjects.push({
-            name: ac.subject,
-            time: ac.time || '9:00 AM', // Use response time or default
-            day: ac.day || 'Monday'     // Use response day or default
-          });
-          return acc;
-        }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
-
-        console.log('Response data assignedClasses:', response.data.assignedClasses);
-        console.log('Transformed local assignments:', updatedLocalAssignments);
-
-        const transformedLocalAssignments = Object.values(updatedLocalAssignments);
-        console.log('Updated local assignments:', transformedLocalAssignments);
-        console.log('Response data assignedClasses:', response.data.assignedClasses);
-        setAssignments(transformedLocalAssignments);
+        showSnackbar('Subject assignments saved successfully', 'success');
         
         // Refresh available classes in case new ones were created
         fetchAvailableClasses();
@@ -620,16 +534,6 @@ const TeacherManagement: React.FC = () => {
       joiningDate: '',
       salary: 0,
       emergencyContact: { name: '', phone: '', relationship: '' }
-    });
-    
-    // Reset assignment form
-    setAssignmentForm({
-      class: '',
-      section: '',
-      subjectName: '',
-      subjectTime: '',
-      subjectDay: '',
-      editingIndex: -1
     });
   };
 
@@ -663,202 +567,7 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  const handleAddOrUpdateAssignment = async () => {
-    if (!selectedTeacher) return;
-
-    console.log('Form data:', assignmentForm);
-    console.log('Current assignments:', assignments);
-
-    if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectName.trim() || !assignmentForm.subjectTime.trim() || !assignmentForm.subjectDay.trim()) {
-      showSnackbar('Please fill in all fields', 'error');
-      return;
-    }
-
-    const newSubject = {
-      name: assignmentForm.subjectName.trim(),
-      time: assignmentForm.subjectTime.trim(),
-      day: assignmentForm.subjectDay.trim()
-    };
-
-    console.log('New subject to add/update:', newSubject);
-
-    // Check for time conflicts (same class, section, day, and time)
-    // When editing, exclude the current assignment being edited from conflict check
-    const hasTimeConflict = assignments.some((assignment, assignmentIdx) => {
-      // Skip the assignment being edited
-      if (assignmentForm.editingIndex !== -1 && assignmentIdx === assignmentForm.editingIndex) {
-        return false;
-      }
-      
-      return assignment.class === assignmentForm.class && 
-             assignment.section === assignmentForm.section &&
-             assignment.subjects.some(subject => 
-               subject.day === newSubject.day && subject.time === newSubject.time
-             );
-    });
-
-    if (hasTimeConflict) {
-      showSnackbar('Time conflict detected! Another subject is already scheduled at this time for this class and section.', 'error');
-      return;
-    }
-
-    try {
-      let updatedAssignments: typeof assignments;
-
-      if (assignmentForm.editingIndex === -1) {
-        // Adding new subject
-        console.log('Adding new subject to existing or new assignment');
-        
-        // Check if class and section combination already exists
-        const existingAssignmentIndex = assignments.findIndex(a => 
-          a.class === assignmentForm.class && a.section === assignmentForm.section
-        );
-
-        if (existingAssignmentIndex !== -1) {
-          // Add subject to existing assignment
-          updatedAssignments = assignments.map((a, index) => 
-            index === existingAssignmentIndex ? {
-              ...a,
-              subjects: [...a.subjects, newSubject]
-            } : a
-          );
-        } else {
-          // Create new assignment - need to find the actual class name
-          const classData = availableClasses.find(c => c._id === assignmentForm.class);
-          const className = classData ? classData.name : `Class ${assignmentForm.class}`;
-          
-          const newAssignment = {
-            class: assignmentForm.class, // This should be the class ID
-            className: className,        // This should be the actual class name
-            section: assignmentForm.section,
-            subjects: [newSubject]
-          };
-          updatedAssignments = [...assignments, newAssignment];
-        }
-      } else {
-        // Updating existing subject
-        console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
-        console.log('Current assignment being edited:', assignments[assignmentForm.editingIndex]);
-        
-        updatedAssignments = assignments.map((a, index) => {
-          if (index === assignmentForm.editingIndex) {
-            // Update the first subject (since we're editing the first one)
-            const updatedSubjects = [...a.subjects];
-            if (updatedSubjects.length > 0) {
-              console.log('Updating subject from:', updatedSubjects[0], 'to:', newSubject);
-              updatedSubjects[0] = newSubject;
-            }
-            
-            // Find the actual class name for display
-            const classData = availableClasses.find(c => c._id === assignmentForm.class);
-            const className = classData ? classData.name : `Class ${assignmentForm.class}`;
-            
-            const updatedAssignment = {
-              ...a,
-              class: assignmentForm.class, // This should be the class ID
-              className: className,        // This should be the actual class name
-              section: assignmentForm.section,
-              subjects: updatedSubjects
-            };
-            
-            console.log('Updated assignment:', updatedAssignment);
-            return updatedAssignment;
-          }
-          return a;
-        });
-        
-        console.log('Final updated assignments:', updatedAssignments);
-      }
-
-      // Update local state immediately for real-time UI update
-      setAssignments(updatedAssignments);
-      
-      console.log('About to save assignments:', updatedAssignments);
-      console.log('Selected teacher:', selectedTeacher);
-      console.log('Available classes:', availableClasses);
-
-      // Save to database
-      await handleSaveSubjectAssignments(updatedAssignments);
-
-      // Store the editing state before resetting form
-      const wasEditing = assignmentForm.editingIndex !== -1;
-
-      // Reset form
-      setAssignmentForm({ 
-        class: '', 
-        section: '', 
-        subjectName: '', 
-        subjectTime: '', 
-        subjectDay: '', 
-        editingIndex: -1 
-      });
-
-      showSnackbar(
-        wasEditing 
-          ? 'Subject assignment updated successfully' 
-          : 'Subject assignment added successfully', 
-        'success'
-      );
-    } catch (error: any) {
-      console.error('Error saving subject assignment:', error);
-      showSnackbar('Error saving subject assignment. Please try again.', 'error');
-    }
-  };
-
-  const handleEditAssignment = (index: number) => {
-    const assignment = assignments[index];
-    if (!assignment || assignment.subjects.length === 0) return;
-    
-    // For editing, we'll edit the first subject (you can enhance this to edit specific subjects)
-    const firstSubject = assignment.subjects[0];
-    setAssignmentForm({
-      class: assignment.class, // Use class ID for editing
-      section: assignment.section,
-      subjectName: firstSubject.name,
-      subjectTime: firstSubject.time,
-      subjectDay: firstSubject.day,
-      editingIndex: index
-    });
-    
-    console.log('Editing assignment:', assignment);
-    console.log('Form set to:', {
-      class: assignment.class, // Use class ID for editing
-      section: assignment.section,
-      subjectName: firstSubject.name,
-      subjectTime: firstSubject.time,
-      subjectDay: firstSubject.day,
-      editingIndex: index
-    });
-  };
-
-
-
-  const handleDeleteSubject = async (assignmentIndex: number, subjectIndex: number) => {
-    try {
-      // Update local state immediately for real-time UI update
-      const updatedAssignments = assignments.map((assignment, idx) => {
-        if (idx === assignmentIndex) {
-          const newSubjects = assignment.subjects.filter((_, subIdx) => subIdx !== subjectIndex);
-          if (newSubjects.length === 0) {
-            // If no subjects left, remove the entire assignment
-            return null;
-          }
-          return { ...assignment, subjects: newSubjects };
-        }
-        return assignment;
-      }).filter(Boolean) as typeof assignments;
-
-      setAssignments(updatedAssignments);
-
-      // Save to database
-      await handleSaveSubjectAssignments(updatedAssignments);
-
-      showSnackbar('Subject deleted successfully', 'success');
-    } catch (error: any) {
-      console.error('Error deleting subject:', error);
-      showSnackbar('Error deleting subject. Please try again.', 'error');
-    }
-  };
+  // Old assignment functions removed - now handled by SubjectClassAssignment component
 
 
   // Check if user is authenticated
@@ -1475,182 +1184,43 @@ const TeacherManagement: React.FC = () => {
 
       {/* Subject Assignment Dialog */}
       {openSubjectAssignmentDialog && selectedTeacher && (
-        <Dialog open={openSubjectAssignmentDialog} onClose={() => setOpenSubjectAssignmentDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Assign Classes & Subjects - {selectedTeacher.name}</DialogTitle>
-          <DialogContent>
-            <Box sx={{ mb: 2 }}>
-              <Alert severity="info">
-                Assign classes and subjects to this teacher. You can edit or delete existing assignments, or add new ones below.
-              </Alert>
-            </Box>
-            {/* Assignment Summary */}
-            {assignments.length > 0 && (
-              <Box sx={{ mb: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1 }}>
-                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
-                  Assignment Summary
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Total Classes: {assignments.length} | Total Subjects: {assignments.reduce((acc, a) => acc + a.subjects.length, 0)}
-                </Typography>
-              </Box>
-            )}
-
-            {/* List of current assignments */}
-            {assignments.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                {assignments.map((a, idx) => (
-                  <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                    <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-                      Class {a.className} - Section {a.section}
-                    </Typography>
-                    <Box sx={{ ml: 2 }}>
-                      {a.subjects.map((subject, subjectIdx) => (
-                        <Box key={subjectIdx} sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          mb: 1, 
-                          p: 1, 
-                          backgroundColor: '#f5f5f5', 
-                          borderRadius: 1 
-                        }}>
-                          <Typography sx={{ minWidth: 120, fontWeight: 'bold' }}>
-                            {subject.name}
-                          </Typography>
-                          <Typography sx={{ minWidth: 100, color: 'text.secondary' }}>
-                            {subject.day}
-                          </Typography>
-                          <Typography sx={{ minWidth: 80, color: 'text.secondary' }}>
-                            {subject.time}
-                          </Typography>
-                          <Box sx={{ ml: 'auto' }}>
-                            <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
-                            <Button size="small" color="error" onClick={() => handleDeleteSubject(idx, subjectIdx)}>Delete</Button>
-                          </Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            )}
-            {/* Common Subjects Quick Selection */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                Quick Subject Selection:
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Hindi', 'History', 'Geography', 'Computer Science', 'Physical Education'].map((subject) => (
-                  <Chip
-                    key={subject}
-                    label={subject}
-                    size="small"
-                    variant="outlined"
-                    onClick={() => setAssignmentForm({ ...assignmentForm, subjectName: subject })}
-                    sx={{ cursor: 'pointer' }}
-                  />
-                ))}
-              </Box>
-            </Box>
-
-            {/* Add/Edit Assignment Form */}
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Class</InputLabel>
-                  <Select
-                    value={assignmentForm.class}
-                    onChange={e => {
-                      setAssignmentForm({ ...assignmentForm, class: e.target.value });
-                    }}
-                    label="Class"
-                  >
-                    {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
-                      <MenuItem key={className} value={className}>
-                        {className}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Section</InputLabel>
-                  <Select
-                    value={assignmentForm.section}
-                    onChange={e => {
-                      setAssignmentForm({ ...assignmentForm, section: e.target.value });
-                    }}
-                    label="Section"
-                  >
-                    {['A', 'B', 'C', 'D', 'E'].map(section => (
-                      <MenuItem key={section} value={section}>
-                        Section {section}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <TextField
-                  fullWidth
-                  label="Subject Name"
-                  value={assignmentForm.subjectName}
-                  onChange={e => setAssignmentForm({ ...assignmentForm, subjectName: e.target.value })}
-                  placeholder="Mathematics"
-                  helperText="Enter subject name"
-                />
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>Day</InputLabel>
-                  <Select
-                    value={assignmentForm.subjectDay}
-                    onChange={e => setAssignmentForm({ ...assignmentForm, subjectDay: e.target.value })}
-                    label="Day"
-                  >
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
-                      <MenuItem key={day} value={day}>
-                        {day}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>Time</InputLabel>
-                  <Select
-                    value={assignmentForm.subjectTime}
-                    onChange={e => setAssignmentForm({ ...assignmentForm, subjectTime: e.target.value })}
-                    label="Time"
-                  >
-                    {[
-                      '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM',
-                      '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
-                      '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
-                    ].map(time => (
-                      <MenuItem key={time} value={time}>
-                        {time}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  onClick={handleAddOrUpdateAssignment}
-                  sx={{ mt: 1 }}
-                >
-                  {assignmentForm.editingIndex === -1 ? 'Add Subject Assignment' : 'Update Subject Assignment'}
-                </Button>
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenSubjectAssignmentDialog(false)}>Cancel</Button>
-          </DialogActions>
-        </Dialog>
+        <SubjectClassAssignment
+          open={openSubjectAssignmentDialog}
+          onClose={() => setOpenSubjectAssignmentDialog(false)}
+          teacherId={selectedTeacher._id}
+          teacherName={selectedTeacher.name}
+          availableClasses={availableClasses}
+          currentAssignments={
+            // Transform teacher assignments to SubjectClassAssignment format
+            selectedTeacher.assignedClasses.reduce((acc, ac) => {
+              const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
+              const className = typeof ac.class === 'object' ? ac.class.name : `Class ${ac.grade || 'Unknown'}`;
+              const grade = typeof ac.class === 'object' ? ac.class.grade : ac.grade;
+              const section = ac.section;
+              
+              const existingAssignment = acc.find(a => a.classId === classId && a.section === section);
+              if (existingAssignment) {
+                existingAssignment.subjects.push(ac.subject);
+              } else {
+                acc.push({
+                  classId,
+                  className,
+                  grade: grade || className.replace('Class ', ''),
+                  section,
+                  subjects: [ac.subject]
+                });
+              }
+              return acc;
+            }, [] as Array<{
+              classId: string;
+              className: string;
+              grade: string;
+              section: string;
+              subjects: string[];
+            }>)
+          }
+          onSave={handleSaveSubjectAssignments}
+        />
       )}
 
       {/* Snackbar */}

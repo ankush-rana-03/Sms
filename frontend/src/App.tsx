@@ -1,7 +1,10 @@
 import React, { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+// Conditionally import dev tools only in development
+const ReactQueryDevtools = process.env.NODE_ENV === 'development' 
+  ? require('@tanstack/react-query-devtools').ReactQueryDevtools 
+  : null;
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -250,7 +253,7 @@ const App: React.FC = () => {
             </ErrorBoundary>
           </AuthProvider>
         </ThemeProvider>
-        {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+        {process.env.NODE_ENV === 'development' && ReactQueryDevtools && <ReactQueryDevtools initialIsOpen={false} />}
       </QueryClientProvider>
     </ErrorBoundary>
   );

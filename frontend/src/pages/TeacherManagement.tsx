@@ -336,17 +336,17 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleUpdateTeacher = async (teacher: Teacher) => { // Added teacher parameter
-    if (!teacher) return;
+  const handleUpdateTeacher = async () => {
+    if (!selectedTeacher) return;
 
     try {
       const teacherData = {
         ...teacherFormData,
-        subjects: teacher.subjects || [], // Keep existing subjects from teacher data
+        subjects: selectedTeacher.subjects || [], // Keep existing subjects from teacher data
       };
 
       const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(
-        `/admin/teachers/${teacher._id}`,
+        `/admin/teachers/${selectedTeacher._id}`,
         teacherData
       );
 
@@ -355,7 +355,7 @@ const TeacherManagement: React.FC = () => {
         setOpenDialog(false);
         resetForm();
         // Update the specific teacher in the UI instead of refetching all
-        setTeachers(prev => prev.map(t => t._id === teacher._id ? response.data : t));
+        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
         // Refresh statistics to update designation counts and other stats
         fetchStatistics();
       } else {
@@ -387,8 +387,8 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleResetPassword = async (teacherId: string) => { // Added teacherId parameter
-    if (!teacherId) return;
+  const handleResetPassword = async () => {
+    if (!selectedTeacher?._id) return;
     if (!newPassword.trim()) {
       showSnackbar('Please enter a new password', 'error');
       return;
@@ -396,7 +396,7 @@ const TeacherManagement: React.FC = () => {
 
     try {
       const response = await apiService.post<{ success: boolean; message: string; data: { temporaryPassword: string; emailSent: boolean } }>(
-        `/admin/teachers/${teacherId}/reset-password`,
+        `/admin/teachers/${selectedTeacher._id}/reset-password`,
         { newPassword: newPassword.trim() }
       );
 
@@ -911,36 +911,36 @@ const TeacherManagement: React.FC = () => {
                               <Person />
                             </Avatar>
                             <Box>
-                              <Typography variant="subtitle2">{teacher.name || ''}</Typography>
+                              <Typography variant="subtitle2">{teacher?.name || ''}</Typography>
                               <Typography variant="body2" color="textSecondary">
-                                {teacher.email || ''}
+                                {teacher?.email || ''}
                               </Typography>
                               <Typography variant="body2" color="textSecondary">
-                                {teacher.teacherId || ''}
+                                {teacher?.teacherId || ''}
                               </Typography>
                             </Box>
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={teacher.designation || ''}
-                            color={getDesignationColor(teacher.designation || '')}
+                            label={teacher?.designation || ''}
+                            color={getDesignationColor(teacher?.designation || '') as any}
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {(teacher.subjects || []).slice(0, 2).map((subject) => (
+                            {(teacher?.subjects || []).slice(0, 2).map((subject) => (
                               <Chip key={subject} label={subject} size="small" variant="outlined" />
                             ))}
-                            {(teacher.subjects && teacher.subjects.length > 2) && (
+                            {(teacher?.subjects && teacher.subjects.length > 2) && (
                               <Chip label={`+${teacher.subjects.length - 2}`} size="small" />
                             )}
                           </Box>
                         </TableCell>
-                        <TableCell>{teacher.phone || ''}</TableCell>
-                        <TableCell>{teacher.experience?.years || 0} years</TableCell>
-                        <TableCell>${teacher.salary?.toLocaleString() || 0}</TableCell>
+                        <TableCell>{teacher?.phone || ''}</TableCell>
+                        <TableCell>{teacher?.experience?.years || 0} years</TableCell>
+                        <TableCell>${teacher?.salary?.toLocaleString() || 0}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <Tooltip title="Edit Teacher">
@@ -964,7 +964,7 @@ const TeacherManagement: React.FC = () => {
                             <Tooltip title="Reset Password">
                               <IconButton
                                 size="small"
-                                onClick={() => handleResetPassword(teacher._id)}
+                                onClick={() => handleOpenPasswordResetDialog(teacher)}
                                 color="warning"
                               >
                                 <Lock />
@@ -1178,7 +1178,7 @@ const TeacherManagement: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
           <Button
-            onClick={dialogMode === 'create' ? handleCreateTeacher : () => handleUpdateTeacher(selectedTeacher!)}
+            onClick={dialogMode === 'create' ? handleCreateTeacher : handleUpdateTeacher}
             variant="contained"
           >
             {dialogMode === 'create' ? 'Create' : 'Update'}
@@ -1249,7 +1249,7 @@ const TeacherManagement: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenPasswordResetDialog(false)}>Cancel</Button>
-          <Button onClick={() => handleResetPassword(selectedTeacher?._id!)} variant="contained" color="warning">
+          <Button onClick={handleResetPassword} variant="contained" color="warning">
             Reset Password
           </Button>
         </DialogActions>

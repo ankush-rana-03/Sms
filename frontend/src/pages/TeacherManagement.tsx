@@ -647,13 +647,19 @@ const TeacherManagement: React.FC = () => {
     console.log('New subject to add/update:', newSubject);
 
     // Check for time conflicts (same class, section, day, and time)
-    const hasTimeConflict = assignments.some(assignment => 
-      assignment.class === assignmentForm.class && 
-      assignment.section === assignmentForm.section &&
-      assignment.subjects.some(subject => 
-        subject.day === newSubject.day && subject.time === newSubject.time
-      )
-    );
+    // When editing, exclude the current assignment being edited from conflict check
+    const hasTimeConflict = assignments.some((assignment, assignmentIdx) => {
+      // Skip the assignment being edited
+      if (assignmentForm.editingIndex !== -1 && assignmentIdx === assignmentForm.editingIndex) {
+        return false;
+      }
+      
+      return assignment.class === assignmentForm.class && 
+             assignment.section === assignmentForm.section &&
+             assignment.subjects.some(subject => 
+               subject.day === newSubject.day && subject.time === newSubject.time
+             );
+    });
 
     if (hasTimeConflict) {
       showSnackbar('Time conflict detected! Another subject is already scheduled at this time for this class and section.', 'error');
@@ -693,25 +699,32 @@ const TeacherManagement: React.FC = () => {
       } else {
         // Updating existing subject
         console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
+        console.log('Current assignment being edited:', assignments[assignmentForm.editingIndex]);
         
         updatedAssignments = assignments.map((a, index) => {
           if (index === assignmentForm.editingIndex) {
             // Update the first subject (since we're editing the first one)
             const updatedSubjects = [...a.subjects];
             if (updatedSubjects.length > 0) {
+              console.log('Updating subject from:', updatedSubjects[0], 'to:', newSubject);
               updatedSubjects[0] = newSubject;
             }
             
-            return {
+            const updatedAssignment = {
               ...a,
               class: assignmentForm.class,
               className: assignmentForm.class,
               section: assignmentForm.section,
               subjects: updatedSubjects
             };
+            
+            console.log('Updated assignment:', updatedAssignment);
+            return updatedAssignment;
           }
           return a;
         });
+        
+        console.log('Final updated assignments:', updatedAssignments);
       }
 
       // Update local state immediately for real-time UI update
@@ -719,6 +732,9 @@ const TeacherManagement: React.FC = () => {
 
       // Save to database
       await handleSaveSubjectAssignments(updatedAssignments);
+
+      // Store the editing state before resetting form
+      const wasEditing = assignmentForm.editingIndex !== -1;
 
       // Reset form
       setAssignmentForm({ 
@@ -731,9 +747,9 @@ const TeacherManagement: React.FC = () => {
       });
 
       showSnackbar(
-        assignmentForm.editingIndex === -1 
-          ? 'Subject assignment added successfully' 
-          : 'Subject assignment updated successfully', 
+        wasEditing 
+          ? 'Subject assignment updated successfully' 
+          : 'Subject assignment added successfully', 
         'success'
       );
     } catch (error: any) {

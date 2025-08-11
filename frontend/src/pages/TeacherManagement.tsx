@@ -321,7 +321,6 @@ const TeacherManagement: React.FC = () => {
     try {
       const teacherData = {
         ...teacherFormData,
-        subjects: [], // Empty array since subjects are now managed through class assignments
       };
 
       const response = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
@@ -348,7 +347,6 @@ const TeacherManagement: React.FC = () => {
     try {
       const teacherData = {
         ...teacherFormData,
-        subjects: selectedTeacher.subjects || [], // Keep existing subjects from teacher data
       };
 
       const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(
@@ -1072,7 +1070,6 @@ const TeacherManagement: React.FC = () => {
                     <TableRow>
                       <TableCell>Teacher</TableCell>
                       <TableCell>Designation</TableCell>
-                      <TableCell>Subjects</TableCell>
                       <TableCell>Classes</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell>Last Login</TableCell>
@@ -1105,16 +1102,7 @@ const TeacherManagement: React.FC = () => {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {(teacher.subjects || []).slice(0, 2).map((subject) => (
-                              <Chip key={subject} label={subject} size="small" variant="outlined" />
-                            ))}
-                            {(teacher.subjects && teacher.subjects.length > 2) && (
-                              <Chip label={`+${teacher.subjects.length - 2}`} size="small" />
-                            )}
-                          </Box>
-                        </TableCell>
+
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {(teacher.assignedClasses || []).slice(0, 2).map((ac, index) => (

@@ -68,6 +68,8 @@ interface Teacher {
     section: string;
     subject: string;
     grade: string;
+    time?: string; // Add time field
+    day?: string;  // Add day field
   }>;
   qualification: {
     degree: string;
@@ -562,6 +564,35 @@ const TeacherManagement: React.FC = () => {
       if (response.success) {
         // Update teacher in UI
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+        
+        // Update the selected teacher with the new data
+        setSelectedTeacher(response.data);
+        
+        // Update local assignments state to reflect the new data structure
+        // Transform the response data back to our local format
+        const updatedLocalAssignments = response.data.assignedClasses.reduce((acc, ac) => {
+          const key = `${ac.class._id}-${ac.section}`;
+          if (!acc[key]) {
+            acc[key] = {
+              class: ac.class._id,
+              className: ac.class.name,
+              section: ac.section,
+              subjects: []
+            };
+          }
+          // Use the time and day from response, or default values if not present
+          acc[key].subjects.push({
+            name: ac.subject,
+            time: ac.time || '9:00 AM', // Use response time or default
+            day: ac.day || 'Monday'     // Use response day or default
+          });
+          return acc;
+        }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
+
+        const transformedLocalAssignments = Object.values(updatedLocalAssignments);
+        console.log('Updated local assignments:', transformedLocalAssignments);
+        setAssignments(transformedLocalAssignments);
+        
         // Refresh available classes in case new ones were created
         fetchAvailableClasses();
       } else {

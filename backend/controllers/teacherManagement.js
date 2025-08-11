@@ -736,7 +736,17 @@ exports.assignClassesToTeacher = async (req, res) => {
     }
 
     // Clear existing assignments and set new ones
-    teacher.assignedClasses = assignedClasses;
+    // Transform the assignments to include time and day fields
+    const transformedAssignments = assignedClasses.map(assignment => ({
+      class: assignment.class,
+      section: assignment.section,
+      subject: assignment.subject,
+      grade: assignment.grade,
+      time: assignment.time || '9:00 AM',  // Preserve time field
+      day: assignment.day || 'Monday'      // Preserve day field
+    }));
+    
+    teacher.assignedClasses = transformedAssignments;
     await teacher.save();
 
     const populatedTeacher = await Teacher.findById(teacherId)

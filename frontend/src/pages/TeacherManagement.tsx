@@ -548,10 +548,15 @@ const TeacherManagement: React.FC = () => {
       console.log('Transformed assignments:', transformedAssignments);
       console.log('Sending to API:', { assignedClasses: transformedAssignments });
 
+      console.log('Sending request to:', `/admin/teachers/${selectedTeacher._id}/assign-classes`);
+      console.log('Request payload:', { assignedClasses: transformedAssignments });
+      
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes`,
         { assignedClasses: transformedAssignments }
       );
+      
+      console.log('Response received:', response);
 
       if (response.success) {
         // Update teacher in UI

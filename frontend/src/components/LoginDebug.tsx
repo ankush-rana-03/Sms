@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, Button, TextField, Alert, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Typography, Button, TextField, FormControl, InputLabel, Select, MenuItem, Alert } from '@mui/material';
 import { authService } from '../services/authService';
 
 const LoginDebug: React.FC = () => {
@@ -14,7 +14,7 @@ const LoginDebug: React.FC = () => {
       setResult('Testing login...');
       setError('');
       
-      const response = await authService.login(email, password, role);
+      const response = await authService.login({ email, password });
       setResult(`Login successful! User: ${response.user.name}, Role: ${response.user.role}`);
     } catch (err: any) {
       setError(`Login failed: ${err.response?.data?.message || err.message}`);
@@ -22,15 +22,15 @@ const LoginDebug: React.FC = () => {
     }
   };
 
-  const testGetMe = async () => {
+  const testVerifyToken = async () => {
     try {
-      setResult('Testing getMe...');
+      setResult('Testing token verification...');
       setError('');
       
-      const user = await authService.getMe();
-      setResult(`GetMe successful! User: ${user.name}, Role: ${user.role}`);
+      const user = await authService.verifyToken();
+      setResult(`Token verification successful! User: ${user.name}, Role: ${user.role}`);
     } catch (err: any) {
-      setError(`GetMe failed: ${err.response?.data?.message || err.message}`);
+      setError(`Token verification failed: ${err.response?.data?.message || err.message}`);
       setResult('');
     }
   };
@@ -74,8 +74,8 @@ const LoginDebug: React.FC = () => {
         <Button onClick={testLogin} variant="contained">
           Test Login
         </Button>
-        <Button onClick={testGetMe} variant="outlined">
-          Test GetMe
+        <Button onClick={testVerifyToken} variant="outlined">
+          Test Verify Token
         </Button>
       </Box>
       

@@ -221,8 +221,8 @@ const TeacherManagement: React.FC = () => {
   interface Assignment {
     class?: string | { _id?: string; name?: string; grade?: string; section?: string }; // Allow string or object with _id
     className?: string; // Store class name for display if class is just an ID
-    section: string;
-    subjects: string[];
+    section?: string;
+    subjects?: string[];
   }
 
   const [assignments, setAssignments] = useState<Array<{
@@ -437,7 +437,7 @@ const TeacherManagement: React.FC = () => {
       designation: teacher.designation,
       qualification: teacher.qualification || { degree: '', institution: '', yearOfCompletion: new Date().getFullYear() },
       experience: teacher.experience || { years: 0, previousSchools: [] },
-      joiningDate: teacher.joiningDate ? teacher.joiningDate.split('T')[0] : '',
+      joiningDate: teacher.joiningDate ? (teacher.joiningDate.split('T')[0] || '') : '',
       salary: teacher.salary || 0,
       emergencyContact: teacher.contactInfo?.emergencyContact || { name: '', phone: '', relationship: '' }
     });
@@ -489,7 +489,9 @@ const TeacherManagement: React.FC = () => {
           subjects: []
         };
       }
-      acc[key].subjects.push(ac.subject);
+      // At this point, acc[key] is guaranteed to exist
+      const group = acc[key]!;
+      group.subjects.push(ac.subject);
       return acc;
     }, {} as Record<string, { class: any; className: string; section: string; subjects: string[] }>);
 
@@ -689,6 +691,8 @@ const TeacherManagement: React.FC = () => {
 
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
+    if (!assignment) return; // Guard clause to prevent undefined access
+    
     setAssignmentForm({
       class: assignment.className || assignment.class || '', // Provide empty string as fallback
       section: assignment.section || '',
@@ -1122,7 +1126,7 @@ const TeacherManagement: React.FC = () => {
                 fullWidth
                 label="Joining Date"
                 type="date"
-                value={teacherFormData.joiningDate ? teacherFormData.joiningDate.split('T')[0] : ''}
+                value={teacherFormData.joiningDate ? (teacherFormData.joiningDate.split('T')[0] || '') : ''}
                 onChange={(e) => setTeacherFormData({
                   ...teacherFormData,
                   joiningDate: e.target.value ? new Date(e.target.value).toISOString() : ''
@@ -1280,7 +1284,7 @@ const TeacherManagement: React.FC = () => {
                 {assignments.map((a, idx) => (
                   <Box key={idx} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <Typography sx={{ minWidth: 150 }}>Class {a.className} - {a.section}</Typography>
-                    <Typography sx={{ flex: 1, ml: 2 }}>Subjects: {a.subjects.join(', ')}</Typography>
+                    <Typography sx={{ flex: 1, ml: 2 }}>Subjects: {a.subjects?.join(', ') || 'No subjects assigned'}</Typography>
                     <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
                     <Button size="small" color="error" onClick={() => handleDeleteAssignment(idx)}>Delete</Button>
                   </Box>

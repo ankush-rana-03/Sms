@@ -16,6 +16,8 @@ const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ children }) => 
         console.log(`Component render time: ${endTime - startTime}ms`);
       };
     }
+    // Return undefined for production builds
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -33,6 +35,8 @@ const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({ children }) => 
       const interval = setInterval(logMemoryUsage, 30000); // Log every 30 seconds
       return () => clearInterval(interval);
     }
+    // Return undefined for production builds
+    return undefined;
   }, []);
 
   return <>{children}</>;

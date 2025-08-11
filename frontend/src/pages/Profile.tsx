@@ -105,7 +105,10 @@ const Profile: React.FC = () => {
     }
 
     try {
-      await authService.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      await authService.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
       setSnackbar({
         open: true,
         message: 'Password updated successfully',

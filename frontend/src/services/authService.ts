@@ -9,6 +9,9 @@ export interface User {
   isActive: boolean;
   lastLoginAt?: string;
   profileImage?: string;
+  phone?: string;
+  address?: string;
+  emailVerified?: boolean;
 }
 
 export interface LoginResponse {

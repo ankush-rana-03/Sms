@@ -67,7 +67,10 @@ interface AttendanceRecord {
 const Attendance: React.FC = () => {
   const { user } = useAuth();
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0] || today.toLocaleDateString('en-CA');
+  });
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

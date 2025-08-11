@@ -58,7 +58,7 @@ const Login: React.FC = () => {
       setLoading(true);
       setError('');
       console.log('Attempting login with:', data.email, 'role:', data.role);
-      await login(data.email, data.password, data.role);
+      await login({ email: data.email, password: data.password });
       console.log('Login successful, navigating to dashboard');
       navigate('/');
     } catch (err: any) {

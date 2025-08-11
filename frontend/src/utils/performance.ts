@@ -10,7 +10,7 @@ export const measurePerformance = (name: string, fn: () => void) => {
   }
 };
 
-export const reportWebVitals = (metric: any) => {
+export const reportWebVitals = (metric?: any) => {
   if (process.env.NODE_ENV === 'development') {
     console.log(metric);
   }

@@ -1,83 +1,71 @@
-import { apiService } from './api';
 
-export interface LoginRequest {
+import api from './api';
+
+export interface User {
+  _id: string;
+  name: string;
   email: string;
-  password: string;
   role: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  profileImage?: string;
 }
 
 export interface LoginResponse {
-  success: boolean;
+  user: User;
   token: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: 'principal' | 'admin' | 'teacher' | 'parent' | 'student';
-    phone: string;
-    address: string;
-    profileImage?: string;
-    isActive: boolean;
-    emailVerified?: boolean;
-  };
+  message: string;
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'principal' | 'admin' | 'teacher' | 'parent' | 'student';
-  phone: string;
-  address: string;
-  profileImage?: string;
-  isActive: boolean;
-  emailVerified?: boolean;
-}
+export const authService = {
+  login: async (credentials: { email: string; password: string }): Promise<LoginResponse> => {
+    try {
+      const response = await api.post('/auth/login', credentials);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error('Login failed. Please try again.');
+    }
+  },
 
-class AuthService {
-  async login(email: string, password: string, role: string): Promise<LoginResponse> {
-    return apiService.post<LoginResponse>('/auth/login', { email, password, role });
+  logout: async (): Promise<void> => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  },
+
+  verifyToken: async (): Promise<User> => {
+    try {
+      const response = await api.get('/auth/verify');
+      return response.data.user;
+    } catch (error: any) {
+      throw new Error('Token verification failed');
+    }
+  },
+
+  changePassword: async (data: { currentPassword: string; newPassword: string }): Promise<void> => {
+    try {
+      await api.post('/auth/change-password', data);
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error('Password change failed. Please try again.');
+    }
+  },
+
+  resetPassword: async (email: string): Promise<void> => {
+    try {
+      await api.post('/auth/reset-password', { email });
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw new Error('Password reset failed. Please try again.');
+    }
   }
-
-  async register(userData: {
-    name: string;
-    email: string;
-    password: string;
-    role: string;
-    phone: string;
-    address: string;
-  }): Promise<LoginResponse> {
-    return apiService.post<LoginResponse>('/auth/register', userData);
-  }
-
-  async getMe(): Promise<User> {
-    const response = await apiService.get<{ success: boolean; data: User }>('/auth/me');
-    return response.data;
-  }
-
-  async updateDetails(userData: Partial<User>): Promise<User> {
-    const response = await apiService.put<{ success: boolean; data: User }>('/auth/updatedetails', userData);
-    return response.data;
-  }
-
-  async updatePassword(currentPassword: string, newPassword: string): Promise<LoginResponse> {
-    return apiService.put<LoginResponse>('/auth/updatepassword', {
-      currentPassword,
-      newPassword,
-    });
-  }
-
-  async forgotPassword(email: string): Promise<{ success: boolean; data: string }> {
-    return apiService.post<{ success: boolean; data: string }>('/auth/forgotpassword', { email });
-  }
-
-  async resetPassword(token: string, password: string): Promise<LoginResponse> {
-    return apiService.put<LoginResponse>(`/auth/resetpassword/${token}`, { password });
-  }
-
-  logout(): void {
-    localStorage.removeItem('token');
-  }
-}
-
-export const authService = new AuthService();
+};

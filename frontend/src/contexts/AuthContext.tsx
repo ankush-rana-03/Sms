@@ -1,35 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService } from '../services/authService';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'principal' | 'admin' | 'teacher' | 'parent' | 'student';
-  phone: string;
-  address: string;
-  profileImage?: string;
-  isActive: boolean;
-  emailVerified?: boolean;
-}
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { authService, User } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
-  login: (email: string, password: string, role: string) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<void>;
   logout: () => void;
+  loading: boolean;
   updateUser: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -39,68 +20,80 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        console.log('Initializing authentication...');
-        const token = localStorage.getItem('token');
-        console.log('Token found:', !!token);
+  const login = useCallback(async (credentials: { email: string; password: string }) => {
+    try {
+      setLoading(true);
+      const response = await authService.login(credentials);
+      setUser(response.user);
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-        if (token) {
-          console.log('Attempting to get user data...');
-          const userData = await authService.getMe();
-          console.log('User data received:', userData);
-          setUser(userData);
-        } else {
-          console.log('No token found, user will need to login');
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    // Clear any other user-related data
+    sessionStorage.clear();
+  }, []);
+
+  const updateUser = useCallback((userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        
+        if (token && storedUser) {
+          try {
+            const user = JSON.parse(storedUser);
+            // Verify token is still valid
+            await authService.verifyToken();
+            setUser(user);
+          } catch (error) {
+            console.error('Token verification failed:', error);
+            logout();
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        localStorage.removeItem('token');
+        logout();
       } finally {
-        console.log('Setting loading to false');
         setLoading(false);
       }
     };
 
-    initAuth();
-  }, []);
+    initializeAuth();
+  }, [logout]);
 
-  const login = async (email: string, password: string, role: string) => {
-    try {
-      const response = await authService.login(email, password, role);
-      localStorage.setItem('token', response.token);
-
-      // If user data is not included in login response, fetch it separately
-      if (!response.user) {
-        const userData = await authService.getMe();
-        setUser(userData);
-      } else {
-        setUser(response.user);
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-  };
-
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      setUser({ ...user, ...userData });
-    }
-  };
-
-  const value = {
+  const value: AuthContextType = {
     user,
-    loading,
     login,
     logout,
-    updateUser,
+    loading,
+    updateUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

@@ -164,7 +164,9 @@ const App: React.FC = () => {
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <AuthProvider>
-            <RouterProvider router={router} />
+            <ErrorBoundary>
+              <RouterProvider router={router} />
+            </ErrorBoundary>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

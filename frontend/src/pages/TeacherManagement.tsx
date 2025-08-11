@@ -225,7 +225,15 @@ const TeacherManagement: React.FC = () => {
     subjects: string[];
   }
 
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [assignments, setAssignments] = useState<Array<{
+    className?: string;
+    class?: string;
+    section?: string;
+    subjects?: string[];
+    _id?: string;
+    name?: string;
+    grade?: string;
+  }>>([]);
   const [assignmentForm, setAssignmentForm] = useState({
     class: '',
     section: '',
@@ -643,47 +651,48 @@ const TeacherManagement: React.FC = () => {
 
 
   const handleAddOrUpdateAssignment = () => {
-    if (!selectedTeacher) return;
-
-    if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectsInput.trim()) {
-      showSnackbar('Please fill in all fields', 'error');
+    if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectsInput) {
+      showSnackbar('Please fill all fields', 'error');
       return;
     }
 
-    const subjects = assignmentForm.subjectsInput.split(',').map(s => s.trim()).filter(Boolean);
+    const subjects = assignmentForm.subjectsInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+    const newAssignment: {
+      className: string;
+      section: string;
+      subjects: string[];
+    } = {
+      className: assignmentForm.class,
+      section: assignmentForm.section,
+      subjects: subjects
+    };
 
     if (assignmentForm.editingIndex === -1) {
-      // Add new assignment
-      const newAssignment: Assignment = {
-        class: assignmentForm.class, // This will be the class name, we'll convert to ID when saving
-        className: assignmentForm.class,
-        section: assignmentForm.section,
-        subjects
-      };
+      // Adding new assignment
       setAssignments(prev => [...prev, newAssignment]);
-      showSnackbar('Assignment added successfully', 'success');
     } else {
-      // Update existing assignment
-      setAssignments(prev => prev.map((a, index) =>
-        index === assignmentForm.editingIndex ? {
-          ...a,
-          class: assignmentForm.class,
-          className: assignmentForm.class,
-          section: assignmentForm.section,
-          subjects
-        } : a
+      // Editing existing assignment
+      setAssignments(prev => prev.map((assignment, index) => 
+        index === assignmentForm.editingIndex ? newAssignment : assignment
       ));
-      showSnackbar('Assignment updated successfully', 'success');
     }
-    setAssignmentForm({ class: '', section: '', subjectsInput: '', editingIndex: -1 });
+
+    // Reset form
+    setAssignmentForm({
+      class: '',
+      section: '',
+      subjectsInput: '',
+      editingIndex: -1
+    });
   };
 
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
     setAssignmentForm({
       class: assignment.className || assignment.class || '', // Provide empty string as fallback
-      section: assignment.section,
-      subjectsInput: assignment.subjects.join(', '),
+      section: assignment.section || '',
+      subjectsInput: assignment.subjects ? assignment.subjects.join(', ') : '',
       editingIndex: index
     });
   };

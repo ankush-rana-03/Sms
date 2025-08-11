@@ -585,6 +585,9 @@ const TeacherManagement: React.FC = () => {
           return acc;
         }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
 
+        console.log('Response data assignedClasses:', response.data.assignedClasses);
+        console.log('Transformed local assignments:', updatedLocalAssignments);
+
         const transformedLocalAssignments = Object.values(updatedLocalAssignments);
         console.log('Updated local assignments:', transformedLocalAssignments);
         console.log('Response data assignedClasses:', response.data.assignedClasses);
@@ -766,6 +769,8 @@ const TeacherManagement: React.FC = () => {
       setAssignments(updatedAssignments);
       
       console.log('About to save assignments:', updatedAssignments);
+      console.log('Selected teacher:', selectedTeacher);
+      console.log('Available classes:', availableClasses);
 
       // Save to database
       await handleSaveSubjectAssignments(updatedAssignments);

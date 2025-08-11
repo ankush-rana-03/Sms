@@ -746,12 +746,18 @@ exports.assignClassesToTeacher = async (req, res) => {
       day: assignment.day || 'Monday'      // Preserve day field
     }));
     
+    console.log('Transformed assignments to save:', transformedAssignments);
+    
     teacher.assignedClasses = transformedAssignments;
     await teacher.save();
+    
+    console.log('Teacher saved with assignments:', teacher.assignedClasses);
 
     const populatedTeacher = await Teacher.findById(teacherId)
       .populate('assignedClasses.class', 'name grade section')
       .populate('user', 'name email role isActive');
+
+    console.log('Populated teacher response:', JSON.stringify(populatedTeacher.assignedClasses, null, 2));
 
     res.status(200).json({
       success: true,

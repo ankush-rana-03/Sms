@@ -1,50 +1,103 @@
 
-import axios, { AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { handleApiError } from '../utils/errorHandler';
 
-// Use environment variable with fallback
-const API_URL = process.env.REACT_APP_API_URL || 'https://sms-38ap.onrender.com/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://0.0.0.0:5000/api';
 
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 30000, // 30 seconds timeout
+  baseURL: API_BASE_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor
+// Request interceptor for auth token and request logging
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Log requests in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
+    
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
 
-// Response interceptor with better error handling
+// Response interceptor for error handling
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    // Log responses in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`API Response: ${response.status} ${response.config.url}`);
+    }
+    return response;
+  },
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Clear token and redirect to login
+    // Handle network errors
+    if (!error.response) {
+      handleApiError({
+        message: 'Network error. Please check your connection.',
+        status: 0,
+        data: null
+      });
+      return Promise.reject(error);
+    }
+
+    const { status, data } = error.response;
+    
+    // Handle authentication errors
+    if (status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
+      return Promise.reject(error);
     }
     
-    // Handle network errors
-    if (!error.response) {
-      console.error('Network error:', error.message);
-      return Promise.reject(new Error('Network error. Please check your connection.'));
-    }
+    // Handle other errors
+    handleApiError({
+      message: (data as any)?.message || 'An error occurred',
+      status,
+      data
+    });
     
     return Promise.reject(error);
   }
 );
 
 export default api;
+
+// Utility functions for common API patterns
+export const createApiCall = <T>(
+  method: 'get' | 'post' | 'put' | 'delete',
+  url: string,
+  data?: any,
+  config?: any
+) => {
+  return api[method]<T>(url, data, config);
+};
+
+export const uploadFile = (url: string, file: File, onProgress?: (progress: number) => void) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  return api.post(url, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(progress);
+      }
+    },
+  });
+};

@@ -1,30 +1,49 @@
-import React from 'react';
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
+import React, { Suspense, lazy } from 'react';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Attendance from './pages/Attendance';
-import Students from './pages/Students';
-import Teachers from './pages/Teachers';
-import Classes from './pages/Classes';
-import Homework from './pages/Homework';
-import Tests from './pages/Tests';
-import Results from './pages/Results';
-import Profile from './pages/Profile';
 import Layout from './components/Layout';
 import RoleBasedRoute from './components/RoleBasedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
-import LoginDebug from './components/LoginDebug';
 import ErrorBoundary from './components/ErrorBoundary';
 
-import TeacherAttendance from './pages/TeacherAttendance';
-import TeacherManagement from './pages/TeacherManagement';
-import WhatsAppStatus from './components/WhatsAppStatus';
+// Lazy load components for better performance
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Attendance = lazy(() => import('./pages/Attendance'));
+const Students = lazy(() => import('./pages/Students'));
+const Teachers = lazy(() => import('./pages/Teachers'));
+const Classes = lazy(() => import('./pages/Classes'));
+const Homework = lazy(() => import('./pages/Homework'));
+const Tests = lazy(() => import('./pages/Tests'));
+const Results = lazy(() => import('./pages/Results'));
+const Profile = lazy(() => import('./pages/Profile'));
+const TeacherAttendance = lazy(() => import('./pages/TeacherAttendance'));
+const TeacherManagement = lazy(() => import('./pages/TeacherManagement'));
+const WhatsAppStatus = lazy(() => import('./components/WhatsAppStatus'));
+const LoginDebug = lazy(() => import('./components/LoginDebug'));
 
-const queryClient = new QueryClient();
+// Optimized QueryClient configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error: any) => {
+        if (error?.status === 404 || error?.status === 401) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 const theme = createTheme({
   palette: {
@@ -34,9 +53,27 @@ const theme = createTheme({
     secondary: {
       main: '#dc004e',
     },
+    error: {
+      main: '#f44336',
+    },
+    warning: {
+      main: '#ff9800',
+    },
+    success: {
+      main: '#4caf50',
+    },
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+        },
+      },
+    },
   },
 });
 
@@ -71,11 +108,19 @@ const ProtectedLayout: React.FC = () => {
 const router = createBrowserRouter([
   {
     path: "/debug",
-    element: <LoginDebug />
+    element: (
+      <Suspense fallback={<LoadingSpinner message="Loading debug..." />}>
+        <LoginDebug />
+      </Suspense>
+    )
   },
   {
     path: "/login", 
-    element: <Login />
+    element: (
+      <Suspense fallback={<LoadingSpinner message="Loading login..." />}>
+        <Login />
+      </Suspense>
+    )
   },
   {
     path: "/",
@@ -83,74 +128,110 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Dashboard />
+        element: (
+          <Suspense fallback={<LoadingSpinner message="Loading dashboard..." />}>
+            <Dashboard />
+          </Suspense>
+        )
       },
       {
         path: "attendance",
-        element: <Attendance />
+        element: (
+          <Suspense fallback={<LoadingSpinner message="Loading attendance..." />}>
+            <Attendance />
+          </Suspense>
+        )
       },
       {
         path: "students",
         element: (
-          <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
-            <Students />
-          </RoleBasedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading students..." />}>
+            <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
+              <Students />
+            </RoleBasedRoute>
+          </Suspense>
         )
       },
       {
         path: "teachers",
         element: (
-          <RoleBasedRoute allowedRoles={['admin', 'principal']}>
-            <Teachers />
-          </RoleBasedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading teachers..." />}>
+            <RoleBasedRoute allowedRoles={['admin', 'principal']}>
+              <Teachers />
+            </RoleBasedRoute>
+          </Suspense>
         )
       },
       {
         path: "teacher-management",
         element: (
-          <RoleBasedRoute allowedRoles={['admin']}>
-            <TeacherManagement />
-          </RoleBasedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading teacher management..." />}>
+            <RoleBasedRoute allowedRoles={['admin']}>
+              <TeacherManagement />
+            </RoleBasedRoute>
+          </Suspense>
         )
       },
       {
         path: "classes",
         element: (
-          <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
-            <Classes />
-          </RoleBasedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading classes..." />}>
+            <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
+              <Classes />
+            </RoleBasedRoute>
+          </Suspense>
         )
       },
       {
         path: "homework",
-        element: <Homework />
+        element: (
+          <Suspense fallback={<LoadingSpinner message="Loading homework..." />}>
+            <Homework />
+          </Suspense>
+        )
       },
       {
         path: "tests",
-        element: <Tests />
+        element: (
+          <Suspense fallback={<LoadingSpinner message="Loading tests..." />}>
+            <Tests />
+          </Suspense>
+        )
       },
       {
         path: "results",
-        element: <Results />
+        element: (
+          <Suspense fallback={<LoadingSpinner message="Loading results..." />}>
+            <Results />
+          </Suspense>
+        )
       },
       {
         path: "profile",
-        element: <Profile />
+        element: (
+          <Suspense fallback={<LoadingSpinner message="Loading profile..." />}>
+            <Profile />
+          </Suspense>
+        )
       },
       {
         path: "teacher-attendance",
         element: (
-          <RoleBasedRoute allowedRoles={['teacher', 'admin']}>
-            <TeacherAttendance />
-          </RoleBasedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading teacher attendance..." />}>
+            <RoleBasedRoute allowedRoles={['teacher', 'admin']}>
+              <TeacherAttendance />
+            </RoleBasedRoute>
+          </Suspense>
         )
       },
       {
         path: "whatsapp-status",
         element: (
-          <RoleBasedRoute allowedRoles={['admin']}>
-            <WhatsAppStatus />
-          </RoleBasedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading WhatsApp status..." />}>
+            <RoleBasedRoute allowedRoles={['admin']}>
+              <WhatsAppStatus />
+            </RoleBasedRoute>
+          </Suspense>
         )
       }
     ]
@@ -169,6 +250,7 @@ const App: React.FC = () => {
             </ErrorBoundary>
           </AuthProvider>
         </ThemeProvider>
+        {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
       </QueryClientProvider>
     </ErrorBoundary>
   );

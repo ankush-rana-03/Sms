@@ -239,6 +239,10 @@ const TeacherManagement: React.FC = () => {
     editingIndex: -1
   });
 
+  // Enhanced state for better debugging
+  const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
+  const [isSavingAssignment, setIsSavingAssignment] = useState(false);
+
 
   useEffect(() => {
     if (user) {
@@ -478,42 +482,62 @@ const TeacherManagement: React.FC = () => {
 
   const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
+    setIsAssignmentDialogOpen(true);
     
-    console.log('Opening dialog for teacher:', teacher);
+    console.log('=== OPENING ASSIGNMENT DIALOG ===');
+    console.log('Teacher:', teacher.name);
     console.log('Teacher assigned classes:', teacher.assignedClasses);
     
-    // Group assignments by class and section to combine subjects
-    const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
-      // Handle both populated and unpopulated class data
-      const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
-      const className = typeof ac.class === 'object' ? ac.class.name : ac.class;
-      
-      const key = `${classId}-${ac.section}`;
-      if (!acc[key]) {
-        acc[key] = {
-          class: className, // Use className for the form (e.g., "Nursery", "10")
-          className: className, // Keep className for display
-          section: ac.section,
-          subjects: []
-        };
-      }
-      // Convert string subject to object with time and day (preserve actual values if they exist)
-      acc[key].subjects.push({
-        name: ac.subject,
-        time: ac.time || '9:00 AM', // Use actual time if available, otherwise default
-        day: ac.day || 'Monday'     // Use actual day if available, otherwise default
-      });
-      return acc;
-    }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
+    try {
+      // Transform backend data to frontend format
+      const transformedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
+        // Extract class information
+        const classInfo = typeof ac.class === 'object' ? ac.class : { _id: ac.class, name: ac.class };
+        const className = classInfo.name;
+        const classId = classInfo._id;
+        
+        // Create unique key for grouping
+        const key = `${classId}-${ac.section}`;
+        
+        if (!acc[key]) {
+          acc[key] = {
+            class: className,        // Use class name for form (e.g., "Nursery", "10")
+            className: className,    // Keep for display
+            section: ac.section,
+            subjects: []
+          };
+        }
+        
+        // Add subject with time and day
+        acc[key].subjects.push({
+          name: ac.subject,
+          time: ac.time || '9:00 AM',
+          day: ac.day || 'Monday'
+        });
+        
+        return acc;
+      }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
 
-    const transformedAssignments = Object.values(groupedAssignments);
-    console.log('Transformed assignments:', transformedAssignments);
-    
-    setAssignments(transformedAssignments);
-    setAssignmentForm({ class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 });
-    setOpenSubjectAssignmentDialog(true);
-    
-    console.log('Form reset to:', { class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 });
+      const finalAssignments = Object.values(transformedAssignments);
+      console.log('Transformed assignments:', finalAssignments);
+      
+      setAssignments(finalAssignments);
+      
+      // Reset form
+      setAssignmentForm({
+        class: '',
+        section: '',
+        subjectName: '',
+        subjectTime: '9:00 AM',
+        subjectDay: 'Monday',
+        editingIndex: -1
+      });
+      
+      console.log('=== DIALOG OPENED SUCCESSFULLY ===');
+    } catch (error) {
+      console.error('Error opening assignment dialog:', error);
+      showSnackbar('Error loading assignments', 'error');
+    }
   };
 
   const handleSaveSubjectAssignments = async (assignmentsToSave: { 

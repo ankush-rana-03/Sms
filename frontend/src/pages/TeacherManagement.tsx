@@ -709,11 +709,15 @@ const TeacherManagement: React.FC = () => {
         return false;
       }
       
-      return assignment.class === assignmentForm.class && 
-             assignment.section === assignmentForm.section &&
-             assignment.subjects.some(subject => 
-               subject.day === newSubject.day && subject.time === newSubject.time
-             );
+      // Check if this assignment has the same class and section
+      if (assignment.class === assignmentForm.class && assignment.section === assignmentForm.section) {
+        // Check if any subject in this assignment has a time conflict
+        return assignment.subjects.some(subject => 
+          subject.day === newSubject.day && subject.time === newSubject.time
+        );
+      }
+      
+      return false;
     });
 
     if (hasTimeConflict) {
@@ -760,7 +764,7 @@ const TeacherManagement: React.FC = () => {
           updatedAssignments = [...assignments, newAssignment];
         }
       } else {
-        // Updating existing subject
+        // Updating existing assignment
         console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
         console.log('Current assignment being edited:', assignments[assignmentForm.editingIndex]);
         
@@ -773,15 +777,12 @@ const TeacherManagement: React.FC = () => {
               updatedSubjects[0] = newSubject;
             }
             
-            // Find the actual class name for display
-            const classData = availableClasses.find(c => c._id === assignmentForm.class);
-            const className = classData ? classData.name : `Class ${assignmentForm.class}`;
-            
+            // Keep the existing class and section, but update the subject
             const updatedAssignment = {
               ...a,
-              class: assignmentForm.class, // This should be the class ID
-              className: className,        // This should be the actual class name
-              section: assignmentForm.section,
+              class: assignmentForm.class,     // Keep the class name
+              className: assignmentForm.class, // Keep the class name for display
+              section: assignmentForm.section, // Keep the section
               subjects: updatedSubjects
             };
             
@@ -835,8 +836,10 @@ const TeacherManagement: React.FC = () => {
     
     // For editing, we'll edit the first subject (you can enhance this to edit specific subjects)
     const firstSubject = assignment.subjects[0];
+    
+    // Set the form with the current assignment data
     setAssignmentForm({
-      class: assignment.class, // Use class ID for editing
+      class: assignment.class, // This is the class name (e.g., "Nursery", "10")
       section: assignment.section,
       subjectName: firstSubject.name,
       subjectTime: firstSubject.time,
@@ -846,7 +849,7 @@ const TeacherManagement: React.FC = () => {
     
     console.log('Editing assignment:', assignment);
     console.log('Form set to:', {
-      class: assignment.class, // Use class ID for editing
+      class: assignment.class,
       section: assignment.section,
       subjectName: firstSubject.name,
       subjectTime: firstSubject.time,

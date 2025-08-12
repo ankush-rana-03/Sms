@@ -531,21 +531,24 @@ const TeacherManagement: React.FC = () => {
       // Transform the data to match the backend expected format
       const transformedAssignments = assignmentsToSave.flatMap(assignment => 
         assignment.subjects.map(subject => {
-          // Since we're now properly storing class IDs, we can use them directly
-          const classId = assignment.class;
+          // Since we're now using class names, we can use them directly
+          const className = assignment.class;
           
-          // Extract grade from class name or use a default
-          // For class IDs, we need to find the actual class data
-          const classData = availableClasses.find(c => c._id === classId);
-          const grade = classData ? classData.grade : assignment.className.replace('Class ', '').replace('Class', '').trim();
+          // Extract grade from class name
+          let grade = className;
+          if (className === 'Nursery' || className === 'KG') {
+            grade = className;
+          } else {
+            grade = className.replace('Class ', '').replace('Class', '').trim();
+          }
 
           return {
-            class: classId,
+            class: className,        // Send class name
             section: assignment.section,
-            subject: subject.name, // Extract just the subject name for backend
+            subject: subject.name,   // Extract just the subject name for backend
             grade: grade,
-            time: subject.time, // Include time
-            day: subject.day    // Include day
+            time: subject.time,      // Include time
+            day: subject.day         // Include day
           };
         })
       );
@@ -743,13 +746,12 @@ const TeacherManagement: React.FC = () => {
           // Create new assignment
           console.log('Creating new assignment for class:', assignmentForm.class, 'section:', assignmentForm.section);
           
-          // Find the class data to get the proper name
-          const classData = availableClasses.find(c => c._id === assignmentForm.class);
-          const className = classData ? classData.name : `Class ${assignmentForm.class}`;
+          // For standard classes, use the class name directly
+          const className = assignmentForm.class;
           
           const newAssignment = {
-            class: assignmentForm.class, // This is now the class ID
-            className: className,        // This is the display name
+            class: assignmentForm.class, // This is now the class name
+            className: className,        // Same as class name
             section: assignmentForm.section,
             subjects: [newSubject]
           };
@@ -1563,18 +1565,18 @@ const TeacherManagement: React.FC = () => {
                     value={assignmentForm.class}
                     onChange={e => {
                       const selectedClassId = e.target.value;
-                      const selectedClass = availableClasses.find(c => c._id === selectedClassId);
+                      // For standard classes, we'll use the class name as both ID and name
                       setAssignmentForm({ 
                         ...assignmentForm, 
                         class: selectedClassId,
-                        section: selectedClass ? selectedClass.section : assignmentForm.section
+                        section: assignmentForm.section
                       });
                     }}
                     label="Class"
                   >
-                    {availableClasses.map(classData => (
-                      <MenuItem key={classData._id} value={classData._id}>
-                        {classData.name} - Section {classData.section}
+                    {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
+                      <MenuItem key={className} value={className}>
+                        {className === 'KG' ? 'KG' : className === 'Nursery' ? 'Nursery' : `Class ${className}`}
                       </MenuItem>
                     ))}
                   </Select>

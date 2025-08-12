@@ -689,6 +689,8 @@ exports.assignClassesToTeacher = async (req, res) => {
     // Validate and create classes if they don't exist
     for (const assignment of assignedClasses) {
       if (assignment.class) {
+        console.log(`Processing assignment for class: "${assignment.class}" with section: "${assignment.section}"`);
+        
         let classExists = null;
         
         // First, try to find by ID if it's a valid ObjectId
@@ -705,18 +707,22 @@ exports.assignClassesToTeacher = async (req, res) => {
         
         // If not found by ID, try to find by name and section
         if (!classExists) {
+          console.log(`Looking for existing class with name: "${assignment.class}" and section: "${assignment.section}"`);
           classExists = await Class.findOne({ 
             name: assignment.class, 
             section: assignment.section 
           });
           if (classExists) {
-            console.log(`Found class by name: ${classExists.name} - Section ${classExists.section}`);
+            console.log(`Found existing class by name: ${classExists.name} - Section ${classExists.section}`);
+          } else {
+            console.log(`No existing class found for: ${assignment.class} - Section ${assignment.section}`);
           }
         }
         
         // If still not found, create the class
         if (!classExists) {
           try {
+            console.log(`Attempting to create new class: ${assignment.class} - Section ${assignment.section}`);
             classExists = await Class.create({
               name: assignment.class,
               section: assignment.section,
@@ -724,13 +730,33 @@ exports.assignClassesToTeacher = async (req, res) => {
               roomNumber: 'TBD',
               capacity: 40
             });
-            console.log(`Created new class: ${assignment.class} - Section ${assignment.section}`);
+            console.log(`Successfully created new class: ${assignment.class} - Section ${assignment.section}`);
           } catch (createError) {
             console.error('Error creating class:', createError);
-            return res.status(400).json({
-              success: false,
-              message: `Failed to create class ${assignment.class} - Section ${assignment.section}: ${createError.message}`
-            });
+            
+            // If it's a duplicate key error, try to find the existing class again
+            if (createError.code === 11000) {
+              console.log('Duplicate key error detected, trying to find existing class...');
+              try {
+                classExists = await Class.findOne({ 
+                  name: assignment.class, 
+                  section: assignment.section 
+                });
+                if (classExists) {
+                  console.log(`Found existing class after duplicate key error: ${classExists.name} - Section ${classExists.section}`);
+                }
+              } catch (findError) {
+                console.error('Error finding class after duplicate key error:', findError);
+              }
+            }
+            
+            // If we still don't have a class, return error
+            if (!classExists) {
+              return res.status(400).json({
+                success: false,
+                message: `Failed to create or find class ${assignment.class} - Section ${assignment.section}: ${createError.message}`
+              });
+            }
           }
         }
         

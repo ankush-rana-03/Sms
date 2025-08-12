@@ -137,6 +137,7 @@ interface TeacherStatistics {
 
 interface TeachersResponse {
   success: boolean;
+  message?: string;
   data: Teacher[];
   totalPages: number;
   count: number;
@@ -177,6 +178,9 @@ const TeacherManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [count, setCount] = useState(0);
+  const [limit] = useState(10);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -253,6 +257,7 @@ const TeacherManagement: React.FC = () => {
         setTeachers(response.data);
         setTotalPages(response.totalPages);
         setCount(response.count);
+        console.log(`Fetched ${response.count} teachers, ${response.totalPages} total pages`);
       } else {
         showSnackbar(response.message || 'Error fetching teachers', 'error');
       }

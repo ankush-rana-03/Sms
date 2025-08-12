@@ -156,7 +156,7 @@ interface CreateTeacherResponse {
   };
 }
 
-// Enhanced frontend assignment interface
+// Enhanced frontend assignment interface - NOW SUBJECT-CENTRIC
 interface AssignmentItem {
   id: string;              // Unique identifier for tracking
   class: string;           // Class name (e.g., "Nursery", "10")
@@ -167,6 +167,8 @@ interface AssignmentItem {
     name: string;          // Subject name
     time: string;          // Time (e.g., "9:00 AM")
     day: string;           // Day (e.g., "Monday")
+    class: string;         // INDIVIDUAL CLASS for each subject
+    section: string;       // INDIVIDUAL SECTION for each subject
   }>;
   createdAt: Date;         // When assignment was created
   updatedAt: Date;         // When assignment was last updated
@@ -181,6 +183,7 @@ interface AssignmentFormState {
   subjectDay: string;
   editingIndex: number;
   editingSubjectId?: string;  // Track which subject is being edited
+  editingAssignmentId?: string; // Track which assignment group is being edited
 }
 
 // Validation error interface
@@ -564,7 +567,9 @@ const TeacherManagement: React.FC = () => {
           id: `${classId}-${ac.section}-${Date.now()}-${acc[key].subjects.length}`, // Assign a temporary ID
           name: ac.subject,
           time: ac.time || '9:00 AM',
-          day: ac.day || 'Monday'
+          day: ac.day || 'Monday',
+          class: className, // Store individual class
+          section: ac.section // Store individual section
         });
         
         return acc;
@@ -783,7 +788,9 @@ const TeacherManagement: React.FC = () => {
       id: `${assignmentForm.class}-${assignmentForm.section}-${Date.now()}-${Date.now()}`, // Generate unique ID
       name: assignmentForm.subjectName.trim(),
       time: assignmentForm.subjectTime,
-      day: assignmentForm.subjectDay
+      day: assignmentForm.subjectDay,
+      class: assignmentForm.class, // Store individual class
+      section: assignmentForm.section // Store individual section
     };
 
     console.log('Subject to add/update:', newSubject);
@@ -838,10 +845,10 @@ const TeacherManagement: React.FC = () => {
   };
 
   // Helper function to add new assignment
-  const addNewAssignment = (newSubject: { id: string; name: string; time: string; day: string }): AssignmentItem[] => {
+  const addNewAssignment = (newSubject: { id: string; name: string; time: string; day: string; class: string; section: string }): AssignmentItem[] => {
     // Check if class+section combination already exists
     const existingIndex = assignments.findIndex(a => 
-      a.class === assignmentForm.class && a.section === assignmentForm.section
+      a.class === newSubject.class && a.section === newSubject.section
     );
 
     if (existingIndex !== -1) {
@@ -856,10 +863,10 @@ const TeacherManagement: React.FC = () => {
       // Create new assignment
       console.log('Creating new assignment');
       const newAssignment: AssignmentItem = {
-        id: `${assignmentForm.class}-${assignmentForm.section}-${Date.now()}`, // Assign a temporary ID
-        class: assignmentForm.class,
-        className: assignmentForm.class,
-        section: assignmentForm.section,
+        id: `${newSubject.class}-${newSubject.section}-${Date.now()}`, // Assign a temporary ID
+        class: newSubject.class,
+        className: newSubject.class,
+        section: newSubject.section,
         subjects: [newSubject],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -870,36 +877,118 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  // Helper function to update existing assignment
-  const updateExistingAssignment = (newSubject: { id: string; name: string; time: string; day: string }): AssignmentItem[] => {
-    console.log('=== UPDATE EXISTING ASSIGNMENT ===');
+  // Helper function to update existing assignment - NOW SUBJECT-LEVEL EDITING
+  const updateExistingAssignment = (newSubject: { id: string; name: string; time: string; day: string; class: string; section: string }): AssignmentItem[] => {
+    console.log('=== SUBJECT-LEVEL UPDATE ===');
     console.log('Current form values:', assignmentForm);
     console.log('New subject:', newSubject);
+    console.log('Editing assignment index:', assignmentForm.editingIndex);
+    console.log('Editing subject ID:', assignmentForm.editingSubjectId);
     
-    return assignments.map((assignment, index) => {
-      if (index === assignmentForm.editingIndex) {
-        console.log('Updating assignment at index:', index);
-        console.log('Old assignment:', assignment);
-        console.log('Form class value:', assignmentForm.class);
-        console.log('Form section value:', assignmentForm.section);
-        
-        const updatedAssignment: AssignmentItem = {
-          ...assignment,
-          class: assignmentForm.class,        // Update class with new value
-          className: assignmentForm.class,    // Update className with new value
-          section: assignmentForm.section,    // Update section with new value
-          subjects: assignment.subjects.map((subject, subIndex) => 
-            subIndex === 0 ? newSubject : subject  // Update first subject
-          )
+    // Find the assignment being edited
+    const assignmentToEdit = assignments[assignmentForm.editingIndex];
+    if (!assignmentToEdit) {
+      console.error('Assignment to edit not found');
+      return assignments;
+    }
+    
+    console.log('Assignment being edited:', assignmentToEdit);
+    
+    // Find the specific subject being edited
+    const subjectToEditIndex = assignmentToEdit.subjects.findIndex(s => s.id === assignmentForm.editingSubjectId);
+    if (subjectToEditIndex === -1) {
+      console.error('Subject to edit not found');
+      return assignments;
+    }
+    
+    console.log('Subject being edited (index):', subjectToEditIndex);
+    console.log('Subject being edited:', assignmentToEdit.subjects[subjectToEditIndex]);
+    
+    // Check if class/section changed
+    const oldClass = assignmentToEdit.subjects[subjectToEditIndex].class;
+    const oldSection = assignmentToEdit.subjects[subjectToEditIndex].section;
+    const newClass = newSubject.class;
+    const newSection = newSubject.section;
+    
+    console.log('Class change:', oldClass, '->', newClass);
+    console.log('Section change:', oldSection, '->', newSection);
+    
+    // If class or section changed, we need to handle this carefully
+    if (oldClass !== newClass || oldSection !== newSection) {
+      console.log('Class or section changed - handling subject migration');
+      
+      // Remove the subject from the old assignment
+      const updatedOldAssignment = {
+        ...assignmentToEdit,
+        subjects: assignmentToEdit.subjects.filter((_, index) => index !== subjectToEditIndex),
+        updatedAt: new Date()
+      };
+      
+      // Find or create the new assignment for the new class/section
+      let newAssignmentIndex = assignments.findIndex(a => 
+        a.class === newClass && a.section === newSection
+      );
+      
+      let updatedAssignments = assignments.map((assignment, index) => {
+        if (index === assignmentForm.editingIndex) {
+          // Return the old assignment without the edited subject
+          return updatedOldAssignment;
+        }
+        return assignment;
+      });
+      
+      if (newAssignmentIndex === -1) {
+        // Create new assignment group for the new class/section
+        const newAssignment: AssignmentItem = {
+          id: `${newClass}-${newSection}-${Date.now()}`,
+          class: newClass,
+          className: newClass,
+          section: newSection,
+          subjects: [newSubject],
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
         
-        console.log('Updated assignment:', updatedAssignment);
-        console.log('Class changed from', assignment.class, 'to', updatedAssignment.class);
-        console.log('Section changed from', assignment.section, 'to', updatedAssignment.section);
-        return updatedAssignment;
+        updatedAssignments.push(newAssignment);
+        console.log('Created new assignment group:', newAssignment);
+      } else {
+        // Add subject to existing assignment group
+        updatedAssignments = updatedAssignments.map((assignment, index) => {
+          if (index === newAssignmentIndex) {
+            return {
+              ...assignment,
+              subjects: [...assignment.subjects, newSubject],
+              updatedAt: new Date()
+            };
+          }
+          return assignment;
+        });
+        console.log('Added subject to existing assignment group');
       }
-      return assignment;
-    });
+      
+      // Remove empty assignment groups
+      updatedAssignments = updatedAssignments.filter(assignment => assignment.subjects.length > 0);
+      
+      console.log('Final updated assignments:', updatedAssignments);
+      return updatedAssignments;
+      
+    } else {
+      // No class/section change - just update the subject
+      console.log('No class/section change - updating subject in place');
+      
+      return assignments.map((assignment, index) => {
+        if (index === assignmentForm.editingIndex) {
+          return {
+            ...assignment,
+            subjects: assignment.subjects.map((subject, subIndex) => 
+              subIndex === subjectToEditIndex ? newSubject : subject
+            ),
+            updatedAt: new Date()
+          };
+        }
+        return assignment;
+      });
+    }
   };
 
   // Helper function to save assignments to backend
@@ -913,10 +1002,10 @@ const TeacherManagement: React.FC = () => {
       // Transform to backend format
       const backendData = assignmentsToSave.flatMap(assignment => 
         assignment.subjects.map(subject => ({
-          class: assignment.class,        // This should be the updated class name
-          section: assignment.section,    // This should be the updated section
+          class: subject.class,        // This should be the updated class name
+          section: subject.section,    // This should be the updated section
           subject: subject.name,
-          grade: assignment.class === 'Nursery' || assignment.class === 'KG' ? assignment.class : assignment.class,
+          grade: subject.class === 'Nursery' || subject.class === 'KG' ? subject.class : subject.class,
           time: subject.time,
           day: subject.day
         }))
@@ -1000,7 +1089,9 @@ const TeacherManagement: React.FC = () => {
           id: `${classId}-${ac.section}-${Date.now()}-${acc[key].subjects.length}`, // Assign a temporary ID
           name: ac.subject,
           time: ac.time || '9:00 AM',
-          day: ac.day || 'Monday'
+          day: ac.day || 'Monday',
+          class: className, // Store individual class
+          section: ac.section // Store individual section
         });
         
         return acc;
@@ -1025,7 +1116,8 @@ const TeacherManagement: React.FC = () => {
       subjectTime: '9:00 AM',
       subjectDay: 'Monday',
       editingIndex: -1,
-      editingSubjectId: undefined
+      editingSubjectId: undefined,
+      editingAssignmentId: undefined
     });
     setAssignmentErrors({});
     console.log('Form reset completed');
@@ -1091,7 +1183,14 @@ const TeacherManagement: React.FC = () => {
           class: 'Nursery',
           className: 'Nursery',
           section: 'A',
-          subjects: [{ id: 'sub-1', name: 'Math', time: '9:00 AM', day: 'Monday' }],
+          subjects: [{ 
+            id: 'sub-1', 
+            name: 'Math', 
+            time: '9:00 AM', 
+            day: 'Monday',
+            class: 'Nursery',
+            section: 'A'
+          }],
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -1118,42 +1217,45 @@ const TeacherManagement: React.FC = () => {
     }
   }, []);
 
-  const handleEditAssignment = (index: number) => {
-    const assignment = assignments[index];
-    if (!assignment || assignment.subjects.length === 0) {
+  // Enhanced handleEditAssignment function for subject-level editing
+  const handleEditAssignment = (assignmentIndex: number, subjectIndex: number) => {
+    const assignment = assignments[assignmentIndex];
+    if (!assignment || !assignment.subjects[subjectIndex]) {
       showSnackbar('Invalid assignment selected for editing', 'error');
       return;
     }
     
-    console.log('=== EDIT ASSIGNMENT ===');
-    console.log('Assignment to edit:', assignment);
-    console.log('Assignment index:', index);
+    console.log('=== EDITING SUBJECT ===');
+    console.log('Assignment index:', assignmentIndex);
+    console.log('Subject index:', subjectIndex);
+    console.log('Assignment:', assignment);
     
-    // Get the first subject (we're editing the first one for now)
-    const firstSubject = assignment.subjects[0];
+    const subjectToEdit = assignment.subjects[subjectIndex];
+    console.log('Subject to edit:', subjectToEdit);
     
     // Clear any previous errors
     setAssignmentErrors({});
     
-    // Set the form with the current assignment data
+    // Set the form with the current subject data
     setAssignmentForm({
-      class: assignment.class,        // Use the class name for the form
-      section: assignment.section,    // Use the section
-      subjectName: firstSubject.name, // Use the subject name
-      subjectTime: firstSubject.time, // Use the time
-      subjectDay: firstSubject.day,   // Use the day
-      editingIndex: index            // Set editing index
+      class: subjectToEdit.class,           // Use subject's individual class
+      section: subjectToEdit.section,       // Use subject's individual section
+      subjectName: subjectToEdit.name,
+      subjectTime: subjectToEdit.time,
+      subjectDay: subjectToEdit.day,
+      editingIndex: assignmentIndex,
+      editingSubjectId: subjectToEdit.id,  // Track which specific subject
+      editingAssignmentId: assignment.id   // Track which assignment group
     });
     
     console.log('Form populated for editing:', {
-      class: assignment.class,
-      section: assignment.section,
-      subjectName: firstSubject.name,
-      subjectTime: firstSubject.time,
-      subjectDay: firstSubject.day,
-      editingIndex: index
+      class: subjectToEdit.class,
+      section: subjectToEdit.section,
+      subjectName: subjectToEdit.name,
+      editingIndex: assignmentIndex,
+      editingSubjectId: subjectToEdit.id
     });
-    console.log('=== EDIT ASSIGNMENT COMPLETE ===');
+    console.log('=== EDIT SUBJECT COMPLETE ===');
   };
 
 
@@ -1840,7 +1942,7 @@ const TeacherManagement: React.FC = () => {
                             {subject.time}
                           </Typography>
                           <Box sx={{ ml: 'auto' }}>
-                            <Button size="small" color="primary" onClick={() => handleEditAssignment(idx)}>Edit</Button>
+                            <Button size="small" color="primary" onClick={() => handleEditAssignment(idx, 0)}>Edit</Button>
                             <Button size="small" color="error" onClick={() => handleDeleteSubject(idx, subjectIdx)}>Delete</Button>
                           </Box>
                         </Box>

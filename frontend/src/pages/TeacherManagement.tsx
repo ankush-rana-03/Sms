@@ -535,7 +535,9 @@ const TeacherManagement: React.FC = () => {
           const classId = assignment.class;
           
           // Extract grade from class name or use a default
-          const grade = assignment.className.replace('Class ', '').replace('Class', '').trim();
+          // For class IDs, we need to find the actual class data
+          const classData = availableClasses.find(c => c._id === classId);
+          const grade = classData ? classData.grade : assignment.className.replace('Class ', '').replace('Class', '').trim();
 
           return {
             class: classId,
@@ -730,6 +732,7 @@ const TeacherManagement: React.FC = () => {
 
         if (existingAssignmentIndex !== -1) {
           // Add subject to existing assignment
+          console.log('Adding subject to existing assignment at index:', existingAssignmentIndex);
           updatedAssignments = assignments.map((a, index) => 
             index === existingAssignmentIndex ? {
               ...a,
@@ -737,16 +740,21 @@ const TeacherManagement: React.FC = () => {
             } : a
           );
         } else {
-          // Create new assignment - need to find the actual class name
+          // Create new assignment
+          console.log('Creating new assignment for class:', assignmentForm.class, 'section:', assignmentForm.section);
+          
+          // Find the class data to get the proper name
           const classData = availableClasses.find(c => c._id === assignmentForm.class);
           const className = classData ? classData.name : `Class ${assignmentForm.class}`;
           
           const newAssignment = {
-            class: assignmentForm.class, // This should be the class ID
-            className: className,        // This should be the actual class name
+            class: assignmentForm.class, // This is now the class ID
+            className: className,        // This is the display name
             section: assignmentForm.section,
             subjects: [newSubject]
           };
+          
+          console.log('New assignment created:', newAssignment);
           updatedAssignments = [...assignments, newAssignment];
         }
       } else {
@@ -1554,13 +1562,19 @@ const TeacherManagement: React.FC = () => {
                   <Select
                     value={assignmentForm.class}
                     onChange={e => {
-                      setAssignmentForm({ ...assignmentForm, class: e.target.value });
+                      const selectedClassId = e.target.value;
+                      const selectedClass = availableClasses.find(c => c._id === selectedClassId);
+                      setAssignmentForm({ 
+                        ...assignmentForm, 
+                        class: selectedClassId,
+                        section: selectedClass ? selectedClass.section : assignmentForm.section
+                      });
                     }}
                     label="Class"
                   >
-                    {['Nursery', 'KG', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString())].map(className => (
-                      <MenuItem key={className} value={className}>
-                        {className}
+                    {availableClasses.map(classData => (
+                      <MenuItem key={classData._id} value={classData._id}>
+                        {classData.name} - Section {classData.section}
                       </MenuItem>
                     ))}
                   </Select>

@@ -685,8 +685,7 @@ exports.assignClassesToTeacher = async (req, res) => {
     }
 
     console.log('Found teacher:', teacher.name);
-    console.log('Current assignments before update:', JSON.stringify(teacher.assignedClasses, null, 2));
-
+    
     // Validate and create classes if they don't exist
     for (const assignment of assignedClasses) {
       if (assignment.class) {
@@ -746,22 +745,58 @@ exports.assignClassesToTeacher = async (req, res) => {
         }
       }
     }
-
-    // Clear existing assignments and set new ones
-    // Transform the assignments to include time and day fields
-    const transformedAssignments = assignedClasses.map(assignment => ({
-      class: assignment.class,
-      section: assignment.section,
-      subject: assignment.subject,
-      grade: assignment.grade,
-      time: assignment.time || '9:00 AM',  // Preserve time field
-      day: assignment.day || 'Monday'      // Preserve day field
-    }));
     
-    console.log('Transformed assignments to save:', JSON.stringify(transformedAssignments, null, 2));
+    // Merge new assignments with existing ones instead of completely replacing
+    // This allows adding multiple assignments over time
+    console.log('Current teacher assignments before merge:', JSON.stringify(teacher.assignedClasses, null, 2));
+    console.log('New assignments to merge:', JSON.stringify(assignedClasses, null, 2));
     
-    // Update the teacher's assignedClasses
-    teacher.assignedClasses = transformedAssignments;
+    // Create a map of existing assignments by class-section-subject combination for easy lookup
+    const existingAssignmentsMap = new Map();
+    teacher.assignedClasses.forEach(existing => {
+      const key = `${existing.class}-${existing.section}-${existing.subject}`;
+      existingAssignmentsMap.set(key, existing);
+    });
+    
+    console.log('Existing assignments map keys:', Array.from(existingAssignmentsMap.keys()));
+    
+    // Transform and merge new assignments
+    const mergedAssignments = [];
+    
+    for (const assignment of assignedClasses) {
+      const assignmentKey = `${assignment.class}-${assignment.section}-${assignment.subject}`;
+      console.log(`Processing assignment: ${assignmentKey}`);
+      
+      if (existingAssignmentsMap.has(assignmentKey)) {
+        // Update existing assignment with new time/day if provided
+        const existing = existingAssignmentsMap.get(assignmentKey);
+        const updatedAssignment = {
+          ...existing,
+          time: assignment.time || existing.time || '9:00 AM',
+          day: assignment.day || existing.day || 'Monday'
+        };
+        mergedAssignments.push(updatedAssignment);
+        console.log(`Updated existing assignment: ${assignmentKey}`, updatedAssignment);
+      } else {
+        // Add new assignment
+        const newAssignment = {
+          class: assignment.class,
+          section: assignment.section,
+          subject: assignment.subject,
+          grade: assignment.grade,
+          time: assignment.time || '9:00 AM',
+          day: assignment.day || 'Monday'
+        };
+        mergedAssignments.push(newAssignment);
+        console.log(`Added new assignment: ${assignmentKey}`, newAssignment);
+      }
+    }
+    
+    console.log('Final merged assignments to save:', JSON.stringify(mergedAssignments, null, 2));
+    console.log(`Total assignments after merge: ${mergedAssignments.length} (was ${teacher.assignedClasses.length})`);
+    
+    // Update the teacher's assignedClasses with merged assignments
+    teacher.assignedClasses = mergedAssignments;
     
     // Save the teacher with new assignments
     const savedTeacher = await teacher.save();
@@ -794,7 +829,7 @@ exports.assignClassesToTeacher = async (req, res) => {
     }));
     
     console.log('Final response data:', JSON.stringify(responseData.assignedClasses, null, 2));
-    console.log(`Successfully assigned ${transformedAssignments.length} classes to teacher ${teacher.name}`);
+    console.log(`Successfully assigned ${mergedAssignments.length} classes to teacher ${teacher.name}`);
 
     res.status(200).json({
       success: true,

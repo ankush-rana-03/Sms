@@ -60,17 +60,12 @@ interface Teacher {
   designation: 'TGT' | 'PGT' | 'JBT' | 'NTT';
   subjects: string[];
   assignedClasses: Array<{
-    class: {
-      _id: string;
-      name: string;
-      grade: string;
-      section: string;
-    };
+    class: string | { _id: string; name: string; grade: string; section: string };
     section: string;
     subject: string;
     grade: string;
-    time?: string; // Add time field
-    day?: string;  // Add day field
+    time?: string;
+    day?: string;
   }>;
   qualification: {
     degree: string;
@@ -160,6 +155,28 @@ interface CreateTeacherResponse {
   };
 }
 
+// Proper interface for frontend assignment management
+interface AssignmentItem {
+  class: string;           // Class name (e.g., "Nursery", "10")
+  className: string;       // Display name
+  section: string;         // Section (e.g., "A", "B")
+  subjects: Array<{
+    name: string;          // Subject name
+    time: string;          // Time (e.g., "9:00 AM")
+    day: string;           // Day (e.g., "Monday")
+  }>;
+}
+
+// Form state interface
+interface AssignmentFormState {
+  class: string;
+  section: string;
+  subjectName: string;
+  subjectTime: string;
+  subjectDay: string;
+  editingIndex: number;
+}
+
 const TeacherManagement: React.FC = () => {
   const { user } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -224,13 +241,8 @@ const TeacherManagement: React.FC = () => {
   });
 
   // New state for Assign Classes & Subjects dialog
-  const [assignments, setAssignments] = useState<{ 
-    class: string, 
-    className: string, 
-    section: string, 
-    subjects: Array<{ name: string, time: string, day: string }> 
-  }[]>([]);
-  const [assignmentForm, setAssignmentForm] = useState({
+  const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
+  const [assignmentForm, setAssignmentForm] = useState<AssignmentFormState>({
     class: '',
     section: '',
     subjectName: '',
@@ -239,9 +251,16 @@ const TeacherManagement: React.FC = () => {
     editingIndex: -1
   });
 
-  // Enhanced state for better debugging
+  // Enhanced state for better debugging and validation
   const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
   const [isSavingAssignment, setIsSavingAssignment] = useState(false);
+  const [assignmentErrors, setAssignmentErrors] = useState<{
+    class?: string;
+    section?: string;
+    subjectName?: string;
+    time?: string;
+    day?: string;
+  }>({});
 
 
   useEffect(() => {
@@ -483,6 +502,7 @@ const TeacherManagement: React.FC = () => {
   const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setIsAssignmentDialogOpen(true);
+    setAssignmentErrors({});
     
     console.log('=== OPENING ASSIGNMENT DIALOG ===');
     console.log('Teacher:', teacher.name);
@@ -491,10 +511,17 @@ const TeacherManagement: React.FC = () => {
     try {
       // Transform backend data to frontend format
       const transformedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
-        // Extract class information
-        const classInfo = typeof ac.class === 'object' ? ac.class : { _id: ac.class, name: ac.class };
-        const className = classInfo.name;
-        const classId = classInfo._id;
+        // Extract class information - handle both string and object formats
+        let className: string;
+        let classId: string;
+        
+        if (typeof ac.class === 'object') {
+          className = ac.class.name;
+          classId = ac.class._id;
+        } else {
+          className = ac.class;
+          classId = ac.class;
+        }
         
         // Create unique key for grouping
         const key = `${classId}-${ac.section}`;
@@ -516,14 +543,14 @@ const TeacherManagement: React.FC = () => {
         });
         
         return acc;
-      }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
+      }, {} as Record<string, AssignmentItem>);
 
       const finalAssignments = Object.values(transformedAssignments);
       console.log('Transformed assignments:', finalAssignments);
       
       setAssignments(finalAssignments);
       
-      // Reset form
+      // Reset form with defaults
       setAssignmentForm({
         class: '',
         section: '',
@@ -540,12 +567,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleSaveSubjectAssignments = async (assignmentsToSave: { 
-    class: string, 
-    className: string, 
-    section: string, 
-    subjects: Array<{ name: string, time: string, day: string }> 
-  }[]) => {
+  const handleSaveSubjectAssignments = async (assignmentsToSave: AssignmentItem[]) => {
     if (!selectedTeacher) return;
 
     try {
@@ -623,7 +645,7 @@ const TeacherManagement: React.FC = () => {
             day: ac.day || 'Monday'     // Use response day or default
           });
           return acc;
-        }, {} as Record<string, { class: string; className: string; section: string; subjects: Array<{ name: string, time: string, day: string }> }>);
+        }, {} as Record<string, AssignmentItem>);
 
         console.log('Response data assignedClasses:', response.data.assignedClasses);
         console.log('Transformed local assignments:', updatedLocalAssignments);
@@ -706,233 +728,387 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  const handleAddOrUpdateAssignment = async () => {
-    if (!selectedTeacher) return;
-
-    console.log('Form data:', assignmentForm);
-    console.log('Current assignments:', assignments);
-
-    if (!assignmentForm.class || !assignmentForm.section || !assignmentForm.subjectName.trim() || !assignmentForm.subjectTime.trim() || !assignmentForm.subjectDay.trim()) {
-      showSnackbar('Please fill in all fields', 'error');
-      return;
+  // Comprehensive validation function
+  const validateAssignmentForm = (): { isValid: boolean; errors: typeof assignmentErrors } => {
+    const errors: typeof assignmentErrors = {};
+    
+    // Validate class
+    if (!assignmentForm.class.trim()) {
+      errors.class = 'Class is required';
     }
+    
+    // Validate section
+    if (!assignmentForm.section.trim()) {
+      errors.section = 'Section is required';
+    }
+    
+    // Validate subject name
+    if (!assignmentForm.subjectName.trim()) {
+      errors.subjectName = 'Subject name is required';
+    } else if (assignmentForm.subjectName.trim().length < 2) {
+      errors.subjectName = 'Subject name must be at least 2 characters';
+    }
+    
+    // Validate time
+    if (!assignmentForm.subjectTime.trim()) {
+      errors.time = 'Time is required';
+    }
+    
+    // Validate day
+    if (!assignmentForm.subjectTime.trim()) {
+      errors.day = 'Day is required';
+    }
+    
+    setAssignmentErrors(errors);
+    return { isValid: Object.keys(errors).length === 0, errors };
+  };
 
-    const newSubject = {
-      name: assignmentForm.subjectName.trim(),
-      time: assignmentForm.subjectTime.trim(),
-      day: assignmentForm.subjectDay.trim()
-    };
-
-    console.log('New subject to add/update:', newSubject);
-
-    // Check for time conflicts (same class, section, day, and time)
-    // When editing, exclude the current assignment being edited from conflict check
+  // Check for time conflicts
+  const checkTimeConflict = (newSubject: { name: string; time: string; day: string }): boolean => {
     console.log('=== TIME CONFLICT CHECK ===');
     console.log('Checking for conflicts with class:', assignmentForm.class, 'section:', assignmentForm.section);
-    console.log('Current assignments to check against:', assignments);
+    console.log('New subject:', newSubject);
     
-    const hasTimeConflict = assignments.some((assignment, assignmentIdx) => {
+    const hasConflict = assignments.some((assignment, index) => {
       // Skip the assignment being edited
-      if (assignmentForm.editingIndex !== -1 && assignmentIdx === assignmentForm.editingIndex) {
-        console.log('Skipping assignment at index', assignmentIdx, 'because it\'s being edited');
+      if (assignmentForm.editingIndex !== -1 && index === assignmentForm.editingIndex) {
+        console.log('Skipping assignment at index', index, '(being edited)');
         return false;
       }
       
-      // Check if this assignment has the same class and section
+      // Check if same class and section
       if (assignment.class === assignmentForm.class && assignment.section === assignmentForm.section) {
         console.log('Found matching class/section assignment:', assignment);
-        // Check if any subject in this assignment has a time conflict
+        
+        // Check for time conflict
         const conflict = assignment.subjects.some(subject => 
           subject.day === newSubject.day && subject.time === newSubject.time
         );
+        
         if (conflict) {
-          console.log('Time conflict found with subject:', assignment.subjects.find(s => 
+          console.log('Time conflict found with:', assignment.subjects.find(s => 
             s.day === newSubject.day && s.time === newSubject.time
           ));
         }
+        
         return conflict;
       }
       
       return false;
     });
     
-    console.log('Time conflict result:', hasTimeConflict);
+    console.log('Time conflict result:', hasConflict);
     console.log('=== END TIME CONFLICT CHECK ===');
+    return hasConflict;
+  };
 
-    if (hasTimeConflict) {
-      showSnackbar('Time conflict detected! Another subject is already scheduled at this time for this class and section.', 'error');
+  const handleAddOrUpdateAssignment = async () => {
+    if (!selectedTeacher) {
+      showSnackbar('No teacher selected', 'error');
       return;
     }
 
+    console.log('=== ADD/UPDATE ASSIGNMENT ===');
+    console.log('Form data:', assignmentForm);
+    console.log('Current assignments:', assignments);
+
+    // Validate form
+    const validation = validateAssignmentForm();
+    if (!validation.isValid) {
+      showSnackbar('Please fix the form errors', 'error');
+      return;
+    }
+
+    const newSubject = {
+      name: assignmentForm.subjectName.trim(),
+      time: assignmentForm.subjectTime,
+      day: assignmentForm.subjectDay
+    };
+
+    console.log('Subject to add/update:', newSubject);
+
     try {
-      let updatedAssignments: typeof assignments;
+      // Check for time conflicts
+      if (checkTimeConflict(newSubject)) {
+        showSnackbar('Time conflict detected! Another subject is already scheduled at this time for this class and section.', 'error');
+        return;
+      }
+
+      let updatedAssignments: AssignmentItem[];
 
       if (assignmentForm.editingIndex === -1) {
-        // Adding new subject
-        console.log('Adding new subject to existing or new assignment');
-        
-        // Check if class and section combination already exists
-        const existingAssignmentIndex = assignments.findIndex(a => 
-          a.class === assignmentForm.class && a.section === assignmentForm.section
-        );
-
-        if (existingAssignmentIndex !== -1) {
-          // Add subject to existing assignment
-          console.log('Adding subject to existing assignment at index:', existingAssignmentIndex);
-          updatedAssignments = assignments.map((a, index) => 
-            index === existingAssignmentIndex ? {
-              ...a,
-              subjects: [...a.subjects, newSubject]
-            } : a
-          );
-        } else {
-          // Create new assignment
-          console.log('Creating new assignment for class:', assignmentForm.class, 'section:', assignmentForm.section);
-          
-          // For standard classes, use the class name directly
-          const className = assignmentForm.class;
-          
-          const newAssignment = {
-            class: assignmentForm.class, // This is now the class name
-            className: className,        // Same as class name
-            section: assignmentForm.section,
-            subjects: [newSubject]
-          };
-          
-          console.log('New assignment created:', newAssignment);
-          updatedAssignments = [...assignments, newAssignment];
-        }
+        // Adding new assignment
+        console.log('Adding new assignment');
+        updatedAssignments = addNewAssignment(newSubject);
       } else {
         // Updating existing assignment
         console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
-        console.log('Current assignment being edited:', assignments[assignmentForm.editingIndex]);
-        console.log('New form values - class:', assignmentForm.class, 'section:', assignmentForm.section);
-        
-        updatedAssignments = assignments.map((a, index) => {
-          if (index === assignmentForm.editingIndex) {
-            // Update the first subject (since we're editing the first one)
-            const updatedSubjects = [...a.subjects];
-            if (updatedSubjects.length > 0) {
-              console.log('Updating subject from:', updatedSubjects[0], 'to:', newSubject);
-              updatedSubjects[0] = newSubject;
-            }
-            
-            // Update the class and section with new values from the form
-            const updatedAssignment = {
-              ...a,
-              class: assignmentForm.class,     // Update with new class name
-              className: assignmentForm.class, // Update with new class name for display
-              section: assignmentForm.section, // Update with new section
-              subjects: updatedSubjects
-            };
-            
-            console.log('Updated assignment:', updatedAssignment);
-            console.log('Old assignment was:', a);
-            return updatedAssignment;
-          }
-          return a;
-        });
-        
-        console.log('Final updated assignments:', updatedAssignments);
+        updatedAssignments = updateExistingAssignment(newSubject);
       }
 
-      // Update local state immediately for real-time UI update
+      // Update local state
       setAssignments(updatedAssignments);
-      
-      console.log('About to save assignments:', updatedAssignments);
-      console.log('Selected teacher:', selectedTeacher);
-      console.log('Available classes:', availableClasses);
+      console.log('Updated local assignments:', updatedAssignments);
 
-      // Save to database
-      await handleSaveSubjectAssignments(updatedAssignments);
+      // Save to backend
+      await saveAssignmentsToBackend(updatedAssignments);
 
-      // Store the editing state before resetting form
+      // Reset form and show success message
       const wasEditing = assignmentForm.editingIndex !== -1;
-
-      // Reset form
-      setAssignmentForm({ 
-        class: '', 
-        section: '', 
-        subjectName: '', 
-        subjectTime: '', 
-        subjectDay: '', 
-        editingIndex: -1 
-      });
-
+      resetAssignmentForm();
+      
       showSnackbar(
-        wasEditing 
-          ? 'Subject assignment updated successfully' 
-          : 'Subject assignment added successfully', 
+        wasEditing ? 'Assignment updated successfully!' : 'Assignment added successfully!',
         'success'
       );
+
     } catch (error: any) {
-      console.error('Error saving subject assignment:', error);
-      showSnackbar('Error saving subject assignment. Please try again.', 'error');
+      console.error('Error in handleAddOrUpdateAssignment:', error);
+      showSnackbar('Error saving assignment. Please try again.', 'error');
     }
+  };
+
+  // Helper function to add new assignment
+  const addNewAssignment = (newSubject: { name: string; time: string; day: string }): AssignmentItem[] => {
+    // Check if class+section combination already exists
+    const existingIndex = assignments.findIndex(a => 
+      a.class === assignmentForm.class && a.section === assignmentForm.section
+    );
+
+    if (existingIndex !== -1) {
+      // Add subject to existing assignment
+      console.log('Adding subject to existing assignment at index:', existingIndex);
+      return assignments.map((a, index) => 
+        index === existingIndex 
+          ? { ...a, subjects: [...a.subjects, newSubject] }
+          : a
+      );
+    } else {
+      // Create new assignment
+      console.log('Creating new assignment');
+      const newAssignment: AssignmentItem = {
+        class: assignmentForm.class,
+        className: assignmentForm.class,
+        section: assignmentForm.section,
+        subjects: [newSubject]
+      };
+      
+      console.log('New assignment created:', newAssignment);
+      return [...assignments, newAssignment];
+    }
+  };
+
+  // Helper function to update existing assignment
+  const updateExistingAssignment = (newSubject: { name: string; time: string; day: string }): AssignmentItem[] => {
+    return assignments.map((assignment, index) => {
+      if (index === assignmentForm.editingIndex) {
+        console.log('Updating assignment at index:', index);
+        console.log('Old assignment:', assignment);
+        
+        const updatedAssignment: AssignmentItem = {
+          ...assignment,
+          class: assignmentForm.class,        // Update class
+          className: assignmentForm.class,    // Update className
+          section: assignmentForm.section,    // Update section
+          subjects: assignment.subjects.map((subject, subIndex) => 
+            subIndex === 0 ? newSubject : subject  // Update first subject
+          )
+        };
+        
+        console.log('Updated assignment:', updatedAssignment);
+        return updatedAssignment;
+      }
+      return assignment;
+    });
+  };
+
+  // Helper function to save assignments to backend
+  const saveAssignmentsToBackend = async (assignmentsToSave: AssignmentItem[]) => {
+    console.log('=== SAVING TO BACKEND ===');
+    console.log('Assignments to save:', assignmentsToSave);
+    
+    setIsSavingAssignment(true);
+    
+    try {
+      // Transform to backend format
+      const backendData = assignmentsToSave.flatMap(assignment => 
+        assignment.subjects.map(subject => ({
+          class: assignment.class,
+          section: assignment.section,
+          subject: subject.name,
+          grade: assignment.class === 'Nursery' || assignment.class === 'KG' ? assignment.class : assignment.class,
+          time: subject.time,
+          day: subject.day
+        }))
+      );
+
+      console.log('Backend data:', backendData);
+
+      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher!._id}/assign-classes`,
+        { assignedClasses: backendData }
+      );
+
+      if (response.success) {
+        console.log('Backend save successful:', response.data);
+        
+        // Update teacher data
+        setTeachers(prev => prev.map(t => t._id === selectedTeacher!._id ? response.data : t));
+        setSelectedTeacher(response.data);
+        
+        // Refresh assignments from backend
+        await refreshAssignmentsFromBackend(response.data);
+      } else {
+        throw new Error(response.message || 'Backend save failed');
+      }
+    } finally {
+      setIsSavingAssignment(false);
+    }
+  };
+
+  // Helper function to refresh assignments from backend
+  const refreshAssignmentsFromBackend = async (teacherData: Teacher) => {
+    try {
+      // Transform backend data back to frontend format
+      const refreshedAssignments = teacherData.assignedClasses.reduce((acc, ac) => {
+        let className: string;
+        let classId: string;
+        
+        if (typeof ac.class === 'object') {
+          className = ac.class.name;
+          classId = ac.class._id;
+        } else {
+          className = ac.class;
+          classId = ac.class;
+        }
+        
+        const key = `${classId}-${ac.section}`;
+        
+        if (!acc[key]) {
+          acc[key] = {
+            class: className,
+            className: className,
+            section: ac.section,
+            subjects: []
+          };
+        }
+        
+        acc[key].subjects.push({
+          name: ac.subject,
+          time: ac.time || '9:00 AM',
+          day: ac.day || 'Monday'
+        });
+        
+        return acc;
+      }, {} as Record<string, AssignmentItem>);
+
+      const finalAssignments = Object.values(refreshedAssignments);
+      console.log('Refreshed assignments from backend:', finalAssignments);
+      
+      setAssignments(finalAssignments);
+    } catch (error) {
+      console.error('Error refreshing assignments from backend:', error);
+    }
+  };
+
+  // Helper function to reset assignment form
+  const resetAssignmentForm = () => {
+    setAssignmentForm({
+      class: '',
+      section: '',
+      subjectName: '',
+      subjectTime: '9:00 AM',
+      subjectDay: 'Monday',
+      editingIndex: -1
+    });
+    setAssignmentErrors({});
+  };
+
+  // Function to close assignment dialog
+  const handleCloseAssignmentDialog = () => {
+    setIsAssignmentDialogOpen(false);
+    resetAssignmentForm();
+    setSelectedTeacher(null);
+  };
+
+  // Function to cancel editing
+  const handleCancelEdit = () => {
+    resetAssignmentForm();
   };
 
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
-    if (!assignment || assignment.subjects.length === 0) return;
+    if (!assignment || assignment.subjects.length === 0) {
+      showSnackbar('Invalid assignment selected for editing', 'error');
+      return;
+    }
     
-    // For editing, we'll edit the first subject (you can enhance this to edit specific subjects)
+    console.log('=== EDIT ASSIGNMENT ===');
+    console.log('Assignment to edit:', assignment);
+    console.log('Assignment index:', index);
+    
+    // Get the first subject (we're editing the first one for now)
     const firstSubject = assignment.subjects[0];
     
-    // Debug: Log the assignment structure
-    console.log('=== EDIT ASSIGNMENT DEBUG ===');
-    console.log('Assignment object:', assignment);
-    console.log('Assignment class field:', assignment.class);
-    console.log('Assignment class type:', typeof assignment.class);
-    console.log('Assignment className field:', assignment.className);
-    console.log('First subject:', firstSubject);
-    
-    // Use className if available, otherwise fall back to class
-    const classValue = assignment.className || assignment.class;
+    // Clear any previous errors
+    setAssignmentErrors({});
     
     // Set the form with the current assignment data
     setAssignmentForm({
-      class: classValue, // Use the class name for the form
-      section: assignment.section,
-      subjectName: firstSubject.name,
-      subjectTime: firstSubject.time,
-      subjectDay: firstSubject.day,
-      editingIndex: index
+      class: assignment.class,        // Use the class name for the form
+      section: assignment.section,    // Use the section
+      subjectName: firstSubject.name, // Use the subject name
+      subjectTime: firstSubject.time, // Use the time
+      subjectDay: firstSubject.day,   // Use the day
+      editingIndex: index            // Set editing index
     });
     
-    console.log('Form set to:', {
-      class: classValue,
+    console.log('Form populated for editing:', {
+      class: assignment.class,
       section: assignment.section,
       subjectName: firstSubject.name,
       subjectTime: firstSubject.time,
       subjectDay: firstSubject.day,
       editingIndex: index
     });
-    console.log('=== END EDIT ASSIGNMENT DEBUG ===');
+    console.log('=== EDIT ASSIGNMENT COMPLETE ===');
   };
 
 
 
   const handleDeleteSubject = async (assignmentIndex: number, subjectIndex: number) => {
+    if (!selectedTeacher) {
+      showSnackbar('No teacher selected', 'error');
+      return;
+    }
+
     try {
+      console.log('=== DELETE SUBJECT ===');
+      console.log('Deleting subject at assignment index:', assignmentIndex, 'subject index:', subjectIndex);
+      
       // Update local state immediately for real-time UI update
       const updatedAssignments = assignments.map((assignment, idx) => {
         if (idx === assignmentIndex) {
           const newSubjects = assignment.subjects.filter((_, subIdx) => subIdx !== subjectIndex);
           if (newSubjects.length === 0) {
             // If no subjects left, remove the entire assignment
+            console.log('No subjects left, removing entire assignment');
             return null;
           }
+          console.log('Updated subjects:', newSubjects);
           return { ...assignment, subjects: newSubjects };
         }
         return assignment;
-      }).filter(Boolean) as typeof assignments;
+      }).filter(Boolean) as AssignmentItem[];
 
+      console.log('Updated assignments after deletion:', updatedAssignments);
       setAssignments(updatedAssignments);
 
-      // Save to database
-      await handleSaveSubjectAssignments(updatedAssignments);
+      // Save to backend
+      await saveAssignmentsToBackend(updatedAssignments);
 
       showSnackbar('Subject deleted successfully', 'success');
+      console.log('=== DELETE SUBJECT COMPLETE ===');
     } catch (error: any) {
       console.error('Error deleting subject:', error);
       showSnackbar('Error deleting subject. Please try again.', 'error');

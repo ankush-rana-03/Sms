@@ -486,13 +486,13 @@ const TeacherManagement: React.FC = () => {
     const groupedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
       // Handle both populated and unpopulated class data
       const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
-      const className = typeof ac.class === 'object' ? ac.class.name : `Class ${ac.class}`;
+      const className = typeof ac.class === 'object' ? ac.class.name : ac.class;
       
       const key = `${classId}-${ac.section}`;
       if (!acc[key]) {
         acc[key] = {
-          class: classId, // Use class ID instead of name
-          className: className, // Keep class name for display
+          class: className, // Use className for the form (e.g., "Nursery", "10")
+          className: className, // Keep className for display
           section: ac.section,
           subjects: []
         };
@@ -581,13 +581,13 @@ const TeacherManagement: React.FC = () => {
         const updatedLocalAssignments = response.data.assignedClasses.reduce((acc, ac) => {
           // Handle both populated and unpopulated class data
           const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
-          const className = typeof ac.class === 'object' ? ac.class.name : `Class ${ac.class}`;
+          const className = typeof ac.class === 'object' ? ac.class.name : ac.class;
           
           const key = `${classId}-${ac.section}`;
           if (!acc[key]) {
             acc[key] = {
-              class: classId,
-              className: className,
+              class: className, // Use className for the form (e.g., "Nursery", "10")
+              className: className, // Keep className for display
               section: ac.section,
               subjects: []
             };
@@ -604,12 +604,12 @@ const TeacherManagement: React.FC = () => {
         console.log('Response data assignedClasses:', response.data.assignedClasses);
         console.log('Transformed local assignments:', updatedLocalAssignments);
 
-        const transformedLocalAssignments = Object.values(updatedLocalAssignments);
-        console.log('Updated local assignments:', transformedLocalAssignments);
+        const finalLocalAssignments = Object.values(updatedLocalAssignments);
+        console.log('Updated local assignments:', finalLocalAssignments);
         console.log('Response data assignedClasses:', response.data.assignedClasses);
         
         // CRITICAL FIX: Update assignments state with the new data
-        setAssignments(transformedLocalAssignments);
+        setAssignments(finalLocalAssignments);
         
         // Refresh available classes in case new ones were created
         fetchAvailableClasses();
@@ -837,9 +837,20 @@ const TeacherManagement: React.FC = () => {
     // For editing, we'll edit the first subject (you can enhance this to edit specific subjects)
     const firstSubject = assignment.subjects[0];
     
+    // Debug: Log the assignment structure
+    console.log('=== EDIT ASSIGNMENT DEBUG ===');
+    console.log('Assignment object:', assignment);
+    console.log('Assignment class field:', assignment.class);
+    console.log('Assignment class type:', typeof assignment.class);
+    console.log('Assignment className field:', assignment.className);
+    console.log('First subject:', firstSubject);
+    
+    // Use className if available, otherwise fall back to class
+    const classValue = assignment.className || assignment.class;
+    
     // Set the form with the current assignment data
     setAssignmentForm({
-      class: assignment.class, // This is the class name (e.g., "Nursery", "10")
+      class: classValue, // Use the class name for the form
       section: assignment.section,
       subjectName: firstSubject.name,
       subjectTime: firstSubject.time,
@@ -847,15 +858,15 @@ const TeacherManagement: React.FC = () => {
       editingIndex: index
     });
     
-    console.log('Editing assignment:', assignment);
     console.log('Form set to:', {
-      class: assignment.class,
+      class: classValue,
       section: assignment.section,
       subjectName: firstSubject.name,
       subjectTime: firstSubject.time,
       subjectDay: firstSubject.day,
       editingIndex: index
     });
+    console.log('=== END EDIT ASSIGNMENT DEBUG ===');
   };
 
 

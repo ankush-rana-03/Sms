@@ -78,14 +78,8 @@ app.use('/api/whatsapp', require('./routes/whatsapp'));
 
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    success: false, 
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : {}
-  });
-});
+const errorHandler = require('./middleware/error');
+app.use(errorHandler);
 
 // 404 handler
 app.use('*', (req, res) => {

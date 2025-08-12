@@ -41,9 +41,9 @@ exports.login = async (req, res, next) => {
     }
 
     // Validate role
-    const validRoles = ['teacher', 'admin', 'parent'];
+    const validRoles = ['teacher', 'admin', 'parent', 'principal'];
     if (!validRoles.includes(role)) {
-      return next(new ErrorResponse('Invalid role. Please select teacher, admin, or parent', 400));
+      return next(new ErrorResponse('Invalid role. Please select teacher, admin, parent, or principal', 400));
     }
 
     // Check for user
@@ -51,7 +51,7 @@ exports.login = async (req, res, next) => {
 
     if (!user) {
       console.log('Login failed: User not found for email:', email);
-      return next(new ErrorResponse('Invalid credentials', 401));
+      return next(new ErrorResponse('Email ID does not exist', 401));
     }
 
     console.log('Login attempt for user:', user.email, 'role:', user.role);
@@ -62,7 +62,7 @@ exports.login = async (req, res, next) => {
 
     if (!isMatch) {
       console.log('Login failed: Password mismatch for user:', user.email);
-      return next(new ErrorResponse('Invalid credentials', 401));
+      return next(new ErrorResponse('Please enter correct password', 401));
     }
 
     console.log('Password verification successful for user:', user.email);

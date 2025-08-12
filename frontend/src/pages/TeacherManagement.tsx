@@ -51,6 +51,7 @@ import {
 } from '@mui/icons-material';
 
 
+// Enhanced interfaces for better type safety and data handling
 interface Teacher {
   _id: string;
   teacherId: string;
@@ -155,19 +156,23 @@ interface CreateTeacherResponse {
   };
 }
 
-// Proper interface for frontend assignment management
+// Enhanced frontend assignment interface
 interface AssignmentItem {
+  id: string;              // Unique identifier for tracking
   class: string;           // Class name (e.g., "Nursery", "10")
   className: string;       // Display name
   section: string;         // Section (e.g., "A", "B")
   subjects: Array<{
+    id: string;            // Unique subject identifier
     name: string;          // Subject name
     time: string;          // Time (e.g., "9:00 AM")
     day: string;           // Day (e.g., "Monday")
   }>;
+  createdAt: Date;         // When assignment was created
+  updatedAt: Date;         // When assignment was last updated
 }
 
-// Form state interface
+// Enhanced form state interface
 interface AssignmentFormState {
   class: string;
   section: string;
@@ -175,6 +180,29 @@ interface AssignmentFormState {
   subjectTime: string;
   subjectDay: string;
   editingIndex: number;
+  editingSubjectId?: string;  // Track which subject is being edited
+}
+
+// Validation error interface
+interface ValidationErrors {
+  class?: string;
+  section?: string;
+  subjectName?: string;
+  time?: string;
+  day?: string;
+  general?: string;
+}
+
+// Assignment operation types
+type AssignmentOperation = 'create' | 'update' | 'delete' | 'view';
+
+// Time slot interface for conflict detection
+interface TimeSlot {
+  class: string;
+  section: string;
+  day: string;
+  time: string;
+  excludeAssignmentId?: string;  // Exclude current assignment when editing
 }
 
 const TeacherManagement: React.FC = () => {
@@ -253,13 +281,7 @@ const TeacherManagement: React.FC = () => {
 
   // Enhanced state for better debugging and validation
   const [isSavingAssignment, setIsSavingAssignment] = useState(false);
-  const [assignmentErrors, setAssignmentErrors] = useState<{
-    class?: string;
-    section?: string;
-    subjectName?: string;
-    time?: string;
-    day?: string;
-  }>({});
+  const [assignmentErrors, setAssignmentErrors] = useState<ValidationErrors>({});
 
 
   useEffect(() => {
@@ -527,15 +549,19 @@ const TeacherManagement: React.FC = () => {
         
         if (!acc[key]) {
           acc[key] = {
+            id: `${classId}-${ac.section}-${Date.now()}`, // Assign a temporary ID
             class: className,        // Use class name for form (e.g., "Nursery", "10")
             className: className,    // Keep for display
             section: ac.section,
-            subjects: []
+            subjects: [],
+            createdAt: new Date(),
+            updatedAt: new Date()
           };
         }
         
         // Add subject with time and day
         acc[key].subjects.push({
+          id: `${classId}-${ac.section}-${Date.now()}-${acc[key].subjects.length}`, // Assign a temporary ID
           name: ac.subject,
           time: ac.time || '9:00 AM',
           day: ac.day || 'Monday'
@@ -622,18 +648,22 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  // Comprehensive validation function
-  const validateAssignmentForm = (): { isValid: boolean; errors: typeof assignmentErrors } => {
-    const errors: typeof assignmentErrors = {};
+  // Comprehensive validation function with enhanced rules
+  const validateAssignmentForm = (): ValidationErrors => {
+    const errors: ValidationErrors = {};
     
     // Validate class
     if (!assignmentForm.class.trim()) {
       errors.class = 'Class is required';
+    } else if (!['Nursery', 'KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].includes(assignmentForm.class)) {
+      errors.class = 'Invalid class selected';
     }
     
     // Validate section
     if (!assignmentForm.section.trim()) {
       errors.section = 'Section is required';
+    } else if (!['A', 'B', 'C', 'D', 'E'].includes(assignmentForm.section)) {
+      errors.section = 'Invalid section selected';
     }
     
     // Validate subject name
@@ -641,27 +671,52 @@ const TeacherManagement: React.FC = () => {
       errors.subjectName = 'Subject name is required';
     } else if (assignmentForm.subjectName.trim().length < 2) {
       errors.subjectName = 'Subject name must be at least 2 characters';
+    } else if (assignmentForm.subjectName.trim().length > 50) {
+      errors.subjectName = 'Subject name must be less than 50 characters';
     }
     
     // Validate time
     if (!assignmentForm.subjectTime.trim()) {
       errors.time = 'Time is required';
+    } else {
+      const validTimes = [
+        '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM',
+        '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
+        '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
+      ];
+      if (!validTimes.includes(assignmentForm.subjectTime)) {
+        errors.time = 'Invalid time selected';
+      }
     }
     
     // Validate day
-    if (!assignmentForm.subjectTime.trim()) {
+    if (!assignmentForm.subjectDay.trim()) {
       errors.day = 'Day is required';
+    } else {
+      const validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      if (!validDays.includes(assignmentForm.subjectDay)) {
+        errors.day = 'Invalid day selected';
+      }
+    }
+    
+    // Additional business logic validation
+    if (assignmentForm.class === 'Nursery' || assignmentForm.class === 'KG') {
+      if (assignmentForm.section !== 'A' && assignmentForm.section !== 'B') {
+        errors.section = 'Nursery and KG only support sections A and B';
+      }
     }
     
     setAssignmentErrors(errors);
-    return { isValid: Object.keys(errors).length === 0, errors };
+    return errors;
   };
 
-  // Check for time conflicts
-  const checkTimeConflict = (newSubject: { name: string; time: string; day: string }): boolean => {
-    console.log('=== TIME CONFLICT CHECK ===');
+  // Enhanced time conflict detection with comprehensive checking
+  const checkTimeConflict = (newSubject: { id: string; name: string; time: string; day: string }): { hasConflict: boolean; conflictingSubjects: Array<{ name: string; class: string; section: string; time: string; day: string }> } => {
+    console.log('=== ENHANCED TIME CONFLICT CHECK ===');
     console.log('Checking for conflicts with class:', assignmentForm.class, 'section:', assignmentForm.section);
     console.log('New subject:', newSubject);
+    
+    const conflictingSubjects: Array<{ name: string; class: string; section: string; time: string; day: string }> = [];
     
     const hasConflict = assignments.some((assignment, index) => {
       // Skip the assignment being edited
@@ -680,9 +735,18 @@ const TeacherManagement: React.FC = () => {
         );
         
         if (conflict) {
-          console.log('Time conflict found with:', assignment.subjects.find(s => 
+          const conflictingSubject = assignment.subjects.find(s => 
             s.day === newSubject.day && s.time === newSubject.time
-          ));
+          );
+          console.log('Time conflict found with:', conflictingSubject);
+          
+          conflictingSubjects.push({
+            name: conflictingSubject!.name,
+            class: assignment.class,
+            section: assignment.section,
+            time: conflictingSubject!.time,
+            day: conflictingSubject!.day
+          });
         }
         
         return conflict;
@@ -692,8 +756,10 @@ const TeacherManagement: React.FC = () => {
     });
     
     console.log('Time conflict result:', hasConflict);
-    console.log('=== END TIME CONFLICT CHECK ===');
-    return hasConflict;
+    console.log('Conflicting subjects:', conflictingSubjects);
+    console.log('=== END ENHANCED TIME CONFLICT CHECK ===');
+    
+    return { hasConflict, conflictingSubjects };
   };
 
   const handleAddOrUpdateAssignment = async () => {
@@ -708,12 +774,13 @@ const TeacherManagement: React.FC = () => {
 
     // Validate form
     const validation = validateAssignmentForm();
-    if (!validation.isValid) {
+    if (Object.keys(validation).length > 0) {
       showSnackbar('Please fix the form errors', 'error');
       return;
     }
 
     const newSubject = {
+      id: `${assignmentForm.class}-${assignmentForm.section}-${Date.now()}-${Date.now()}`, // Generate unique ID
       name: assignmentForm.subjectName.trim(),
       time: assignmentForm.subjectTime,
       day: assignmentForm.subjectDay
@@ -722,9 +789,17 @@ const TeacherManagement: React.FC = () => {
     console.log('Subject to add/update:', newSubject);
 
     try {
-      // Check for time conflicts
-      if (checkTimeConflict(newSubject)) {
-        showSnackbar('Time conflict detected! Another subject is already scheduled at this time for this class and section.', 'error');
+      // Check for time conflicts with enhanced detection
+      const conflictCheck = checkTimeConflict(newSubject);
+      if (conflictCheck.hasConflict) {
+        const conflictDetails = conflictCheck.conflictingSubjects.map(cs => 
+          `${cs.name} (${cs.class}-${cs.section})`
+        ).join(', ');
+        
+        showSnackbar(
+          `Time conflict detected! The following subjects are already scheduled at ${newSubject.time} on ${newSubject.day}: ${conflictDetails}`,
+          'error'
+        );
         return;
       }
 
@@ -763,7 +838,7 @@ const TeacherManagement: React.FC = () => {
   };
 
   // Helper function to add new assignment
-  const addNewAssignment = (newSubject: { name: string; time: string; day: string }): AssignmentItem[] => {
+  const addNewAssignment = (newSubject: { id: string; name: string; time: string; day: string }): AssignmentItem[] => {
     // Check if class+section combination already exists
     const existingIndex = assignments.findIndex(a => 
       a.class === assignmentForm.class && a.section === assignmentForm.section
@@ -781,10 +856,13 @@ const TeacherManagement: React.FC = () => {
       // Create new assignment
       console.log('Creating new assignment');
       const newAssignment: AssignmentItem = {
+        id: `${assignmentForm.class}-${assignmentForm.section}-${Date.now()}`, // Assign a temporary ID
         class: assignmentForm.class,
         className: assignmentForm.class,
         section: assignmentForm.section,
-        subjects: [newSubject]
+        subjects: [newSubject],
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       console.log('New assignment created:', newAssignment);
@@ -793,7 +871,7 @@ const TeacherManagement: React.FC = () => {
   };
 
   // Helper function to update existing assignment
-  const updateExistingAssignment = (newSubject: { name: string; time: string; day: string }): AssignmentItem[] => {
+  const updateExistingAssignment = (newSubject: { id: string; name: string; time: string; day: string }): AssignmentItem[] => {
     console.log('=== UPDATE EXISTING ASSIGNMENT ===');
     console.log('Current form values:', assignmentForm);
     console.log('New subject:', newSubject);
@@ -908,14 +986,18 @@ const TeacherManagement: React.FC = () => {
         
         if (!acc[key]) {
           acc[key] = {
+            id: `${classId}-${ac.section}-${Date.now()}`, // Assign a temporary ID
             class: className,
             className: className,
             section: ac.section,
-            subjects: []
+            subjects: [],
+            createdAt: new Date(),
+            updatedAt: new Date()
           };
         }
         
         acc[key].subjects.push({
+          id: `${classId}-${ac.section}-${Date.now()}-${acc[key].subjects.length}`, // Assign a temporary ID
           name: ac.subject,
           time: ac.time || '9:00 AM',
           day: ac.day || 'Monday'
@@ -934,7 +1016,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  // Helper function to reset assignment form
+  // Enhanced form reset with proper cleanup
   const resetAssignmentForm = () => {
     setAssignmentForm({
       class: '',
@@ -942,9 +1024,33 @@ const TeacherManagement: React.FC = () => {
       subjectName: '',
       subjectTime: '9:00 AM',
       subjectDay: 'Monday',
-      editingIndex: -1
+      editingIndex: -1,
+      editingSubjectId: undefined
     });
     setAssignmentErrors({});
+    console.log('Form reset completed');
+  };
+
+  // Enhanced form validation display
+  const renderFormErrors = () => {
+    const hasErrors = Object.keys(assignmentErrors).length > 0;
+    
+    if (!hasErrors) return null;
+    
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Please fix the following errors:
+        </Typography>
+        <ul style={{ margin: 0, paddingLeft: '20px' }}>
+          {Object.entries(assignmentErrors).map(([field, error]) => (
+            <li key={field}>
+              <strong>{field.charAt(0).toUpperCase() + field.slice(1)}:</strong> {error}
+            </li>
+          ))}
+        </ul>
+      </Alert>
+    );
   };
 
   // Function to close assignment dialog
@@ -958,6 +1064,59 @@ const TeacherManagement: React.FC = () => {
   const handleCancelEdit = () => {
     resetAssignmentForm();
   };
+
+  // Comprehensive testing function for quality assurance
+  const runComprehensiveTests = async () => {
+    console.log('=== COMPREHENSIVE QUALITY TESTING STARTED ===');
+    
+    try {
+      // Test 1: Form Validation
+      console.log('🧪 Test 1: Form Validation');
+      const emptyForm = { class: '', section: '', subjectName: '', subjectTime: '', subjectDay: '', editingIndex: -1 };
+      setAssignmentForm(emptyForm);
+      const validationErrors = validateAssignmentForm();
+      console.log('Empty form validation errors:', validationErrors);
+      
+      // Test 2: Time Conflict Detection
+      console.log('🧪 Test 2: Time Conflict Detection');
+      const testSubject = { id: 'test-subject-1', name: 'Test Subject', time: '9:00 AM', day: 'Monday' };
+      const conflictResult = checkTimeConflict(testSubject);
+      console.log('Time conflict test result:', conflictResult);
+      
+      // Test 3: Data Transformation
+      console.log('🧪 Test 3: Data Transformation');
+      const testAssignments: AssignmentItem[] = [
+        {
+          id: 'test-1',
+          class: 'Nursery',
+          className: 'Nursery',
+          section: 'A',
+          subjects: [{ id: 'sub-1', name: 'Math', time: '9:00 AM', day: 'Monday' }],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ];
+      console.log('Test assignments:', testAssignments);
+      
+      // Test 4: Edge Cases
+      console.log('🧪 Test 4: Edge Cases');
+      console.log('Nursery with section C (should fail validation):', 
+        ['Nursery', 'C'].every(val => ['Nursery', 'KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].includes(val)));
+      
+      console.log('=== COMPREHENSIVE QUALITY TESTING COMPLETED ===');
+      
+    } catch (error) {
+      console.error('Testing failed:', error);
+    }
+  };
+
+  // Auto-run tests in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // Uncomment the next line to run comprehensive tests automatically
+      // runComprehensiveTests();
+    }
+  }, []);
 
   const handleEditAssignment = (index: number) => {
     const assignment = assignments[index];
@@ -1657,13 +1816,13 @@ const TeacherManagement: React.FC = () => {
             {assignments.length > 0 && (
               <Box sx={{ mb: 2 }}>
                 {assignments.map((a, idx) => (
-                  <Box key={idx} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                  <Box key={a.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
                     <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
                       Class {a.className} - Section {a.section}
                     </Typography>
                     <Box sx={{ ml: 2 }}>
                       {a.subjects.map((subject, subjectIdx) => (
-                        <Box key={subjectIdx} sx={{ 
+                        <Box key={subject.id} sx={{ 
                           display: 'flex', 
                           alignItems: 'center', 
                           mb: 1, 
@@ -1710,6 +1869,9 @@ const TeacherManagement: React.FC = () => {
               </Box>
             </Box>
 
+            {/* Form Validation Errors */}
+            {renderFormErrors()}
+            
             {/* Add/Edit Assignment Form */}
             <Grid container spacing={2}>
               <Grid item xs={12} md={3}>

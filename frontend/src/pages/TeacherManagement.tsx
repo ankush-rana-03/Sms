@@ -703,22 +703,37 @@ const TeacherManagement: React.FC = () => {
 
     // Check for time conflicts (same class, section, day, and time)
     // When editing, exclude the current assignment being edited from conflict check
+    console.log('=== TIME CONFLICT CHECK ===');
+    console.log('Checking for conflicts with class:', assignmentForm.class, 'section:', assignmentForm.section);
+    console.log('Current assignments to check against:', assignments);
+    
     const hasTimeConflict = assignments.some((assignment, assignmentIdx) => {
       // Skip the assignment being edited
       if (assignmentForm.editingIndex !== -1 && assignmentIdx === assignmentForm.editingIndex) {
+        console.log('Skipping assignment at index', assignmentIdx, 'because it\'s being edited');
         return false;
       }
       
       // Check if this assignment has the same class and section
       if (assignment.class === assignmentForm.class && assignment.section === assignmentForm.section) {
+        console.log('Found matching class/section assignment:', assignment);
         // Check if any subject in this assignment has a time conflict
-        return assignment.subjects.some(subject => 
+        const conflict = assignment.subjects.some(subject => 
           subject.day === newSubject.day && subject.time === newSubject.time
         );
+        if (conflict) {
+          console.log('Time conflict found with subject:', assignment.subjects.find(s => 
+            s.day === newSubject.day && s.time === newSubject.time
+          ));
+        }
+        return conflict;
       }
       
       return false;
     });
+    
+    console.log('Time conflict result:', hasTimeConflict);
+    console.log('=== END TIME CONFLICT CHECK ===');
 
     if (hasTimeConflict) {
       showSnackbar('Time conflict detected! Another subject is already scheduled at this time for this class and section.', 'error');
@@ -767,6 +782,7 @@ const TeacherManagement: React.FC = () => {
         // Updating existing assignment
         console.log('Updating existing assignment at index:', assignmentForm.editingIndex);
         console.log('Current assignment being edited:', assignments[assignmentForm.editingIndex]);
+        console.log('New form values - class:', assignmentForm.class, 'section:', assignmentForm.section);
         
         updatedAssignments = assignments.map((a, index) => {
           if (index === assignmentForm.editingIndex) {
@@ -777,16 +793,17 @@ const TeacherManagement: React.FC = () => {
               updatedSubjects[0] = newSubject;
             }
             
-            // Keep the existing class and section, but update the subject
+            // Update the class and section with new values from the form
             const updatedAssignment = {
               ...a,
-              class: assignmentForm.class,     // Keep the class name
-              className: assignmentForm.class, // Keep the class name for display
-              section: assignmentForm.section, // Keep the section
+              class: assignmentForm.class,     // Update with new class name
+              className: assignmentForm.class, // Update with new class name for display
+              section: assignmentForm.section, // Update with new section
               subjects: updatedSubjects
             };
             
             console.log('Updated assignment:', updatedAssignment);
+            console.log('Old assignment was:', a);
             return updatedAssignment;
           }
           return a;

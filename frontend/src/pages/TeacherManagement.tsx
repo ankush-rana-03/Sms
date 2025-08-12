@@ -794,22 +794,30 @@ const TeacherManagement: React.FC = () => {
 
   // Helper function to update existing assignment
   const updateExistingAssignment = (newSubject: { name: string; time: string; day: string }): AssignmentItem[] => {
+    console.log('=== UPDATE EXISTING ASSIGNMENT ===');
+    console.log('Current form values:', assignmentForm);
+    console.log('New subject:', newSubject);
+    
     return assignments.map((assignment, index) => {
       if (index === assignmentForm.editingIndex) {
         console.log('Updating assignment at index:', index);
         console.log('Old assignment:', assignment);
+        console.log('Form class value:', assignmentForm.class);
+        console.log('Form section value:', assignmentForm.section);
         
         const updatedAssignment: AssignmentItem = {
           ...assignment,
-          class: assignmentForm.class,        // Update class
-          className: assignmentForm.class,    // Update className
-          section: assignmentForm.section,    // Update section
+          class: assignmentForm.class,        // Update class with new value
+          className: assignmentForm.class,    // Update className with new value
+          section: assignmentForm.section,    // Update section with new value
           subjects: assignment.subjects.map((subject, subIndex) => 
             subIndex === 0 ? newSubject : subject  // Update first subject
           )
         };
         
         console.log('Updated assignment:', updatedAssignment);
+        console.log('Class changed from', assignment.class, 'to', updatedAssignment.class);
+        console.log('Section changed from', assignment.section, 'to', updatedAssignment.section);
         return updatedAssignment;
       }
       return assignment;
@@ -827,8 +835,8 @@ const TeacherManagement: React.FC = () => {
       // Transform to backend format
       const backendData = assignmentsToSave.flatMap(assignment => 
         assignment.subjects.map(subject => ({
-          class: assignment.class,
-          section: assignment.section,
+          class: assignment.class,        // This should be the updated class name
+          section: assignment.section,    // This should be the updated section
           subject: subject.name,
           grade: assignment.class === 'Nursery' || assignment.class === 'KG' ? assignment.class : assignment.class,
           time: subject.time,
@@ -836,7 +844,11 @@ const TeacherManagement: React.FC = () => {
         }))
       );
 
-      console.log('Backend data:', backendData);
+      console.log('Backend data being sent:', backendData);
+      console.log('Check if class changes are included:');
+      backendData.forEach((item, index) => {
+        console.log(`Item ${index}: class=${item.class}, section=${item.section}, subject=${item.subject}`);
+      });
 
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher!._id}/assign-classes`,
@@ -845,6 +857,15 @@ const TeacherManagement: React.FC = () => {
 
       if (response.success) {
         console.log('Backend save successful:', response.data);
+        console.log('Backend returned assignedClasses:', response.data.assignedClasses);
+        
+        // Check if the backend actually updated the class
+        const backendClassUpdates = response.data.assignedClasses.map(ac => ({
+          class: typeof ac.class === 'object' ? ac.class.name : ac.class,
+          section: ac.section,
+          subject: ac.subject
+        }));
+        console.log('Backend class updates:', backendClassUpdates);
         
         // Update teacher data
         setTeachers(prev => prev.map(t => t._id === selectedTeacher!._id ? response.data : t));
@@ -863,6 +884,10 @@ const TeacherManagement: React.FC = () => {
   // Helper function to refresh assignments from backend
   const refreshAssignmentsFromBackend = async (teacherData: Teacher) => {
     try {
+      console.log('=== REFRESHING FROM BACKEND ===');
+      console.log('Backend teacher data:', teacherData);
+      console.log('Backend assignedClasses:', teacherData.assignedClasses);
+      
       // Transform backend data back to frontend format
       const refreshedAssignments = teacherData.assignedClasses.reduce((acc, ac) => {
         let className: string;
@@ -876,7 +901,10 @@ const TeacherManagement: React.FC = () => {
           classId = ac.class;
         }
         
-        const key = `${classId}-${ac.section}`;
+        // Use class name + section as key to ensure proper grouping
+        const key = `${className}-${ac.section}`;
+        
+        console.log(`Processing: class=${className}, section=${ac.section}, key=${key}`);
         
         if (!acc[key]) {
           acc[key] = {
@@ -897,9 +925,10 @@ const TeacherManagement: React.FC = () => {
       }, {} as Record<string, AssignmentItem>);
 
       const finalAssignments = Object.values(refreshedAssignments);
-      console.log('Refreshed assignments from backend:', finalAssignments);
+      console.log('Final refreshed assignments:', finalAssignments);
       
       setAssignments(finalAssignments);
+      console.log('=== REFRESH COMPLETE ===');
     } catch (error) {
       console.error('Error refreshing assignments from backend:', error);
     }

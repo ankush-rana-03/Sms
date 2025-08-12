@@ -666,6 +666,9 @@ exports.assignClassesToTeacher = async (req, res) => {
     const { teacherId } = req.params;
     const { assignedClasses } = req.body;
 
+    console.log(`Starting assignment for teacher ${teacherId}`);
+    console.log('Received assignedClasses:', JSON.stringify(assignedClasses, null, 2));
+
     if (!assignedClasses || !Array.isArray(assignedClasses)) {
       return res.status(400).json({
         success: false,
@@ -681,6 +684,9 @@ exports.assignClassesToTeacher = async (req, res) => {
       });
     }
 
+    console.log('Found teacher:', teacher.name);
+    console.log('Current assignments before update:', JSON.stringify(teacher.assignedClasses, null, 2));
+
     // Validate and create classes if they don't exist
     for (const assignment of assignedClasses) {
       if (assignment.class) {
@@ -690,6 +696,9 @@ exports.assignClassesToTeacher = async (req, res) => {
         if (assignment.class.length === 24) {
           try {
             classExists = await Class.findById(assignment.class);
+            if (classExists) {
+              console.log(`Found class by ID: ${classExists.name} - Section ${classExists.section}`);
+            }
           } catch (error) {
             console.log('Invalid ObjectId format:', assignment.class);
           }
@@ -701,6 +710,9 @@ exports.assignClassesToTeacher = async (req, res) => {
             name: assignment.class, 
             section: assignment.section 
           });
+          if (classExists) {
+            console.log(`Found class by name: ${classExists.name} - Section ${classExists.section}`);
+          }
         }
         
         // If still not found, create the class
@@ -746,16 +758,27 @@ exports.assignClassesToTeacher = async (req, res) => {
       day: assignment.day || 'Monday'      // Preserve day field
     }));
     
-    console.log('Transformed assignments to save:', transformedAssignments);
+    console.log('Transformed assignments to save:', JSON.stringify(transformedAssignments, null, 2));
     
+    // Update the teacher's assignedClasses
     teacher.assignedClasses = transformedAssignments;
-    await teacher.save();
     
-    console.log('Teacher saved with assignments:', teacher.assignedClasses);
+    // Save the teacher with new assignments
+    const savedTeacher = await teacher.save();
+    console.log('Teacher saved successfully with assignments');
+    console.log('Saved assignments:', JSON.stringify(savedTeacher.assignedClasses, null, 2));
 
+    // Fetch the updated teacher with populated data
     const populatedTeacher = await Teacher.findById(teacherId)
       .populate('assignedClasses.class', 'name grade section')
       .populate('user', 'name email role isActive');
+
+    if (!populatedTeacher) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error fetching updated teacher data'
+      });
+    }
 
     console.log('Populated teacher response:', JSON.stringify(populatedTeacher.assignedClasses, null, 2));
     
@@ -771,6 +794,7 @@ exports.assignClassesToTeacher = async (req, res) => {
     }));
     
     console.log('Final response data:', JSON.stringify(responseData.assignedClasses, null, 2));
+    console.log(`Successfully assigned ${transformedAssignments.length} classes to teacher ${teacher.name}`);
 
     res.status(200).json({
       success: true,

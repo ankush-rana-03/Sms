@@ -245,44 +245,44 @@ const TeacherManagement: React.FC = () => {
   }, [user, page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTeachers = async () => {
-    setLoading(true);
     try {
-      console.log('Fetching teachers...');
-      console.log('Current page:', page);
-      console.log('Search term:', searchTerm);
-      console.log('Designation filter:', designationFilter);
-      console.log('Status filter:', statusFilter);
+      setLoading(true);
+      const response = await apiService.get<TeachersResponse>(`/admin/teachers?page=${page}&limit=${limit}&search=${searchTerm}`);
       
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '10',
-        ...(searchTerm && { search: searchTerm }),
-        ...(designationFilter && { designation: designationFilter }),
-        ...(statusFilter && { status: statusFilter })
-      });
-
-      console.log('API URL:', `/admin/teachers?${params}`);
-      
-      const data = await apiService.get<TeachersResponse>(`/admin/teachers?${params}`);
-      console.log('Fetched teachers data:', data);
-      console.log('Teachers array:', data.data);
-      console.log('Teachers count:', data.data?.length || 0);
-      
-      // Show all teachers returned by the API
-      setTeachers(data.data || []);
-      setTotalPages(data.totalPages);
-      
-      if (!data.data || data.data.length === 0) {
-        console.log('No teachers found - this might be normal if no teachers exist yet');
+      if (response.success) {
+        setTeachers(response.data);
+        setTotalPages(response.totalPages);
+        setCount(response.count);
+      } else {
+        showSnackbar(response.message || 'Error fetching teachers', 'error');
       }
     } catch (error: any) {
       console.error('Error fetching teachers:', error);
-      console.error('Error response:', error.response);
-      console.error('Error message:', error.message);
-      showSnackbar(error.response?.data?.message || 'Error fetching teachers', 'error');
+      showSnackbar(error.response?.data?.message || error.message || 'Error fetching teachers', 'error');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add function to refresh specific teacher data
+  const refreshTeacherData = async (teacherId: string) => {
+    try {
+      const response = await apiService.get<{ success: boolean; data: Teacher }>(`/admin/teachers/${teacherId}`);
+      if (response.success) {
+        // Update the specific teacher in the teachers list
+        setTeachers(prev => prev.map(t => t._id === teacherId ? response.data : t));
+        
+        // If this teacher is currently selected, update selectedTeacher as well
+        if (selectedTeacher && selectedTeacher._id === teacherId) {
+          setSelectedTeacher(response.data);
+        }
+        
+        return response.data;
+      }
+    } catch (error: any) {
+      console.error('Error refreshing teacher data:', error);
+    }
+    return null;
   };
 
   const fetchStatistics = async () => {
@@ -557,11 +557,14 @@ const TeacherManagement: React.FC = () => {
       console.log('Response received:', response);
 
       if (response.success) {
-        // Update teacher in UI
+        // Update teacher in UI - IMPORTANT: Update the teachers list first
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
         
         // Update the selected teacher with the new data
         setSelectedTeacher(response.data);
+        
+        // CRITICAL FIX: Refresh teacher data to ensure complete synchronization
+        await refreshTeacherData(selectedTeacher._id);
         
         // Update local assignments state to reflect the new data structure
         // Transform the response data back to our local format
@@ -594,10 +597,18 @@ const TeacherManagement: React.FC = () => {
         const transformedLocalAssignments = Object.values(updatedLocalAssignments);
         console.log('Updated local assignments:', transformedLocalAssignments);
         console.log('Response data assignedClasses:', response.data.assignedClasses);
+        
+        // CRITICAL FIX: Update assignments state with the new data
         setAssignments(transformedLocalAssignments);
         
         // Refresh available classes in case new ones were created
         fetchAvailableClasses();
+        
+        // Show success message
+        showSnackbar('Subject assignments updated successfully!', 'success');
+        
+        // Close the dialog after successful update
+        setOpenSubjectAssignmentDialog(false);
       } else {
         showSnackbar(response.message || 'Error updating subject assignments', 'error');
       }

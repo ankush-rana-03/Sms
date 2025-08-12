@@ -252,7 +252,6 @@ const TeacherManagement: React.FC = () => {
   });
 
   // Enhanced state for better debugging and validation
-  const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
   const [isSavingAssignment, setIsSavingAssignment] = useState(false);
   const [assignmentErrors, setAssignmentErrors] = useState<{
     class?: string;
@@ -501,7 +500,7 @@ const TeacherManagement: React.FC = () => {
 
   const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
-    setIsAssignmentDialogOpen(true);
+    setOpenSubjectAssignmentDialog(true);
     setAssignmentErrors({});
     
     console.log('=== OPENING ASSIGNMENT DIALOG ===');
@@ -567,112 +566,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleSaveSubjectAssignments = async (assignmentsToSave: AssignmentItem[]) => {
-    if (!selectedTeacher) return;
 
-    try {
-      console.log('Saving assignments:', assignmentsToSave);
-      console.log('Available classes:', availableClasses);
-
-      // Transform the data to match the backend expected format
-      const transformedAssignments = assignmentsToSave.flatMap(assignment => 
-        assignment.subjects.map(subject => {
-          // Since we're now using class names, we can use them directly
-          const className = assignment.class;
-          
-          // Extract grade from class name
-          let grade = className;
-          if (className === 'Nursery' || className === 'KG') {
-            grade = className;
-          } else {
-            grade = className.replace('Class ', '').replace('Class', '').trim();
-          }
-
-          return {
-            class: className,        // Send class name
-            section: assignment.section,
-            subject: subject.name,   // Extract just the subject name for backend
-            grade: grade,
-            time: subject.time,      // Include time
-            day: subject.day         // Include day
-          };
-        })
-      );
-
-      console.log('Transformed assignments:', transformedAssignments);
-      console.log('Sending to API:', { assignedClasses: transformedAssignments });
-
-      console.log('Sending request to:', `/admin/teachers/${selectedTeacher._id}/assign-classes`);
-      console.log('Request payload:', { assignedClasses: transformedAssignments });
-      
-      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
-        `/admin/teachers/${selectedTeacher._id}/assign-classes`,
-        { assignedClasses: transformedAssignments }
-      );
-      
-      console.log('Response received:', response);
-
-      if (response.success) {
-        // Update teacher in UI - IMPORTANT: Update the teachers list first
-        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
-        
-        // Update the selected teacher with the new data
-        setSelectedTeacher(response.data);
-        
-        // CRITICAL FIX: Refresh teacher data to ensure complete synchronization
-        await refreshTeacherData(selectedTeacher._id);
-        
-        // Update local assignments state to reflect the new data structure
-        // Transform the response data back to our local format
-        const updatedLocalAssignments = response.data.assignedClasses.reduce((acc, ac) => {
-          // Handle both populated and unpopulated class data
-          const classId = typeof ac.class === 'object' ? ac.class._id : ac.class;
-          const className = typeof ac.class === 'object' ? ac.class.name : ac.class;
-          
-          const key = `${classId}-${ac.section}`;
-          if (!acc[key]) {
-            acc[key] = {
-              class: className, // Use className for the form (e.g., "Nursery", "10")
-              className: className, // Keep className for display
-              section: ac.section,
-              subjects: []
-            };
-          }
-          // Use the time and day from response, or default values if not present
-          acc[key].subjects.push({
-            name: ac.subject,
-            time: ac.time || '9:00 AM', // Use response time or default
-            day: ac.day || 'Monday'     // Use response day or default
-          });
-          return acc;
-        }, {} as Record<string, AssignmentItem>);
-
-        console.log('Response data assignedClasses:', response.data.assignedClasses);
-        console.log('Transformed local assignments:', updatedLocalAssignments);
-
-        const finalLocalAssignments = Object.values(updatedLocalAssignments);
-        console.log('Updated local assignments:', finalLocalAssignments);
-        console.log('Response data assignedClasses:', response.data.assignedClasses);
-        
-        // CRITICAL FIX: Update assignments state with the new data
-        setAssignments(finalLocalAssignments);
-        
-        // Refresh available classes in case new ones were created
-        fetchAvailableClasses();
-        
-        // Show success message
-        showSnackbar('Subject assignments updated successfully!', 'success');
-        
-        // Close the dialog after successful update
-        setOpenSubjectAssignmentDialog(false);
-      } else {
-        showSnackbar(response.message || 'Error updating subject assignments', 'error');
-      }
-    } catch (error: any) {
-      console.error('Error updating subject assignments:', error);
-      showSnackbar(error.response?.data?.message || error.message || 'Error updating subject assignments', 'error');
-    }
-  };
 
   const resetForm = () => {
     setTeacherFormData({
@@ -1026,7 +920,7 @@ const TeacherManagement: React.FC = () => {
 
   // Function to close assignment dialog
   const handleCloseAssignmentDialog = () => {
-    setIsAssignmentDialogOpen(false);
+    setOpenSubjectAssignmentDialog(false);
     resetAssignmentForm();
     setSelectedTeacher(null);
   };
@@ -1878,18 +1772,29 @@ const TeacherManagement: React.FC = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  onClick={handleAddOrUpdateAssignment}
-                  sx={{ mt: 1 }}
-                >
-                  {assignmentForm.editingIndex === -1 ? 'Add Subject Assignment' : 'Update Subject Assignment'}
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAddOrUpdateAssignment}
+                    disabled={isSavingAssignment}
+                  >
+                    {assignmentForm.editingIndex === -1 ? 'Add Subject Assignment' : 'Update Subject Assignment'}
+                  </Button>
+                  {assignmentForm.editingIndex !== -1 && (
+                    <Button
+                      variant="outlined"
+                      onClick={handleCancelEdit}
+                      disabled={isSavingAssignment}
+                    >
+                      Cancel Edit
+                    </Button>
+                  )}
+                </Box>
               </Grid>
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenSubjectAssignmentDialog(false)}>Cancel</Button>
+            <Button onClick={handleCloseAssignmentDialog}>Cancel</Button>
           </DialogActions>
         </Dialog>
       )}

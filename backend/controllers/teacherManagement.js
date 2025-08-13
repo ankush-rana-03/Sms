@@ -4,6 +4,7 @@ const LoginLog = require('../models/LoginLog');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const emailService = require('../services/emailService');
+const Class = require('../models/Class');
 
 // Generate a secure random password
 const generatePassword = () => {
@@ -682,9 +683,11 @@ exports.assignClassesToTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
     const { assignedClasses } = req.body;
+    const isReplaceAll = req.body?.replaceAll === true || req.body?.replaceAll === 'true';
 
     console.log(`Starting assignment for teacher ${teacherId}`);
     console.log('Received assignedClasses:', JSON.stringify(assignedClasses, null, 2));
+    console.log('replaceAll flag:', isReplaceAll);
 
     if (!assignedClasses || !Array.isArray(assignedClasses)) {
       return res.status(400).json({
@@ -789,49 +792,65 @@ exports.assignClassesToTeacher = async (req, res) => {
       }
     }
     
-    // Create a map of existing assignments by grade-section-subject combination for easy lookup
-    const existingAssignmentsMap = new Map();
-    teacher.assignedClasses.forEach(existing => {
-      const key = `${existing.grade}-${existing.section}-${existing.subject}`;
-      existingAssignmentsMap.set(key, existing);
-    });
-    
-    console.log('Existing assignments map keys:', Array.from(existingAssignmentsMap.keys()));
-    
-    // Start with existing assignments and add/update new ones
-    const mergedAssignments = [...teacher.assignedClasses];
-    
-    for (const assignment of assignedClasses) {
-      const assignmentKey = `${assignment.grade}-${assignment.section}-${assignment.subject}`;
-      console.log(`Processing assignment: ${assignmentKey}`);
+    let mergedAssignments = [];
+
+    if (isReplaceAll) {
+      // Replace all existing assignments with the provided list
+      console.log('replaceAll=true: Replacing all existing assignments with provided list');
+      mergedAssignments = assignedClasses.map(a => ({
+        grade: a.grade,
+        section: a.section,
+        subject: a.subject,
+        time: a.time || '9:00 AM',
+        day: a.day || 'Monday',
+        ...(a.class ? { class: a.class } : {})
+      }));
+    } else {
+      // Merge behavior: keep existing and add/update provided ones
+      // Create a map of existing assignments by grade-section-subject combination for easy lookup
+      const existingAssignmentsMap = new Map();
+      teacher.assignedClasses.forEach(existing => {
+        const key = `${existing.grade}-${existing.section}-${existing.subject}`;
+        existingAssignmentsMap.set(key, existing);
+      });
       
-      if (existingAssignmentsMap.has(assignmentKey)) {
-        // Update existing assignment with new time/day if provided
-        const existingIndex = mergedAssignments.findIndex(existing => 
-          existing.grade === assignment.grade && 
-          existing.section === assignment.section && 
-          existing.subject === assignment.subject
-        );
+      console.log('Existing assignments map keys:', Array.from(existingAssignmentsMap.keys()));
+      
+      // Start with existing assignments and add/update new ones
+      mergedAssignments = [...teacher.assignedClasses];
+      
+      for (const assignment of assignedClasses) {
+        const assignmentKey = `${assignment.grade}-${assignment.section}-${assignment.subject}`;
+        console.log(`Processing assignment: ${assignmentKey}`);
         
-        if (existingIndex !== -1) {
-          mergedAssignments[existingIndex] = {
-            ...mergedAssignments[existingIndex],
-            time: assignment.time || mergedAssignments[existingIndex].time || '9:00 AM',
-            day: assignment.day || mergedAssignments[existingIndex].day || 'Monday'
+        if (existingAssignmentsMap.has(assignmentKey)) {
+          // Update existing assignment with new time/day if provided
+          const existingIndex = mergedAssignments.findIndex(existing => 
+            existing.grade === assignment.grade && 
+            existing.section === assignment.section && 
+            existing.subject === assignment.subject
+          );
+          
+          if (existingIndex !== -1) {
+            mergedAssignments[existingIndex] = {
+              ...mergedAssignments[existingIndex],
+              time: assignment.time || mergedAssignments[existingIndex].time || '9:00 AM',
+              day: assignment.day || mergedAssignments[existingIndex].day || 'Monday'
+            };
+            console.log(`Updated existing assignment: ${assignmentKey}`, mergedAssignments[existingIndex]);
+          }
+        } else {
+          // Add new assignment
+          const newAssignment = {
+            grade: assignment.grade,
+            section: assignment.section,
+            subject: assignment.subject,
+            time: assignment.time || '9:00 AM',
+            day: assignment.day || 'Monday'
           };
-          console.log(`Updated existing assignment: ${assignmentKey}`, mergedAssignments[existingIndex]);
+          mergedAssignments.push(newAssignment);
+          console.log(`Added new assignment: ${assignmentKey}`, newAssignment);
         }
-      } else {
-        // Add new assignment
-        const newAssignment = {
-          grade: assignment.grade,
-          section: assignment.section,
-          subject: assignment.subject,
-          time: assignment.time || '9:00 AM',
-          day: assignment.day || 'Monday'
-        };
-        mergedAssignments.push(newAssignment);
-        console.log(`Added new assignment: ${assignmentKey}`, newAssignment);
       }
     }
     
@@ -889,7 +908,7 @@ exports.assignClassesToTeacher = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Classes assigned to teacher successfully',
+      message: isReplaceAll ? 'Assignments replaced successfully' : 'Classes assigned to teacher successfully',
       data: responseData
     });
   } catch (error) {

@@ -119,7 +119,7 @@ const Actions: React.FC = () => {
       // Send updated assignments to backend
       const res = await apiService.post<{ success: boolean; data: TeacherDetail; message: string }>(
         `/admin/teachers/${teacherDetail._id}/assign-classes`, 
-        { assignedClasses: remaining }
+        { assignedClasses: remaining, replaceAll: true }
       );
       
       if (res.data) {
@@ -277,7 +277,7 @@ const Actions: React.FC = () => {
         };
       });
 
-      const res = await apiService.post<{ success: boolean; data: TeacherDetail }>(`/admin/teachers/${teacherDetail._id}/assign-classes`, { assignedClasses: updated });
+      const res = await apiService.post<{ success: boolean; data: TeacherDetail }>(`/admin/teachers/${teacherDetail._id}/assign-classes`, { assignedClasses: updated, replaceAll: true });
       setTeacherDetail(res.data);
       setEditTarget(null);
       setEditForm(null);

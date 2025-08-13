@@ -67,6 +67,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/students', require('./routes/students'));
 app.use('/api/teachers', require('./routes/teachers'));
 app.use('/api/admin/teachers', require('./routes/teacherManagement'));
+app.use('/api/admin/assignments', require('./routes/teacherAssignments'));
 app.use('/api/classes', require('./routes/classes'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/homework', require('./routes/homework'));

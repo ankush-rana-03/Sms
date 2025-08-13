@@ -122,7 +122,7 @@ const Actions: React.FC = () => {
         { assignedClasses: remaining }
       );
       
-      if (res.data && res.data.success) {
+      if (res.data) {
         console.log('Backend response after delete:', res.data);
         setTeacherDetail(res.data);
         showSnackbar('Assignment deleted successfully');

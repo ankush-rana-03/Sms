@@ -165,7 +165,6 @@ const TeacherManagement: React.FC = () => {
   const [openPasswordResetDialog, setOpenPasswordResetDialog] = useState(false);
 
   const [openSubjectAssignmentDialog, setOpenSubjectAssignmentDialog] = useState(false)
-  const [availableClasses, setAvailableClasses] = useState<any[]>([])
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
@@ -299,7 +298,7 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
-      const response = await apiService.delete(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, {
+      const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, {
         data: { classId, section, subject }
       });
 
@@ -559,7 +558,7 @@ const TeacherManagement: React.FC = () => {
     try {
       // Transform assignments back to the format expected by the backend
       const backendAssignments = assignments.flatMap(assignment => 
-        assignment.subjects.map(subject => ({
+        assignment.subjects.map((subject: string) => ({
           class: assignment.classId,
           section: assignment.section,
           subject: subject,
@@ -569,7 +568,7 @@ const TeacherManagement: React.FC = () => {
         }))
       );
 
-      const response = await apiService.post(`/admin/teachers/${selectedTeacher._id}/assign-classes`, {
+      const response = await apiService.post<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/assign-classes`, {
         assignedClasses: backendAssignments
       });
 
@@ -586,16 +585,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const fetchAvailableClasses = async () => {
-    try {
-      const response = await apiService.get('/admin/classes');
-      if (response.success) {
-        setAvailableClasses(response.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching available classes:', error);
-    }
-  };
+
 
 
 
@@ -1905,7 +1895,7 @@ const TeacherManagement: React.FC = () => {
         teacherId={selectedTeacher?._id || ''}
         teacherName={selectedTeacher?.name || ''}
         availableClasses={availableClasses}
-        currentAssignments={selectedTeacher?.assignedClasses ? selectedTeacher.assignedClasses.reduce((acc, ac) => {
+        currentAssignments={selectedTeacher?.assignedClasses ? Object.values(selectedTeacher.assignedClasses.reduce((acc, ac) => {
           const key = `${ac.class}-${ac.section}`;
           if (!acc[key]) {
             acc[key] = {
@@ -1920,7 +1910,7 @@ const TeacherManagement: React.FC = () => {
             acc[key].subjects.push(ac.subject);
           }
           return acc;
-        }, {} as Record<string, any>) : []}
+        }, {} as Record<string, any>)) : []}
         onSave={handleSaveAssignments}
         onDeleteSubject={handleDeleteSubject}
       />

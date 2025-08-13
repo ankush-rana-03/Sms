@@ -712,52 +712,49 @@ exports.deleteSubjectAssignment = async (req, res) => {
     console.log('🔍 Received delete request:', { classId, section, subject });
     console.log('🔍 Current teacher assignments:', JSON.stringify(teacher.assignedClasses, null, 2));
     
+    // SIMPLIFIED DELETION LOGIC - Just remove the exact match
+    console.log('🔍 SIMPLE DELETION: Looking for exact match...');
+    
+    const beforeCount = teacher.assignedClasses.length;
+    
+    // Remove the assignment that matches ALL criteria
     teacher.assignedClasses = teacher.assignedClasses.filter(assignment => {
-      // Debug the actual structure
-      console.log('🔍 Raw assignment data:', JSON.stringify(assignment, null, 2));
-      console.log('🔍 assignment.class:', assignment.class);
-      console.log('🔍 typeof assignment.class:', typeof assignment.class);
+      // Try multiple ways to match the class
+      let classMatches = false;
       
-      // Handle different possible data structures
-      let classMatch = false;
-      if (assignment.class && assignment.class._id) {
-        // ObjectId object case
-        classMatch = assignment.class._id.toString() === classId;
-        console.log('🔍 ObjectId case - class._id:', assignment.class._id.toString());
-      } else if (typeof assignment.class === 'string') {
-        // String case
-        classMatch = assignment.class === classId;
-        console.log('🔍 String case - class:', assignment.class);
-      } else if (assignment.class && typeof assignment.class === 'object' && assignment.class.toString) {
-        // Try toString as fallback
-        classMatch = assignment.class.toString() === classId;
-        console.log('🔍 toString fallback - class.toString():', assignment.class.toString());
-      } else {
-        console.log('🔍 Unknown class structure:', assignment.class);
+      // Method 1: Direct string comparison
+      if (assignment.class === classId) {
+        classMatches = true;
+        console.log('✅ Method 1: Direct string match');
+      }
+      // Method 2: ObjectId comparison
+      else if (assignment.class && assignment.class._id && assignment.class._id.toString() === classId) {
+        classMatches = true;
+        console.log('✅ Method 2: ObjectId match');
+      }
+      // Method 3: Class name comparison (if class is stored as name)
+      else if (assignment.class && typeof assignment.class === 'string' && assignment.class.includes(classId)) {
+        classMatches = true;
+        console.log('✅ Method 3: Class name match');
       }
       
-      const sectionMatch = assignment.section === section;
-      const subjectMatch = assignment.subject === subject;
+      const sectionMatches = assignment.section === section;
+      const subjectMatches = assignment.subject === subject;
       
-      console.log('🔍 Assignment comparison:', {
-        assignment: {
-          class: assignment.class,
-          classType: typeof assignment.class,
-          section: assignment.section,
-          subject: assignment.subject
-        },
-        received: { classId, section, subject },
-        matches: { classMatch, sectionMatch, subjectMatch },
-        willDelete: !(classMatch && sectionMatch && subjectMatch)
-      });
+      const shouldKeep = !(classMatches && sectionMatches && subjectMatches);
       
-      return !(classMatch && sectionMatch && subjectMatch);
+      console.log(`🔍 Assignment: ${JSON.stringify(assignment)}`);
+      console.log(`🔍 Matches: class=${classMatches}, section=${sectionMatches}, subject=${subjectMatches}`);
+      console.log(`🔍 Will keep: ${shouldKeep}`);
+      
+      return shouldKeep;
     });
-
-    const removedCount = initialCount - teacher.assignedClasses.length;
+    
+        const afterCount = teacher.assignedClasses.length;
+    const removedCount = beforeCount - afterCount;
     console.log('🔍 Deletion results:');
-    console.log('🔍 Initial count:', initialCount);
-    console.log('🔍 Final count:', teacher.assignedClasses.length);
+    console.log('🔍 Before deletion count:', beforeCount);
+    console.log('🔍 After deletion count:', afterCount);
     console.log('🔍 Removed count:', removedCount);
     
     if (removedCount === 0) {

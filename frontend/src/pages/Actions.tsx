@@ -51,9 +51,9 @@ interface TeacherDetail {
 
 interface AssignmentRow {
   class: string;   // class id or name
-  section: string;
+  section?: string; // auto-populated from class
   subject: string;
-  grade: string;
+  grade?: string;  // auto-populated from class
   day: string;
   time: string;
 }
@@ -73,9 +73,7 @@ const Actions: React.FC = () => {
 
   const [form, setForm] = useState<AssignmentRow>({
     class: '',
-    section: '',
     subject: '',
-    grade: '',
     day: '',
     time: ''
   });
@@ -148,7 +146,6 @@ const Actions: React.FC = () => {
   const validateForm = (): string | null => {
     if (!selectedTeacherId) return 'Select a teacher';
     if (!form.class) return 'Select a class';
-    if (!form.section) return 'Select a section';
     if (!form.subject.trim()) return 'Enter a subject';
     if (!form.day) return 'Select a day';
     if (!form.time) return 'Select a time';
@@ -162,19 +159,27 @@ const Actions: React.FC = () => {
   const handleAdd = async () => {
     const err = validateForm();
     if (err) { showSnackbar(err, 'error'); return; }
+    
+    // Get class details for grade and section
+    const selectedClass = classes.find(c => c._id === form.class);
+    if (!selectedClass) {
+      showSnackbar('Selected class not found', 'error');
+      return;
+    }
+    
     try {
       const payload = { assignedClasses: [{
-        class: form.class,
-        section: form.section,
+        class: form.class, // Send class ID
+        section: selectedClass.section, // Use section from selected class
         subject: form.subject,
-        grade: form.grade || form.class,
+        grade: selectedClass.name.replace('Class ', ''), // Extract grade from class name
         day: form.day,
         time: form.time,
       }]};
       const res = await apiService.post<{ success: boolean; data: TeacherDetail; message: string }>(`/admin/teachers/${selectedTeacherId}/assign-classes`, payload);
       setTeacherDetail(res.data);
       showSnackbar('Assigned successfully');
-      setForm({ class: '', section: '', subject: '', grade: '', day: '', time: '' });
+      setForm({ class: '', section: '', subject: '', day: '', time: '' });
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to assign';
       showSnackbar(msg, 'error');
@@ -211,7 +216,14 @@ const Actions: React.FC = () => {
 
   const openEdit = (row: AssignmentRow) => {
     setEditTarget(row);
-    setEditForm(row);
+    // Find the class ID from the class name for editing
+    const classObj = classes.find(c => c.name === row.class);
+    setEditForm({
+      ...row,
+      class: classObj?._id || row.class,
+      section: classObj?.section || row.section,
+      grade: classObj?.name.replace('Class ', '') || row.grade
+    });
   };
 
   const handleEditSave = async () => {
@@ -220,16 +232,23 @@ const Actions: React.FC = () => {
     const err = (!editForm.day || !editForm.time) ? 'Select day and time' : null;
     if (err) { showSnackbar(err, 'error'); return; }
 
+    // Get class details for grade and section
+    const selectedClass = classes.find(c => c._id === editForm.class);
+    if (!selectedClass) {
+      showSnackbar('Selected class not found', 'error');
+      return;
+    }
+
     try {
       // Build new list: replace target row with editForm
       const updated = (teacherDetail.assignedClasses || []).map(ac => {
         const className = typeof ac.class === 'object' ? ac.class.name : (ac.class as string);
         if (editTarget && className === editTarget.class && ac.section === editTarget.section && ac.subject === editTarget.subject && (ac.day || 'Monday') === editTarget.day && (ac.time || '9:00 AM') === editTarget.time) {
           return {
-            class: editForm.class,
-            section: editForm.section,
+            class: editForm.class, // Send class ID
+            section: selectedClass.section, // Use section from selected class
             subject: editForm.subject,
-            grade: editForm.grade || editForm.class,
+            grade: selectedClass.name.replace('Class ', ''), // Extract grade from class name
             day: editForm.day,
             time: editForm.time,
           };
@@ -289,7 +308,13 @@ const Actions: React.FC = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={2}>
-              <TextField label="Section" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} fullWidth />
+              <TextField 
+                label="Section" 
+                value={form.class ? classes.find(c => c._id === form.class)?.section || '' : ''} 
+                fullWidth 
+                disabled 
+                helperText="Auto-filled from class"
+              />
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField label="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} fullWidth />
@@ -369,7 +394,13 @@ const Actions: React.FC = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={2}>
-                <TextField label="Section" value={editForm.section} onChange={(e) => setEditForm({ ...editForm, section: e.target.value })} fullWidth />
+                <TextField 
+                  label="Section" 
+                  value={editForm.class ? classes.find(c => c._id === editForm.class)?.section || '' : ''} 
+                  fullWidth 
+                  disabled 
+                  helperText="Auto-filled from class"
+                />
               </Grid>
               <Grid item xs={12} md={3}>
                 <TextField label="Subject" value={editForm.subject} onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })} fullWidth />

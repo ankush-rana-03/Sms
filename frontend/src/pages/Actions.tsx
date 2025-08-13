@@ -19,6 +19,10 @@ import {
   TableRow,
   Snackbar,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { Add, Delete, Edit, Schedule } from '@mui/icons-material';
 import { apiService } from '../services/api';
@@ -77,6 +81,62 @@ const Actions: React.FC = () => {
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'success') => setSnackbar({ open: true, message, severity });
+
+  // Delete confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; assignment: AssignmentRow | null }>({ open: false, assignment: null });
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (row: AssignmentRow) => {
+    setDeleteDialog({ open: true, assignment: row });
+  };
+
+  // Close delete confirmation dialog
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ open: false, assignment: null });
+  };
+
+  // Handle actual deletion after confirmation
+  const confirmDelete = async () => {
+    if (!deleteDialog.assignment || !teacherDetail) {
+      closeDeleteDialog();
+      return;
+    }
+
+    try {
+      console.log('Deleting assignment:', deleteDialog.assignment);
+      
+      // Build remaining assignments excluding the target
+      const remaining = (teacherDetail.assignedClasses || []).filter(ac => {
+        return !(ac.grade === deleteDialog.assignment!.grade && 
+                ac.section === deleteDialog.assignment!.section && 
+                ac.subject === deleteDialog.assignment!.subject && 
+                (ac.day || 'Monday') === deleteDialog.assignment!.day && 
+                (ac.time || '9:00 AM') === deleteDialog.assignment!.time);
+      });
+      
+      console.log('Remaining assignments after filter:', remaining);
+      
+      // Send updated assignments to backend
+      const res = await apiService.post<{ success: boolean; data: TeacherDetail; message: string }>(
+        `/admin/teachers/${teacherDetail._id}/assign-classes`, 
+        { assignedClasses: remaining }
+      );
+      
+      if (res.data && res.data.success) {
+        console.log('Backend response after delete:', res.data);
+        setTeacherDetail(res.data);
+        showSnackbar('Assignment deleted successfully');
+        closeDeleteDialog();
+      } else {
+        throw new Error('Backend returned unsuccessful response');
+      }
+    } catch (e: any) {
+      console.error('Delete error:', e);
+      const msg = e?.response?.data?.message || e?.message || 'Failed to delete assignment';
+      showSnackbar(msg, 'error');
+      closeDeleteDialog();
+    }
+  };
 
   useEffect(() => {
     const fetchTeachers = async () => {
@@ -180,46 +240,7 @@ const Actions: React.FC = () => {
     }
   };
 
-  const handleDelete = async (row: AssignmentRow) => {
-    if (!teacherDetail) return;
-    
-    try {
-      console.log('Deleting assignment:', row);
-      console.log('Current assignments before delete:', teacherDetail.assignedClasses);
-      
-      // Build remaining assignments excluding the target
-      const remaining = (teacherDetail.assignedClasses || []).filter(ac => {
-        const shouldKeep = !(ac.grade === row.grade && 
-                           ac.section === row.section && 
-                           ac.subject === row.subject && 
-                           (ac.day || 'Monday') === row.day && 
-                           (ac.time || '9:00 AM') === row.time);
-        
-        console.log('Assignment:', ac, 'Should keep:', shouldKeep);
-        return shouldKeep;
-      });
-      
-      console.log('Remaining assignments after filter:', remaining);
-      
-      // Repost entire set to controller to overwrite
-      const res = await apiService.post<{ success: boolean; data: TeacherDetail; message: string }>(
-        `/admin/teachers/${teacherDetail._id}/assign-classes`, 
-        { assignedClasses: remaining }
-      );
-      
-      if (res.data && res.data.success) {
-        console.log('Backend response after delete:', res.data);
-        setTeacherDetail(res.data);
-        showSnackbar('Assignment deleted successfully');
-      } else {
-        throw new Error('Backend returned unsuccessful response');
-      }
-    } catch (e: any) {
-      console.error('Delete error:', e);
-      const msg = e?.response?.data?.message || e?.message || 'Failed to delete assignment';
-      showSnackbar(msg, 'error');
-    }
-  };
+
 
   const [editTarget, setEditTarget] = useState<AssignmentRow | null>(null);
   const [editForm, setEditForm] = useState<AssignmentRow | null>(null);
@@ -361,7 +382,7 @@ const Actions: React.FC = () => {
                       <TableCell>{row.subject}</TableCell>
                       <TableCell align="right">
                         <IconButton size="small" onClick={() => openEdit(row)}><Edit fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={() => handleDelete(row)}><Delete fontSize="small" color="error" /></IconButton>
+                        <IconButton size="small" onClick={() => openDeleteDialog(row)}><Delete fontSize="small" color="error" /></IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -426,6 +447,46 @@ const Actions: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialog.open} onClose={closeDeleteDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirm Delete Assignment</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Are you sure you want to delete this assignment?
+          </Typography>
+          {deleteDialog.assignment && (
+            <Box sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                Assignment Details:
+              </Typography>
+              <Typography variant="body2">
+                <strong>Grade:</strong> {deleteDialog.assignment.grade}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Section:</strong> {deleteDialog.assignment.section}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Subject:</strong> {deleteDialog.assignment.subject}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Day:</strong> {deleteDialog.assignment.day}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Time:</strong> {deleteDialog.assignment.time}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>

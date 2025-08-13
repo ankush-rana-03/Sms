@@ -133,9 +133,13 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
   };
 
   const handleDeleteSubject = (classId: string, section: string, subject: string) => {
+    console.log('🔍 SubjectClassAssignment handleDeleteSubject called with:', { classId, section, subject });
+    
     if (onDeleteSubject) {
+      console.log('📞 Calling onDeleteSubject prop');
       onDeleteSubject(classId, section, subject);
     } else {
+      console.log('🔄 No onDeleteSubject prop, doing local deletion');
       // Local deletion if no backend handler provided
       setAssignments(prev => prev.map(assignment => {
         if (assignment.classId === classId && assignment.section === section) {
@@ -207,7 +211,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                                 size="small"
                                 color="secondary"
                                 sx={{ mr: 0.5, mb: 0.5 }}
-                                onDelete={() => handleDeleteSubject(assignment.classId, assignment.section, subject)}
+                                onDelete={() => handleDeleteSubject(assignment.originalClass || assignment.classId, assignment.section, subject)}
                                 deleteIcon={<Delete />}
                               />
                             ))}

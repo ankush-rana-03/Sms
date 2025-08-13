@@ -297,10 +297,14 @@ const TeacherManagement: React.FC = () => {
   const handleDeleteSubject = async (classId: string, section: string, subject: string) => {
     if (!selectedTeacher) return;
 
+    console.log('🔍 handleDeleteSubject called with:', { classId, section, subject, teacherId: selectedTeacher._id });
+
     try {
       const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, {
         data: { classId, section, subject }
       });
+
+      console.log('✅ Delete response:', response);
 
       if (response.success) {
         showSnackbar('Subject assignment deleted successfully', 'success');
@@ -310,7 +314,7 @@ const TeacherManagement: React.FC = () => {
         showSnackbar(response.message || 'Error deleting subject assignment', 'error');
       }
     } catch (error: any) {
-      console.error('Error deleting subject assignment:', error);
+      console.error('❌ Error deleting subject assignment:', error);
       showSnackbar(error.response?.data?.message || 'Error deleting subject assignment', 'error');
     }
   };
@@ -1895,22 +1899,32 @@ const TeacherManagement: React.FC = () => {
         teacherId={selectedTeacher?._id || ''}
         teacherName={selectedTeacher?.name || ''}
         availableClasses={availableClasses}
-        currentAssignments={selectedTeacher?.assignedClasses ? Object.values(selectedTeacher.assignedClasses.reduce((acc, ac) => {
-          const key = `${ac.class}-${ac.section}`;
-          if (!acc[key]) {
-            acc[key] = {
-              classId: typeof ac.class === 'string' ? ac.class : ac.class._id,
-              className: typeof ac.class === 'string' ? ac.class : ac.class.name,
-              grade: ac.grade,
-              section: ac.section,
-              subjects: []
-            };
-          }
-          if (ac.subject && !acc[key].subjects.includes(ac.subject)) {
-            acc[key].subjects.push(ac.subject);
-          }
-          return acc;
-        }, {} as Record<string, any>)) : []}
+        currentAssignments={(() => {
+          if (!selectedTeacher?.assignedClasses) return [];
+          
+          console.log('🔍 Original assignedClasses:', selectedTeacher.assignedClasses);
+          
+          const transformed = Object.values(selectedTeacher.assignedClasses.reduce((acc, ac) => {
+            const key = `${ac.class}-${ac.section}`;
+            if (!acc[key]) {
+              acc[key] = {
+                classId: typeof ac.class === 'string' ? ac.class : ac.class._id,
+                originalClass: ac.class, // Keep original for backend calls
+                className: typeof ac.class === 'string' ? ac.class : ac.class.name,
+                grade: ac.grade,
+                section: ac.section,
+                subjects: []
+              };
+            }
+            if (ac.subject && !acc[key].subjects.includes(ac.subject)) {
+              acc[key].subjects.push(ac.subject);
+            }
+            return acc;
+          }, {} as Record<string, any>));
+          
+          console.log('🔍 Transformed currentAssignments:', transformed);
+          return transformed;
+        })()}
         onSave={handleSaveAssignments}
         onDeleteSubject={handleDeleteSubject}
       />

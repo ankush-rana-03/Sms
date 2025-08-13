@@ -297,6 +297,9 @@ const TeacherManagement: React.FC = () => {
   const handleDeleteSubject = async (classId: string, section: string, subject: string) => {
     if (!selectedTeacher) return;
 
+    // Immediate visual feedback
+    alert(`TeacherManagement handleDeleteSubject called with: Class ${classId}, Section ${section}, Subject ${subject}`);
+
     console.log('🔍 handleDeleteSubject called with:', { classId, section, subject, teacherId: selectedTeacher._id });
     console.log('🔍 selectedTeacher.assignedClasses:', selectedTeacher.assignedClasses);
 

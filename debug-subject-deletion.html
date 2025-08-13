@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subject Deletion Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 3px; width: 200px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Subject Deletion Debug Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Authentication Test</h3>
+        <input type="text" id="tokenInput" placeholder="Enter your admin token" style="width: 400px;">
+        <button onclick="testAuth()">Test Authentication</button>
+        <div id="authResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Get Teachers with Assignments</h3>
+        <button onclick="getTeachers()">Fetch Teachers</button>
+        <div id="teachersResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Subject Deletion</h3>
+        <input type="text" id="teacherIdInput" placeholder="Teacher ID">
+        <input type="text" id="classIdInput" placeholder="Class ID">
+        <input type="text" id="sectionInput" placeholder="Section (e.g., A)">
+        <input type="text" id="subjectInput" placeholder="Subject (e.g., Mathematics)">
+        <button onclick="testDeleteSubject()">Delete Subject</button>
+        <div id="deleteResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Verify Deletion</h3>
+        <button onclick="verifyDeletion()">Verify Teacher Data</button>
+        <div id="verifyResult" class="log"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://sms-38ap.onrender.com/api';
+        let currentTeacher = null;
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function getToken() {
+            return document.getElementById('tokenInput').value.trim();
+        }
+
+        async function testAuth() {
+            const token = getToken();
+            if (!token) {
+                log('authResult', '❌ Please enter a token first', 'error');
+                return;
+            }
+
+            try {
+                log('authResult', '🔍 Testing authentication...');
+                const response = await fetch(`${API_BASE}/admin/teachers`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('authResult', `✅ Authentication successful! Found ${data.data?.length || 0} teachers`, 'success');
+                } else {
+                    log('authResult', `❌ Authentication failed: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log('authResult', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getTeachers() {
+            const token = getToken();
+            if (!token) {
+                log('teachersResult', '❌ Please enter a token first', 'error');
+                return;
+            }
+
+            try {
+                log('teachersResult', '🔍 Fetching teachers...');
+                const response = await fetch(`${API_BASE}/admin/teachers`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const teachers = data.data || [];
+                    const teachersWithAssignments = teachers.filter(t => t.assignedClasses && t.assignedClasses.length > 0);
+                    
+                    log('teachersResult', `✅ Found ${teachers.length} total teachers`);
+                    log('teachersResult', `✅ Found ${teachersWithAssignments.length} teachers with assignments`);
+                    
+                    if (teachersWithAssignments.length > 0) {
+                        currentTeacher = teachersWithAssignments[0];
+                        log('teachersResult', `📋 Selected teacher: ${currentTeacher.name} (ID: ${currentTeacher._id})`);
+                        log('teachersResult', `📋 Assignments: ${JSON.stringify(currentTeacher.assignedClasses, null, 2)}`);
+                        
+                        // Auto-fill the form
+                        document.getElementById('teacherIdInput').value = currentTeacher._id;
+                        if (currentTeacher.assignedClasses.length > 0) {
+                            const firstAssignment = currentTeacher.assignedClasses[0];
+                            document.getElementById('classIdInput').value = firstAssignment.class;
+                            document.getElementById('sectionInput').value = firstAssignment.section;
+                            document.getElementById('subjectInput').value = firstAssignment.subject;
+                        }
+                    } else {
+                        log('teachersResult', '⚠️ No teachers found with assignments');
+                    }
+                } else {
+                    log('teachersResult', `❌ Failed to fetch teachers: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log('teachersResult', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteSubject() {
+            const token = getToken();
+            if (!token) {
+                log('deleteResult', '❌ Please enter a token first', 'error');
+                return;
+            }
+
+            const teacherId = document.getElementById('teacherIdInput').value.trim();
+            const classId = document.getElementById('classIdInput').value.trim();
+            const section = document.getElementById('sectionInput').value.trim();
+            const subject = document.getElementById('subjectInput').value.trim();
+
+            if (!teacherId || !classId || !section || !subject) {
+                log('deleteResult', '❌ Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                log('deleteResult', '🔍 Attempting to delete subject assignment...');
+                log('deleteResult', `📤 Data: ${JSON.stringify({ classId, section, subject })}`);
+                log('deleteResult', `📤 URL: ${API_BASE}/admin/teachers/${teacherId}/subject-assignment`);
+
+                const response = await fetch(`${API_BASE}/admin/teachers/${teacherId}/subject-assignment`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ classId, section, subject })
+                });
+
+                log('deleteResult', `📥 Response status: ${response.status}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('deleteResult', `✅ Success! Response: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    log('deleteResult', `❌ Failed: ${response.status} ${response.statusText}`, 'error');
+                    log('deleteResult', `❌ Error details: ${JSON.stringify(errorData, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log('deleteResult', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function verifyDeletion() {
+            const token = getToken();
+            const teacherId = document.getElementById('teacherIdInput').value.trim();
+            
+            if (!token || !teacherId) {
+                log('verifyResult', '❌ Please enter token and teacher ID first', 'error');
+                return;
+            }
+
+            try {
+                log('verifyResult', '🔍 Verifying teacher data after deletion...');
+                const response = await fetch(`${API_BASE}/admin/teachers/${teacherId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const teacher = data.data;
+                    log('verifyResult', `✅ Teacher: ${teacher.name}`);
+                    log('verifyResult', `✅ Current assignments: ${JSON.stringify(teacher.assignedClasses, null, 2)}`);
+                } else {
+                    log('verifyResult', `❌ Failed to verify: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log('verifyResult', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

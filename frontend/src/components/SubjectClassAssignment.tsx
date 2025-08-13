@@ -136,6 +136,9 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
   const handleDeleteSubject = (classId: string, section: string, subject: string) => {
     console.log('🔍 SubjectClassAssignment handleDeleteSubject called with:', { classId, section, subject });
     
+    // Immediate visual feedback
+    alert(`Delete request sent for: Class ${classId}, Section ${section}, Subject ${subject}`);
+    
     if (onDeleteSubject) {
       console.log('📞 Calling onDeleteSubject prop');
       onDeleteSubject(classId, section, subject);

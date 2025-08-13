@@ -50,6 +50,7 @@ interface SubjectClassAssignmentProps {
   availableClasses: ClassData[];
   currentAssignments: SubjectClassAssignmentData[];
   onSave: (assignments: SubjectClassAssignmentData[]) => void;
+  onDeleteSubject?: (classId: string, section: string, subject: string) => void;
 }
 
 const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
@@ -59,7 +60,8 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
   teacherName,
   availableClasses,
   currentAssignments,
-  onSave
+  onSave,
+  onDeleteSubject
 }) => {
   const [assignments, setAssignments] = useState<SubjectClassAssignmentData[]>(currentAssignments);
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -130,6 +132,23 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
     setAssignments(assignments.filter(a => a.classId !== classId));
   };
 
+  const handleDeleteSubject = (classId: string, section: string, subject: string) => {
+    if (onDeleteSubject) {
+      onDeleteSubject(classId, section, subject);
+    } else {
+      // Local deletion if no backend handler provided
+      setAssignments(prev => prev.map(assignment => {
+        if (assignment.classId === classId && assignment.section === section) {
+          return {
+            ...assignment,
+            subjects: assignment.subjects.filter(s => s !== subject)
+          };
+        }
+        return assignment;
+      }).filter(assignment => assignment.subjects.length > 0));
+    }
+  };
+
   const handleSave = () => {
     onSave(assignments);
     onClose();
@@ -188,6 +207,8 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                                 size="small"
                                 color="secondary"
                                 sx={{ mr: 0.5, mb: 0.5 }}
+                                onDelete={() => handleDeleteSubject(assignment.classId, assignment.section, subject)}
+                                deleteIcon={<Delete />}
                               />
                             ))}
                           </Box>

@@ -60,8 +60,8 @@ class ApiService {
     return response.data;
   }
 
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.api.delete<T>(url, config);
+  async delete<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.api.delete<T>(url, { ...config, data });
     return response.data;
   }
 

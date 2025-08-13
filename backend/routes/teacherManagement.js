@@ -13,6 +13,7 @@ const {
   updateTeacherStatus,
   getOnlineTeachers,
   assignClassesToTeacher,
+  deleteSubjectAssignment,
   getTeacherStatistics
 } = require('../controllers/teacherManagement');
 
@@ -232,6 +233,7 @@ router.put('/:teacherId/status', updateTeacherStatus);
 
 // Class assignments
 router.post('/:teacherId/assign-classes', assignClassesToTeacher);
+router.delete('/:teacherId/subject-assignment', deleteSubjectAssignment);
 
 // Statistics and monitoring
 router.get('/online/teachers', getOnlineTeachers);

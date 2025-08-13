@@ -677,6 +677,72 @@ exports.getOnlineTeachers = async (req, res) => {
   }
 };
 
+// Delete individual subject assignment
+exports.deleteSubjectAssignment = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { classId, section, subject } = req.body;
+
+    console.log('Attempting to delete subject assignment:', {
+      teacherId,
+      classId,
+      section,
+      subject
+    });
+
+    if (!classId || !section || !subject) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class ID, section, and subject are required'
+      });
+    }
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Remove the specific subject assignment
+    const initialCount = teacher.assignedClasses.length;
+    teacher.assignedClasses = teacher.assignedClasses.filter(assignment => 
+      !(assignment.class.toString() === classId && 
+        assignment.section === section && 
+        assignment.subject === subject)
+    );
+
+    const removedCount = initialCount - teacher.assignedClasses.length;
+    if (removedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subject assignment not found'
+      });
+    }
+
+    await teacher.save();
+
+    console.log(`Removed ${removedCount} subject assignment(s)`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subject assignment deleted successfully',
+      data: {
+        removedCount,
+        remainingAssignments: teacher.assignedClasses.length
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting subject assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting subject assignment',
+      error: error.message
+    });
+  }
+};
+
 // Assign classes to teacher
 exports.assignClassesToTeacher = async (req, res) => {
   try {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import SubjectClassAssignment from '../components/SubjectClassAssignment';
 import {
   Box,
   Typography,
@@ -164,6 +165,7 @@ const TeacherManagement: React.FC = () => {
   const [openPasswordResetDialog, setOpenPasswordResetDialog] = useState(false);
 
   const [openSubjectAssignmentDialog, setOpenSubjectAssignmentDialog] = useState(false)
+  const [availableClasses, setAvailableClasses] = useState<any[]>([])
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
@@ -290,6 +292,27 @@ const TeacherManagement: React.FC = () => {
       // If we can't fetch classes, we'll work with empty array
       // The UI will still work by using class IDs directly
       setAvailableClasses([]);
+    }
+  };
+
+  const handleDeleteSubject = async (classId: string, section: string, subject: string) => {
+    if (!selectedTeacher) return;
+
+    try {
+      const response = await apiService.delete(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, {
+        data: { classId, section, subject }
+      });
+
+      if (response.success) {
+        showSnackbar('Subject assignment deleted successfully', 'success');
+        // Refresh teacher data
+        await refreshTeacherData(selectedTeacher._id);
+      } else {
+        showSnackbar(response.message || 'Error deleting subject assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error deleting subject assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error deleting subject assignment', 'error');
     }
   };
 
@@ -527,6 +550,50 @@ const TeacherManagement: React.FC = () => {
     } catch (error) {
       console.error('Error opening assignment dialog:', error);
       showSnackbar('Error loading assignments', 'error');
+    }
+  };
+
+  const handleSaveAssignments = async (assignments: any[]) => {
+    if (!selectedTeacher) return;
+
+    try {
+      // Transform assignments back to the format expected by the backend
+      const backendAssignments = assignments.flatMap(assignment => 
+        assignment.subjects.map(subject => ({
+          class: assignment.classId,
+          section: assignment.section,
+          subject: subject,
+          grade: assignment.grade,
+          time: '',
+          day: ''
+        }))
+      );
+
+      const response = await apiService.post(`/admin/teachers/${selectedTeacher._id}/assign-classes`, {
+        assignedClasses: backendAssignments
+      });
+
+      if (response.success) {
+        showSnackbar('Assignments updated successfully', 'success');
+        // Refresh teacher data
+        fetchTeachers();
+      } else {
+        showSnackbar(response.message || 'Error updating assignments', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error saving assignments:', error);
+      showSnackbar(error.response?.data?.message || 'Error saving assignments', 'error');
+    }
+  };
+
+  const fetchAvailableClasses = async () => {
+    try {
+      const response = await apiService.get('/admin/classes');
+      if (response.success) {
+        setAvailableClasses(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching available classes:', error);
     }
   };
 
@@ -1536,6 +1603,16 @@ const TeacherManagement: React.FC = () => {
                               </IconButton>
                             </Tooltip>
 
+                            <Tooltip title="Manage Assignments">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
+                              >
+                                <School />
+                              </IconButton>
+                            </Tooltip>
+
                             <Tooltip title="Deactivate">
                               <IconButton
                                 size="small"
@@ -1810,7 +1887,7 @@ const TeacherManagement: React.FC = () => {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             margin="normal"
-            required
+              required
           />
         </DialogContent>
         <DialogActions>
@@ -1821,6 +1898,32 @@ const TeacherManagement: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Subject Class Assignment Dialog */}
+      <SubjectClassAssignment
+        open={openSubjectAssignmentDialog}
+        onClose={() => setOpenSubjectAssignmentDialog(false)}
+        teacherId={selectedTeacher?._id || ''}
+        teacherName={selectedTeacher?.name || ''}
+        availableClasses={availableClasses}
+        currentAssignments={selectedTeacher?.assignedClasses ? selectedTeacher.assignedClasses.reduce((acc, ac) => {
+          const key = `${ac.class}-${ac.section}`;
+          if (!acc[key]) {
+            acc[key] = {
+              classId: typeof ac.class === 'string' ? ac.class : ac.class._id,
+              className: typeof ac.class === 'string' ? ac.class : ac.class.name,
+              grade: ac.grade,
+              section: ac.section,
+              subjects: []
+            };
+          }
+          if (ac.subject && !acc[key].subjects.includes(ac.subject)) {
+            acc[key].subjects.push(ac.subject);
+          }
+          return acc;
+        }, {} as Record<string, any>) : []}
+        onSave={handleSaveAssignments}
+        onDeleteSubject={handleDeleteSubject}
+      />
 
       {/* Snackbar */}
       <Snackbar

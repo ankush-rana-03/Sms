@@ -79,6 +79,36 @@ async function runAssignClassesTest() {
     console.log('✅ Assignment response:', assignRes.data.message);
     if (!assignRes.data.success) throw new Error('Assignment failed');
 
+    // 4b. Try to assign another subject at the same day/time to trigger conflict
+    console.log('\n4b. Assigning conflicting subject (should fail)...');
+    try {
+      const conflictPayload = {
+        assignedClasses: [
+          {
+            class: classId,
+            section: 'A',
+            subject: 'Physics',
+            grade: '10',
+            time: '10:00 AM',
+            day: 'Monday',
+          },
+        ],
+      };
+      await axios.post(
+        `${baseURL}/admin/teachers/${teacherId}/assign-classes`,
+        conflictPayload,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      throw new Error('Conflict test did not fail as expected');
+    } catch (err) {
+      const msg = err.response?.data?.message || '';
+      if (!/Time is already assigned/i.test(msg)) {
+        console.error('❌ Unexpected error message for conflict:', err.response?.data || err.message);
+        throw new Error('Expected conflict error message not received');
+      }
+      console.log('✅ Conflict prevented with proper message:', msg);
+    }
+
     // 5. Verify assignment in DB
     console.log('\n5. Verifying assignment in DB...');
     const getTeacherRes = await axios.get(`${baseURL}/admin/teachers`, {

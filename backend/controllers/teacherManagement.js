@@ -94,6 +94,26 @@ exports.getAllTeachers = async (req, res) => {
   }
 };
 
+// Add: Get teacher by ID with populated fields
+exports.getTeacherById = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const teacher = await Teacher.findById(teacherId)
+      .populate('user', 'name email role isActive lastLogin')
+      .populate('assignedClasses.class', 'name grade section')
+      .populate('classTeacherOf', 'name grade section');
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    res.status(200).json({ success: true, data: teacher });
+  } catch (error) {
+    console.error('Error fetching teacher by id:', error);
+    res.status(500).json({ success: false, message: 'Error fetching teacher', error: error.message });
+  }
+};
+
 // Create new teacher
 exports.createTeacher = async (req, res) => {
   try {
@@ -664,7 +684,7 @@ exports.getOnlineTeachers = async (req, res) => {
 exports.assignClassesToTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { assignedClasses } = req.body;
+    const { assignedClasses, replace = false } = req.body;
 
     console.log(`Starting assignment for teacher ${teacherId}`);
     console.log('Received assignedClasses:', JSON.stringify(assignedClasses, null, 2));
@@ -674,6 +694,16 @@ exports.assignClassesToTeacher = async (req, res) => {
         success: false,
         message: 'Assigned classes array is required'
       });
+    }
+
+    // Basic payload validation
+    for (const [index, ac] of assignedClasses.entries()) {
+      if (!ac.class || !ac.section || !ac.subject) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid assignment at index ${index}: class, section, and subject are required`
+        });
+      }
     }
 
     const teacher = await Teacher.findById(teacherId);
@@ -789,6 +819,13 @@ exports.assignClassesToTeacher = async (req, res) => {
     // Transform and merge new assignments
     const mergedAssignments = [];
     
+    const normalizeDay = (day) => {
+      if (!day) return 'Monday';
+      const lower = String(day).toLowerCase();
+      const capitalized = lower.charAt(0).toUpperCase() + lower.slice(1);
+      return capitalized;
+    };
+
     for (const assignment of assignedClasses) {
       const assignmentKey = `${assignment.class}-${assignment.section}-${assignment.subject}`;
       console.log(`Processing assignment: ${assignmentKey}`);
@@ -799,7 +836,7 @@ exports.assignClassesToTeacher = async (req, res) => {
         const updatedAssignment = {
           ...existing,
           time: assignment.time || existing.time || '9:00 AM',
-          day: assignment.day || existing.day || 'Monday'
+          day: normalizeDay(assignment.day || existing.day || 'Monday')
         };
         mergedAssignments.push(updatedAssignment);
         console.log(`Updated existing assignment: ${assignmentKey}`, updatedAssignment);
@@ -811,18 +848,51 @@ exports.assignClassesToTeacher = async (req, res) => {
           subject: assignment.subject,
           grade: assignment.grade,
           time: assignment.time || '9:00 AM',
-          day: assignment.day || 'Monday'
+          day: normalizeDay(assignment.day || 'Monday')
         };
         mergedAssignments.push(newAssignment);
         console.log(`Added new assignment: ${assignmentKey}`, newAssignment);
       }
     }
+
+    // Also keep existing assignments that were not part of this update payload unless replace=true
+    const mergedByKey = new Map();
+    const base = replace ? [] : teacher.assignedClasses;
+    [...base, ...mergedAssignments].forEach(ac => {
+      const key = `${ac.class}-${ac.section}-${ac.subject}`;
+      mergedByKey.set(key, {
+        class: ac.class,
+        section: ac.section,
+        subject: ac.subject,
+        grade: ac.grade,
+        time: ac.time || '9:00 AM',
+        day: normalizeDay(ac.day || 'Monday')
+      });
+    });
+
+    const finalMerged = Array.from(mergedByKey.values());
+
+    // Conflict validation: prevent same teacher being assigned at the same time on the same day
+    const timeSlots = new Map(); // key: day|time -> assignment
+    for (const ac of finalMerged) {
+      const key = `${ac.day}|${ac.time}`;
+      if (timeSlots.has(key)) {
+        const conflictWith = timeSlots.get(key);
+        console.warn('Time conflict detected:', { conflictWith, attempted: ac });
+        return res.status(400).json({
+          success: false,
+          message: 'Time is already assigned',
+          error: `Teacher already has an assignment at ${ac.time} on ${ac.day} (${conflictWith.subject} - Section ${conflictWith.section}).`
+        });
+      }
+      timeSlots.set(key, ac);
+    }
     
-    console.log('Final merged assignments to save:', JSON.stringify(mergedAssignments, null, 2));
-    console.log(`Total assignments after merge: ${mergedAssignments.length} (was ${teacher.assignedClasses.length})`);
+    console.log('Final merged assignments to save:', JSON.stringify(finalMerged, null, 2));
+    console.log(`Total assignments after merge: ${finalMerged.length} (was ${teacher.assignedClasses.length})`);
     
     // Update the teacher's assignedClasses with merged assignments
-    teacher.assignedClasses = mergedAssignments;
+    teacher.assignedClasses = finalMerged;
     
     // Save the teacher with new assignments
     const savedTeacher = await teacher.save();
@@ -855,7 +925,7 @@ exports.assignClassesToTeacher = async (req, res) => {
     }));
     
     console.log('Final response data:', JSON.stringify(responseData.assignedClasses, null, 2));
-    console.log(`Successfully assigned ${mergedAssignments.length} classes to teacher ${teacher.name}`);
+    console.log(`Successfully assigned ${finalMerged.length} classes to teacher ${teacher.name}`);
 
     res.status(200).json({
       success: true,
@@ -869,6 +939,39 @@ exports.assignClassesToTeacher = async (req, res) => {
       message: 'Error assigning classes to teacher',
       error: error.message
     });
+  }
+};
+
+// Add: Class-wise grouped assignments for a teacher
+exports.getTeacherAssignments = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const teacher = await Teacher.findById(teacherId)
+      .populate('assignedClasses.class', 'name grade section');
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    // Group by class name + section
+    const groups = {};
+    for (const ac of teacher.assignedClasses) {
+      const className = typeof ac.class === 'object' && ac.class !== null ? ac.class.name : ac.class;
+      const key = `${className}-${ac.section}`;
+      if (!groups[key]) {
+        groups[key] = {
+          className,
+          section: ac.section,
+          subjects: []
+        };
+      }
+      groups[key].subjects.push({ subject: ac.subject, day: ac.day, time: ac.time });
+    }
+
+    const data = Object.values(groups);
+    res.status(200).json({ success: true, count: data.length, data });
+  } catch (error) {
+    console.error('Error fetching teacher assignments:', error);
+    res.status(500).json({ success: false, message: 'Error fetching teacher assignments', error: error.message });
   }
 };
 

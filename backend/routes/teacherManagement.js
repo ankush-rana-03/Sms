@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const {
   getAllTeachers,
+  getTeacherById,
   createTeacher,
   updateTeacher,
   deleteTeacher,
@@ -12,7 +13,8 @@ const {
   updateTeacherStatus,
   getOnlineTeachers,
   assignClassesToTeacher,
-  getTeacherStatistics
+  getTeacherStatistics,
+  getTeacherAssignments
 } = require('../controllers/teacherManagement');
 
 // All routes require admin authorization
@@ -216,6 +218,7 @@ router.use(protect, authorize('admin'));
 
 // Teacher CRUD operations
 router.get('/', getAllTeachers);
+router.get('/:teacherId', getTeacherById);
 router.post('/', createTeacher);
 router.put('/:teacherId', updateTeacher);
 router.delete('/:teacherId', deleteTeacher);
@@ -230,6 +233,7 @@ router.put('/:teacherId/status', updateTeacherStatus);
 
 // Class assignments
 router.post('/:teacherId/assign-classes', assignClassesToTeacher);
+router.get('/:teacherId/assignments', getTeacherAssignments);
 
 // Statistics and monitoring
 router.get('/online/teachers', getOnlineTeachers);

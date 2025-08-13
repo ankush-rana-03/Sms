@@ -242,6 +242,8 @@ class TeacherManagementService {
     section: string;
     subject: string;
     grade: string;
+    time?: string;
+    day?: string;
   }>): Promise<{ success: boolean; message: string; data: Teacher }> {
     const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(`/admin/teachers/${teacherId}/assign-classes`, { assignedClasses });
     return response;

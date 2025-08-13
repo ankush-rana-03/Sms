@@ -1019,7 +1019,7 @@ const TeacherManagement: React.FC = () => {
 
       const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
         `/admin/teachers/${selectedTeacher!._id}/assign-classes`,
-        { assignedClasses: backendData }
+        { assignedClasses: backendData, replace: true }
       );
 
       if (response.success) {
@@ -1043,6 +1043,14 @@ const TeacherManagement: React.FC = () => {
       } else {
         throw new Error(response.message || 'Backend save failed');
       }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Error saving assignments';
+      if (/Time is already assigned/i.test(msg)) {
+        showSnackbar('Time is already assigned for this teacher on the selected day.', 'error');
+      } else {
+        showSnackbar(msg, 'error');
+      }
+      throw err;
     } finally {
       setIsSavingAssignment(false);
     }
@@ -1942,7 +1950,7 @@ const TeacherManagement: React.FC = () => {
                             {subject.time}
                           </Typography>
                           <Box sx={{ ml: 'auto' }}>
-                            <Button size="small" color="primary" onClick={() => handleEditAssignment(idx, 0)}>Edit</Button>
+                            <Button size="small" color="primary" onClick={() => handleEditAssignment(idx, subjectIdx)}>Edit</Button>
                             <Button size="small" color="error" onClick={() => handleDeleteSubject(idx, subjectIdx)}>Delete</Button>
                           </Box>
                         </Box>

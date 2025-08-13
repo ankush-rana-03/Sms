@@ -707,11 +707,30 @@ exports.deleteSubjectAssignment = async (req, res) => {
 
     // Remove the specific subject assignment
     const initialCount = teacher.assignedClasses.length;
-    teacher.assignedClasses = teacher.assignedClasses.filter(assignment => 
-      !(assignment.class.toString() === classId && 
-        assignment.section === section && 
-        assignment.subject === subject)
-    );
+    
+    console.log('🔍 Backend delete logic - comparing assignments:');
+    console.log('🔍 Received delete request:', { classId, section, subject });
+    console.log('🔍 Current teacher assignments:', JSON.stringify(teacher.assignedClasses, null, 2));
+    
+    teacher.assignedClasses = teacher.assignedClasses.filter(assignment => {
+      const classMatch = assignment.class.toString() === classId;
+      const sectionMatch = assignment.section === section;
+      const subjectMatch = assignment.subject === subject;
+      
+      console.log('🔍 Assignment comparison:', {
+        assignment: {
+          class: assignment.class,
+          classToString: assignment.class.toString(),
+          section: assignment.section,
+          subject: assignment.subject
+        },
+        received: { classId, section, subject },
+        matches: { classMatch, sectionMatch, subjectMatch },
+        willDelete: !(classMatch && sectionMatch && subjectMatch)
+      });
+      
+      return !(classMatch && sectionMatch && subjectMatch);
+    });
 
     const removedCount = initialCount - teacher.assignedClasses.length;
     if (removedCount === 0) {

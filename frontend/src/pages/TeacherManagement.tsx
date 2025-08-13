@@ -1926,7 +1926,7 @@ const TeacherManagement: React.FC = () => {
             if (!acc[key]) {
               acc[key] = {
                 classId: classId,
-                originalClass: classValue, // Keep original for backend calls
+                originalClass: classId, // Send the string ID for backend calls
                 className: className,
                 grade: ac.grade,
                 section: ac.section,

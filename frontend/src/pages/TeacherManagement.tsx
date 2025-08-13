@@ -298,10 +298,15 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     console.log('🔍 handleDeleteSubject called with:', { classId, section, subject, teacherId: selectedTeacher._id });
+    console.log('🔍 selectedTeacher.assignedClasses:', selectedTeacher.assignedClasses);
 
     try {
+      const deleteData = { classId, section, subject };
+      console.log('📤 Sending delete request with data:', deleteData);
+      console.log('📤 Request URL:', `/admin/teachers/${selectedTeacher._id}/subject-assignment`);
+
       const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, {
-        data: { classId, section, subject }
+        data: deleteData
       });
 
       console.log('✅ Delete response:', response);
@@ -315,6 +320,10 @@ const TeacherManagement: React.FC = () => {
       }
     } catch (error: any) {
       console.error('❌ Error deleting subject assignment:', error);
+      if (error.response) {
+        console.error('❌ Response status:', error.response.status);
+        console.error('❌ Response data:', error.response.data);
+      }
       showSnackbar(error.response?.data?.message || 'Error deleting subject assignment', 'error');
     }
   };
@@ -1905,12 +1914,17 @@ const TeacherManagement: React.FC = () => {
           console.log('🔍 Original assignedClasses:', selectedTeacher.assignedClasses);
           
           const transformed = Object.values(selectedTeacher.assignedClasses.reduce((acc, ac) => {
-            const key = `${ac.class}-${ac.section}`;
+            // Handle both string and ObjectId cases for the class field
+            const classValue = ac.class;
+            const classId = typeof classValue === 'string' ? classValue : classValue._id;
+            const className = typeof classValue === 'string' ? classValue : classValue.name;
+            
+            const key = `${classId}-${ac.section}`;
             if (!acc[key]) {
               acc[key] = {
-                classId: typeof ac.class === 'string' ? ac.class : ac.class._id,
-                originalClass: ac.class, // Keep original for backend calls
-                className: typeof ac.class === 'string' ? ac.class : ac.class.name,
+                classId: classId,
+                originalClass: classValue, // Keep original for backend calls
+                className: className,
                 grade: ac.grade,
                 section: ac.section,
                 subjects: []

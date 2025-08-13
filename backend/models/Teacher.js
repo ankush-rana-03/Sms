@@ -111,6 +111,10 @@ const teacherSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Optional compound index to speed up conflict checks within a teacher document
+// Note: MongoDB does not index fields inside array of subdocuments easily for unique constraints, so we keep runtime check in controller
+// teacherSchema.index({ 'assignedClasses.day': 1, 'assignedClasses.time': 1 });
+
 // Generate teacher ID
 teacherSchema.pre('save', async function(next) {
   if (this.isNew && !this.teacherId) {

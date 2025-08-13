@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const Class = require('../models/Class');
+const Teacher = require('../models/Teacher');
 
 // Get all classes
 router.get('/', protect, authorize('admin', 'principal', 'teacher'), async (req, res) => {
@@ -33,6 +34,49 @@ router.get('/', protect, authorize('admin', 'principal', 'teacher'), async (req,
       message: 'Error fetching classes',
       error: error.message
     });
+  }
+});
+
+// Get assignments for a specific class (class-wise subjects and teachers)
+router.get('/:classId/assignments', protect, authorize('admin', 'principal', 'teacher'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const cls = await Class.findById(classId);
+    if (!cls) {
+      return res.status(404).json({ success: false, message: 'Class not found' });
+    }
+
+    const teachers = await Teacher.find({ 'assignedClasses.class': classId })
+      .select('name email assignedClasses')
+      .populate('assignedClasses.class', 'name section');
+
+    // Build class-wise list
+    const assignments = [];
+    for (const teacher of teachers) {
+      for (const ac of teacher.assignedClasses) {
+        const acClassId = typeof ac.class === 'object' && ac.class ? String(ac.class._id) : String(ac.class);
+        if (acClassId === String(classId)) {
+          assignments.push({
+            teacherName: teacher.name,
+            teacherEmail: teacher.email,
+            subject: ac.subject,
+            day: ac.day,
+            time: ac.time,
+            section: ac.section
+          });
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      class: { _id: cls._id, name: cls.name, section: cls.section },
+      count: assignments.length,
+      data: assignments
+    });
+  } catch (error) {
+    console.error('Error fetching class assignments:', error);
+    res.status(500).json({ success: false, message: 'Error fetching class assignments', error: error.message });
   }
 });
 
@@ -78,6 +122,21 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       message: 'Error creating class',
       error: error.message
     });
+  }
+});
+
+// Delete class (admin only) - used for tests and cleanup
+router.delete('/:classId', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const deleted = await Class.findByIdAndDelete(classId);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Class not found' });
+    }
+    res.status(200).json({ success: true, message: 'Class deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting class:', error);
+    res.status(500).json({ success: false, message: 'Error deleting class', error: error.message });
   }
 });
 

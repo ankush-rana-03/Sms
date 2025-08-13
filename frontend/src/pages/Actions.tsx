@@ -111,21 +111,36 @@ const Actions: React.FC = () => {
   const timetable = useMemo(() => {
     const table: Record<string, AssignmentRow[]> = {};
     DAYS.forEach(d => { table[d] = []; });
-    if (!teacherDetail) return table;
+    
+    if (!teacherDetail) {
+      console.log('No teacher detail available for timetable');
+      return table;
+    }
+
+    console.log('Generating timetable for teacher:', teacherDetail.name);
+    console.log('Assigned classes data:', teacherDetail.assignedClasses);
 
     for (const ac of teacherDetail.assignedClasses || []) {
-      table[ac.day || 'Monday'].push({
+      const day = ac.day || 'Monday';
+      const time = ac.time || '9:00 AM';
+      
+      console.log('Processing assignment:', { grade: ac.grade, section: ac.section, subject: ac.subject, day, time });
+      
+      table[day].push({
         grade: ac.grade,
         section: ac.section,
         subject: ac.subject,
-        day: ac.day || 'Monday',
-        time: ac.time || '9:00 AM'
+        day: day,
+        time: time
       });
     }
+    
     // Sort by time within day
     Object.keys(table).forEach(day => {
       table[day] = table[day].sort((a, b) => TIMES.indexOf(a.time) - TIMES.indexOf(b.time));
+      console.log(`Day ${day} has ${table[day].length} assignments:`, table[day]);
     });
+    
     return table;
   }, [teacherDetail]);
 
@@ -167,24 +182,42 @@ const Actions: React.FC = () => {
 
   const handleDelete = async (row: AssignmentRow) => {
     if (!teacherDetail) return;
+    
     try {
+      console.log('Deleting assignment:', row);
+      console.log('Current assignments before delete:', teacherDetail.assignedClasses);
+      
       // Build remaining assignments excluding the target
       const remaining = (teacherDetail.assignedClasses || []).filter(ac => {
-        return !(ac.grade === row.grade && ac.section === row.section && ac.subject === row.subject && (ac.day || 'Monday') === row.day && (ac.time || '9:00 AM') === row.time);
-      }).map(ac => ({
-        grade: ac.grade,
-        section: ac.section,
-        subject: ac.subject,
-        day: ac.day || 'Monday',
-        time: ac.time || '9:00 AM'
-      }));
-
+        const shouldKeep = !(ac.grade === row.grade && 
+                           ac.section === row.section && 
+                           ac.subject === row.subject && 
+                           (ac.day || 'Monday') === row.day && 
+                           (ac.time || '9:00 AM') === row.time);
+        
+        console.log('Assignment:', ac, 'Should keep:', shouldKeep);
+        return shouldKeep;
+      });
+      
+      console.log('Remaining assignments after filter:', remaining);
+      
       // Repost entire set to controller to overwrite
-      const res = await apiService.post<{ success: boolean; data: TeacherDetail }>(`/admin/teachers/${teacherDetail._id}/assign-classes`, { assignedClasses: remaining });
-      setTeacherDetail(res.data);
-      showSnackbar('Deleted entry');
-    } catch (e) {
-      showSnackbar('Failed to delete', 'error');
+      const res = await apiService.post<{ success: boolean; data: TeacherDetail; message: string }>(
+        `/admin/teachers/${teacherDetail._id}/assign-classes`, 
+        { assignedClasses: remaining }
+      );
+      
+      if (res.data && res.data.success) {
+        console.log('Backend response after delete:', res.data);
+        setTeacherDetail(res.data);
+        showSnackbar('Assignment deleted successfully');
+      } else {
+        throw new Error('Backend returned unsuccessful response');
+      }
+    } catch (e: any) {
+      console.error('Delete error:', e);
+      const msg = e?.response?.data?.message || e?.message || 'Failed to delete assignment';
+      showSnackbar(msg, 'error');
     }
   };
 

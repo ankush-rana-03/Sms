@@ -34,17 +34,7 @@ const teacherSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
-  assignedClasses: [{
-    class: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Class'
-    },
-    section: String,
-    subject: String,
-    grade: String,
-    time: String,  // Add time field
-    day: String    // Add day field
-  }],
+
   qualification: {
     degree: String,
     institution: String,

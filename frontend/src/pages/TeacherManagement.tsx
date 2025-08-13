@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import SubjectClassAssignment from '../components/SubjectClassAssignment';
 import {
   Box,
   Typography,
@@ -163,7 +164,8 @@ const TeacherManagement: React.FC = () => {
   const [openLoginLogsDialog, setOpenLoginLogsDialog] = useState(false);
   const [openPasswordResetDialog, setOpenPasswordResetDialog] = useState(false);
 
-  const [openSubjectAssignmentDialog, setOpenSubjectAssignmentDialog] = useState(false)
+  const [openSubjectAssignmentDialog, setOpenSubjectAssignmentDialog] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<any[]>([]);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
@@ -457,8 +459,18 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
+  const handleOpenSubjectAssignmentDialog = async (teacher: Teacher) => {
     setSelectedTeacher(teacher);
+    
+    // Fetch available classes
+    try {
+      const classesResponse = await apiService.get('/admin/classes');
+      setAvailableClasses(classesResponse.data || []);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      setAvailableClasses([]);
+    }
+    
     setOpenSubjectAssignmentDialog(true);
     
     console.log('=== OPENING ASSIGNMENT DIALOG ===');
@@ -1193,44 +1205,44 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  // const handleDeleteSubject = async (assignmentIndex: number, subjectIndex: number) => { // This function is removed
-  //   if (!selectedTeacher) {
-  //     showSnackbar('No teacher selected', 'error');
-  //     return;
-  //   }
+  const handleDeleteSubject = async (assignmentIndex: number, subjectIndex: number) => {
+    if (!selectedTeacher) {
+      showSnackbar('No teacher selected', 'error');
+      return;
+    }
 
-  //   try {
-  //     console.log('=== DELETE SUBJECT ===');
-  //     console.log('Deleting subject at assignment index:', assignmentIndex, 'subject index:', subjectIndex);
+    try {
+      console.log('=== DELETE SUBJECT ===');
+      console.log('Deleting subject at assignment index:', assignmentIndex, 'subject index:', subjectIndex);
       
-  //     // Update local state immediately for real-time UI update
-  //     const updatedAssignments = assignments.map((assignment, idx) => {
-  //       if (idx === assignmentIndex) {
-  //         const newSubjects = assignment.subjects.filter((_, subIdx) => subIdx !== subjectIndex);
-  //         if (newSubjects.length === 0) {
-  //           // If no subjects left, remove the entire assignment
-  //           console.log('No subjects left, removing entire assignment');
-  //           return null;
-  //         }
-  //         console.log('Updated subjects:', newSubjects);
-  //         return { ...assignment, subjects: newSubjects };
-  //       }
-  //       return assignment;
-  //     }).filter(Boolean) as AssignmentItem[];
+      // Update local state immediately for real-time UI update
+      const updatedAssignments = assignments.map((assignment, idx) => {
+        if (idx === assignmentIndex) {
+          const newSubjects = assignment.subjects.filter((_, subIdx) => subIdx !== subjectIndex);
+          if (newSubjects.length === 0) {
+            // If no subjects left, remove the entire assignment
+            console.log('No subjects left, removing entire assignment');
+            return null;
+          }
+          console.log('Updated subjects:', newSubjects);
+          return { ...assignment, subjects: newSubjects };
+        }
+        return assignment;
+      }).filter(Boolean) as AssignmentItem[];
 
-  //     console.log('Updated assignments after deletion:', updatedAssignments);
-  //     setAssignments(updatedAssignments);
+      console.log('Updated assignments after deletion:', updatedAssignments);
+      setAssignments(updatedAssignments);
 
-  //     // Save to backend
-  //     await saveAssignmentsToBackend(updatedAssignments);
+      // Save to backend
+      await saveAssignmentsToBackend(updatedAssignments);
 
-  //     showSnackbar('Subject deleted successfully', 'success');
-  //     console.log('=== DELETE SUBJECT COMPLETE ===');
-  //   } catch (error: any) {
-  //     console.error('Error deleting subject:', error);
-  //     showSnackbar('Error deleting subject. Please try again.', 'error');
-  //   }
-  // };
+      showSnackbar('Subject deleted successfully', 'success');
+      console.log('=== DELETE SUBJECT COMPLETE ===');
+    } catch (error: any) {
+      console.error('Error deleting subject:', error);
+      showSnackbar('Error deleting subject. Please try again.', 'error');
+    }
+  };
 
 
   // Check if user is authenticated
@@ -1821,6 +1833,23 @@ const TeacherManagement: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Subject Class Assignment Dialog */}
+      {selectedTeacher && (
+        <SubjectClassAssignment
+          open={openSubjectAssignmentDialog}
+          onClose={() => setOpenSubjectAssignmentDialog(false)}
+          teacherId={selectedTeacher._id}
+          teacherName={selectedTeacher.name}
+          availableClasses={availableClasses}
+          currentAssignments={[]}
+          onSave={(assignments) => {
+            console.log('Assignments saved:', assignments);
+            setOpenSubjectAssignmentDialog(false);
+            // Refresh teacher data
+            fetchTeachers();
+          }}
+        />
+      )}
 
       {/* Snackbar */}
       <Snackbar

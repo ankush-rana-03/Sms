@@ -713,14 +713,36 @@ exports.deleteSubjectAssignment = async (req, res) => {
     console.log('🔍 Current teacher assignments:', JSON.stringify(teacher.assignedClasses, null, 2));
     
     teacher.assignedClasses = teacher.assignedClasses.filter(assignment => {
-      const classMatch = assignment.class._id.toString() === classId;
+      // Debug the actual structure
+      console.log('🔍 Raw assignment data:', JSON.stringify(assignment, null, 2));
+      console.log('🔍 assignment.class:', assignment.class);
+      console.log('🔍 typeof assignment.class:', typeof assignment.class);
+      
+      // Handle different possible data structures
+      let classMatch = false;
+      if (assignment.class && assignment.class._id) {
+        // ObjectId object case
+        classMatch = assignment.class._id.toString() === classId;
+        console.log('🔍 ObjectId case - class._id:', assignment.class._id.toString());
+      } else if (typeof assignment.class === 'string') {
+        // String case
+        classMatch = assignment.class === classId;
+        console.log('🔍 String case - class:', assignment.class);
+      } else if (assignment.class && typeof assignment.class === 'object' && assignment.class.toString) {
+        // Try toString as fallback
+        classMatch = assignment.class.toString() === classId;
+        console.log('🔍 toString fallback - class.toString():', assignment.class.toString());
+      } else {
+        console.log('🔍 Unknown class structure:', assignment.class);
+      }
+      
       const sectionMatch = assignment.section === section;
       const subjectMatch = assignment.subject === subject;
       
       console.log('🔍 Assignment comparison:', {
         assignment: {
           class: assignment.class,
-          classToString: assignment.class.toString(),
+          classType: typeof assignment.class,
           section: assignment.section,
           subject: assignment.subject
         },
@@ -733,14 +755,30 @@ exports.deleteSubjectAssignment = async (req, res) => {
     });
 
     const removedCount = initialCount - teacher.assignedClasses.length;
+    console.log('🔍 Deletion results:');
+    console.log('🔍 Initial count:', initialCount);
+    console.log('🔍 Final count:', teacher.assignedClasses.length);
+    console.log('🔍 Removed count:', removedCount);
+    
     if (removedCount === 0) {
+      console.log('❌ No assignments were removed - returning 404');
       return res.status(404).json({
         success: false,
         message: 'Subject assignment not found'
       });
     }
 
-    await teacher.save();
+    console.log('🔍 Before save - teacher.assignedClasses:', JSON.stringify(teacher.assignedClasses, null, 2));
+    
+    try {
+      const savedTeacher = await teacher.save();
+      console.log('✅ Save successful - saved teacher:', savedTeacher._id);
+      console.log('✅ After save - assignedClasses count:', savedTeacher.assignedClasses.length);
+      console.log('✅ After save - assignedClasses:', JSON.stringify(savedTeacher.assignedClasses, null, 2));
+    } catch (saveError) {
+      console.error('❌ Save failed:', saveError);
+      throw saveError;
+    }
 
     console.log(`Removed ${removedCount} subject assignment(s)`);
 

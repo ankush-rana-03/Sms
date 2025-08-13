@@ -94,6 +94,26 @@ exports.getAllTeachers = async (req, res) => {
   }
 };
 
+// Get single teacher by ID with populated assigned classes
+exports.getTeacherById = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const teacher = await Teacher.findById(teacherId)
+      .populate('user', 'name email role isActive lastLogin')
+      .populate('assignedClasses.class', 'name grade section')
+      .populate('classTeacherOf', 'name grade section');
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    res.status(200).json({ success: true, data: teacher });
+  } catch (error) {
+    console.error('Error fetching teacher:', error);
+    res.status(500).json({ success: false, message: 'Error fetching teacher', error: error.message });
+  }
+};
+
 // Create new teacher
 exports.createTeacher = async (req, res) => {
   try {

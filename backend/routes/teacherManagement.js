@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const {
   getAllTeachers,
+  getTeacherById,
   createTeacher,
   updateTeacher,
   deleteTeacher,
@@ -216,6 +217,7 @@ router.use(protect, authorize('admin'));
 
 // Teacher CRUD operations
 router.get('/', getAllTeachers);
+router.get('/:teacherId', getTeacherById);
 router.post('/', createTeacher);
 router.put('/:teacherId', updateTeacher);
 router.delete('/:teacherId', deleteTeacher);

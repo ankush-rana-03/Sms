@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Structure Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 20px; margin: 10px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Data Structure Debug Tool</h1>
+    
+    <div class="debug-section">
+        <h3>Step 1: Test Basic Data Structure</h3>
+        <button onclick="testBasicStructure()">Test Basic Structure</button>
+        <div id="basic-result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>Step 2: Test Your Live Data</h3>
+        <p>Copy and paste your teacher data from the browser console here:</p>
+        <textarea id="teacherData" rows="10" cols="80" placeholder="Paste your teacher data here..."></textarea>
+        <br><br>
+        <button onclick="testLiveData()">Test Live Data</button>
+        <div id="live-result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>Step 3: Manual Test</h3>
+        <p>Test with sample data that matches your structure:</p>
+        <button onclick="testSampleData()">Test Sample Data</button>
+        <div id="sample-result"></div>
+    </div>
+
+    <script>
+        function testBasicStructure() {
+            const result = document.getElementById('basic-result');
+            result.innerHTML = '<h4>Testing Basic Data Structure:</h4>';
+            
+            // Test ObjectId-like structure
+            const testData = {
+                class: { _id: '507f1f77bcf86cd799439011' },
+                section: 'A',
+                subject: 'Physics'
+            };
+            
+            result.innerHTML += '<pre>' + JSON.stringify(testData, null, 2) + '</pre>';
+            result.innerHTML += '<p><strong>class:</strong> ' + testData.class + '</p>';
+            result.innerHTML += '<p><strong>typeof class:</strong> ' + typeof testData.class + '</p>';
+            result.innerHTML += '<p><strong>class._id:</strong> ' + testData.class._id + '</p>';
+            result.innerHTML += '<p><strong>class.toString():</strong> ' + testData.class.toString() + '</p>';
+            result.innerHTML += '<p><strong>class._id.toString():</strong> ' + testData.class._id.toString() + '</p>';
+        }
+        
+        function testLiveData() {
+            const result = document.getElementById('live-result');
+            const teacherData = document.getElementById('teacherData').value;
+            
+            if (!teacherData) {
+                result.innerHTML = '<p class="error">Please paste your teacher data first!</p>';
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(teacherData);
+                result.innerHTML = '<h4>Your Live Data Analysis:</h4>';
+                
+                if (data.assignedClasses && Array.isArray(data.assignedClasses)) {
+                    data.assignedClasses.forEach((assignment, index) => {
+                        result.innerHTML += `<h5>Assignment ${index + 1}:</h5>`;
+                        result.innerHTML += '<pre>' + JSON.stringify(assignment, null, 2) + '</pre>';
+                        result.innerHTML += `<p><strong>class:</strong> ${assignment.class}</p>`;
+                        result.innerHTML += `<p><strong>typeof class:</strong> ${typeof assignment.class}</p>`;
+                        
+                        if (assignment.class && assignment.class._id) {
+                            result.innerHTML += `<p><strong>class._id:</strong> ${assignment.class._id}</p>`;
+                            result.innerHTML += `<p><strong>class._id.toString():</strong> ${assignment.class._id.toString()}</p>`;
+                        } else if (typeof assignment.class === 'string') {
+                            result.innerHTML += `<p><strong>class (string):</strong> ${assignment.class}</p>`;
+                        } else {
+                            result.innerHTML += `<p class="error">Unknown class structure!</p>`;
+                        }
+                        
+                        result.innerHTML += `<p><strong>section:</strong> ${assignment.section}</p>`;
+                        result.innerHTML += `<p><strong>subject:</strong> ${assignment.subject}</p>`;
+                        result.innerHTML += '<hr>';
+                    });
+                } else {
+                    result.innerHTML += '<p class="error">No assignedClasses found in data!</p>';
+                }
+            } catch (error) {
+                result.innerHTML = '<p class="error">Error parsing JSON: ' + error.message + '</p>';
+            }
+        }
+        
+        function testSampleData() {
+            const result = document.getElementById('sample-result');
+            result.innerHTML = '<h4>Testing Sample Data:</h4>';
+            
+            // Test different possible structures
+            const testCases = [
+                {
+                    name: 'ObjectId Structure',
+                    data: { class: { _id: '507f1f77bcf86cd799439011' }, section: 'A', subject: 'Physics' }
+                },
+                {
+                    name: 'String Structure',
+                    data: { class: '507f1f77bcf86cd799439011', section: 'A', subject: 'Physics' }
+                },
+                {
+                    name: 'Mixed Structure',
+                    data: { class: 'Class10A', section: 'A', subject: 'Physics' }
+                }
+            ];
+            
+            testCases.forEach(testCase => {
+                result.innerHTML += `<h5>${testCase.name}:</h5>`;
+                result.innerHTML += '<pre>' + JSON.stringify(testCase.data, null, 2) + '</pre>';
+                
+                const assignment = testCase.data;
+                const classId = '507f1f77bcf86cd799439011';
+                const section = 'A';
+                const subject = 'Physics';
+                
+                // Test the comparison logic
+                let classMatch = false;
+                if (assignment.class && assignment.class._id) {
+                    classMatch = assignment.class._id.toString() === classId;
+                } else if (typeof assignment.class === 'string') {
+                    classMatch = assignment.class === classId;
+                }
+                
+                const sectionMatch = assignment.section === section;
+                const subjectMatch = assignment.subject === subject;
+                
+                result.innerHTML += `<p><strong>Comparison Results:</strong></p>`;
+                result.innerHTML += `<p>classMatch: ${classMatch} (${assignment.class && assignment.class._id ? assignment.class._id.toString() : assignment.class} === ${classId})</p>`;
+                result.innerHTML += `<p>sectionMatch: ${sectionMatch} (${assignment.section} === ${section})</p>`;
+                result.innerHTML += `<p>subjectMatch: ${subjectMatch} (${assignment.subject} === ${subject})</p>`;
+                result.innerHTML += `<p><strong>Will Delete:</strong> ${!(classMatch && sectionMatch && subjectMatch)}</p>`;
+                result.innerHTML += '<hr>';
+            });
+        }
+    </script>
+</body>
+</html>

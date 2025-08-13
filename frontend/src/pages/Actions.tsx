@@ -29,31 +29,25 @@ interface TeacherOption {
   teacherId: string;
 }
 
-interface ClassOption {
-  _id: string;
-  name: string;
-  section: string;
-}
+
 
 interface TeacherDetail {
   _id: string;
   name: string;
   teacherId: string;
   assignedClasses: Array<{
-    class: string | { _id: string; name: string; section: string };
+    grade: string;
     section: string;
     subject: string;
-    grade: string;
     time?: string;
     day?: string;
   }>;
 }
 
 interface AssignmentRow {
-  class: string;   // class id or name
-  section?: string; // auto-populated from class
+  grade: string;
+  section: string;
   subject: string;
-  grade?: string;  // auto-populated from class
   day: string;
   time: string;
 }
@@ -65,14 +59,17 @@ const TIMES = [
   '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'
 ];
 
+const GRADES = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+const SECTIONS = ['A', 'B', 'C', 'D', 'E'];
+
 const Actions: React.FC = () => {
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [teacherDetail, setTeacherDetail] = useState<TeacherDetail | null>(null);
 
   const [form, setForm] = useState<AssignmentRow>({
-    class: '',
+    grade: '',
+    section: '',
     subject: '',
     day: '',
     time: ''
@@ -92,17 +89,7 @@ const Actions: React.FC = () => {
       }
     };
 
-    const fetchClasses = async () => {
-      try {
-        const res = await apiService.get<{ success: boolean; data: ClassOption[] }>(`/classes`);
-        setClasses(res.data || []);
-      } catch (e) {
-        showSnackbar('Failed to load classes', 'error');
-      }
-    };
-
     fetchTeachers();
-    fetchClasses();
   }, []);
 
   useEffect(() => {
@@ -128,10 +115,9 @@ const Actions: React.FC = () => {
 
     for (const ac of teacherDetail.assignedClasses || []) {
       table[ac.day || 'Monday'].push({
-        class: typeof ac.class === 'object' ? ac.class.name : (ac.class as string),
+        grade: ac.grade,
         section: ac.section,
         subject: ac.subject,
-        grade: ac.grade,
         day: ac.day || 'Monday',
         time: ac.time || '9:00 AM'
       });
@@ -145,7 +131,8 @@ const Actions: React.FC = () => {
 
   const validateForm = (): string | null => {
     if (!selectedTeacherId) return 'Select a teacher';
-    if (!form.class) return 'Select a class';
+    if (!form.grade) return 'Select a grade';
+    if (!form.section) return 'Select a section';
     if (!form.subject.trim()) return 'Enter a subject';
     if (!form.day) return 'Select a day';
     if (!form.time) return 'Select a time';
@@ -160,26 +147,18 @@ const Actions: React.FC = () => {
     const err = validateForm();
     if (err) { showSnackbar(err, 'error'); return; }
     
-    // Get class details for grade and section
-    const selectedClass = classes.find(c => c._id === form.class);
-    if (!selectedClass) {
-      showSnackbar('Selected class not found', 'error');
-      return;
-    }
-    
     try {
       const payload = { assignedClasses: [{
-        class: form.class, // Send class ID
-        section: selectedClass.section, // Use section from selected class
+        grade: form.grade,
+        section: form.section,
         subject: form.subject,
-        grade: selectedClass.name.replace('Class ', ''), // Extract grade from class name
         day: form.day,
         time: form.time,
       }]};
       const res = await apiService.post<{ success: boolean; data: TeacherDetail; message: string }>(`/admin/teachers/${selectedTeacherId}/assign-classes`, payload);
       setTeacherDetail(res.data);
       showSnackbar('Assigned successfully');
-      setForm({ class: '', section: '', subject: '', day: '', time: '' });
+      setForm({ grade: '', section: '', subject: '', day: '', time: '' });
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to assign';
       showSnackbar(msg, 'error');
@@ -191,13 +170,11 @@ const Actions: React.FC = () => {
     try {
       // Build remaining assignments excluding the target
       const remaining = (teacherDetail.assignedClasses || []).filter(ac => {
-        const className = typeof ac.class === 'object' ? ac.class.name : (ac.class as string);
-        return !(className === row.class && ac.section === row.section && ac.subject === row.subject && (ac.day || 'Monday') === row.day && (ac.time || '9:00 AM') === row.time);
+        return !(ac.grade === row.grade && ac.section === row.section && ac.subject === row.subject && (ac.day || 'Monday') === row.day && (ac.time || '9:00 AM') === row.time);
       }).map(ac => ({
-        class: typeof ac.class === 'object' ? (ac.class as any)._id || (ac.class as any).name : (ac.class as string),
+        grade: ac.grade,
         section: ac.section,
         subject: ac.subject,
-        grade: ac.grade,
         day: ac.day || 'Monday',
         time: ac.time || '9:00 AM'
       }));
@@ -216,14 +193,7 @@ const Actions: React.FC = () => {
 
   const openEdit = (row: AssignmentRow) => {
     setEditTarget(row);
-    // Find the class ID from the class name for editing
-    const classObj = classes.find(c => c.name === row.class);
-    setEditForm({
-      ...row,
-      class: classObj?._id || row.class,
-      section: classObj?.section || row.section,
-      grade: classObj?.name.replace('Class ', '') || row.grade
-    });
+    setEditForm(row);
   };
 
   const handleEditSave = async () => {
@@ -232,32 +202,22 @@ const Actions: React.FC = () => {
     const err = (!editForm.day || !editForm.time) ? 'Select day and time' : null;
     if (err) { showSnackbar(err, 'error'); return; }
 
-    // Get class details for grade and section
-    const selectedClass = classes.find(c => c._id === editForm.class);
-    if (!selectedClass) {
-      showSnackbar('Selected class not found', 'error');
-      return;
-    }
-
     try {
       // Build new list: replace target row with editForm
       const updated = (teacherDetail.assignedClasses || []).map(ac => {
-        const className = typeof ac.class === 'object' ? ac.class.name : (ac.class as string);
-        if (editTarget && className === editTarget.class && ac.section === editTarget.section && ac.subject === editTarget.subject && (ac.day || 'Monday') === editTarget.day && (ac.time || '9:00 AM') === editTarget.time) {
+        if (editTarget && ac.grade === editTarget.grade && ac.section === editTarget.section && ac.subject === editTarget.subject && (ac.day || 'Monday') === editTarget.day && (ac.time || '9:00 AM') === editTarget.time) {
           return {
-            class: editForm.class, // Send class ID
-            section: selectedClass.section, // Use section from selected class
+            grade: editForm.grade,
+            section: editForm.section,
             subject: editForm.subject,
-            grade: selectedClass.name.replace('Class ', ''), // Extract grade from class name
             day: editForm.day,
             time: editForm.time,
           };
         }
         return {
-          class: typeof ac.class === 'object' ? (ac.class as any)._id || (ac.class as any).name : (ac.class as string),
+          grade: ac.grade,
           section: ac.section,
           subject: ac.subject,
-          grade: ac.grade,
           day: ac.day || 'Monday',
           time: ac.time || '9:00 AM'
         };
@@ -299,22 +259,23 @@ const Actions: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Class</InputLabel>
-                <Select value={form.class} label="Class" onChange={(e) => setForm({ ...form, class: e.target.value })}>
-                  {classes.map(c => (
-                    <MenuItem key={c._id} value={c._id}>{c.name} - {c.section}</MenuItem>
+                <InputLabel>Grade</InputLabel>
+                <Select value={form.grade} label="Grade" onChange={(e) => setForm({ ...form, grade: e.target.value })}>
+                  {GRADES.map(grade => (
+                    <MenuItem key={grade} value={grade}>{grade}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={2}>
-              <TextField 
-                label="Section" 
-                value={form.class ? classes.find(c => c._id === form.class)?.section || '' : ''} 
-                fullWidth 
-                disabled 
-                helperText="Auto-filled from class"
-              />
+              <FormControl fullWidth>
+                <InputLabel>Section</InputLabel>
+                <Select value={form.section} label="Section" onChange={(e) => setForm({ ...form, section: e.target.value })}>
+                  {SECTIONS.map(section => (
+                    <MenuItem key={section} value={section}>{section}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={3}>
               <TextField label="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} fullWidth />
@@ -352,7 +313,7 @@ const Actions: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Time</TableCell>
-                    <TableCell>Class</TableCell>
+                    <TableCell>Grade</TableCell>
                     <TableCell>Section</TableCell>
                     <TableCell>Subject</TableCell>
                     <TableCell align="right">Actions</TableCell>
@@ -360,9 +321,9 @@ const Actions: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {(timetable[day] || []).map((row) => (
-                    <TableRow key={`${row.day}-${row.time}-${row.class}-${row.section}-${row.subject}`}>
+                    <TableRow key={`${row.day}-${row.time}-${row.grade}-${row.section}-${row.subject}`}>
                       <TableCell>{row.time}</TableCell>
-                      <TableCell>{row.class}</TableCell>
+                      <TableCell>{row.grade}</TableCell>
                       <TableCell>{row.section}</TableCell>
                       <TableCell>{row.subject}</TableCell>
                       <TableCell align="right">
@@ -385,22 +346,23 @@ const Actions: React.FC = () => {
             <Grid container spacing={2}>
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
-                  <InputLabel>Class</InputLabel>
-                  <Select value={editForm.class} label="Class" onChange={(e) => setEditForm({ ...editForm, class: e.target.value })}>
-                    {classes.map(c => (
-                      <MenuItem key={c._id} value={c._id}>{c.name} - {c.section}</MenuItem>
+                  <InputLabel>Grade</InputLabel>
+                  <Select value={editForm.grade} label="Grade" onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })}>
+                    {GRADES.map(grade => (
+                      <MenuItem key={grade} value={grade}>{grade}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={2}>
-                <TextField 
-                  label="Section" 
-                  value={editForm.class ? classes.find(c => c._id === editForm.class)?.section || '' : ''} 
-                  fullWidth 
-                  disabled 
-                  helperText="Auto-filled from class"
-                />
+                <FormControl fullWidth>
+                  <InputLabel>Section</InputLabel>
+                  <Select value={editForm.section} label="Section" onChange={(e) => setEditForm({ ...editForm, section: e.target.value })}>
+                    {SECTIONS.map(section => (
+                      <MenuItem key={section} value={section}>{section}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12} md={3}>
                 <TextField label="Subject" value={editForm.subject} onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })} fullWidth />

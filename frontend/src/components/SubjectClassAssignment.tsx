@@ -40,6 +40,7 @@ interface SubjectClassAssignmentData {
   grade: string;
   section: string;
   subjects: string[];
+  originalClass?: string; // Optional field for backend compatibility
 }
 
 interface SubjectClassAssignmentProps {

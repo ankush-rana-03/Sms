@@ -713,7 +713,7 @@ exports.deleteSubjectAssignment = async (req, res) => {
     console.log('🔍 Current teacher assignments:', JSON.stringify(teacher.assignedClasses, null, 2));
     
     teacher.assignedClasses = teacher.assignedClasses.filter(assignment => {
-      const classMatch = assignment.class.toString() === classId;
+      const classMatch = assignment.class._id.toString() === classId;
       const sectionMatch = assignment.section === section;
       const subjectMatch = assignment.subject === subject;
       

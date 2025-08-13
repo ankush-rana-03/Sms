@@ -820,6 +820,21 @@ exports.assignClassesToTeacher = async (req, res) => {
     
     console.log('Final merged assignments to save:', JSON.stringify(mergedAssignments, null, 2));
     console.log(`Total assignments after merge: ${mergedAssignments.length} (was ${teacher.assignedClasses.length})`);
+
+    // Validate no duplicate day/time slots for this teacher
+    const slotSet = new Set();
+    for (const a of mergedAssignments) {
+      const day = a.day || 'Monday';
+      const time = a.time || '9:00 AM';
+      const key = `${day}|${time}`;
+      if (slotSet.has(key)) {
+        return res.status(409).json({
+          success: false,
+          message: `Time conflict: Teacher already has an assignment on ${day} at ${time}`
+        });
+      }
+      slotSet.add(key);
+    }
     
     // Update the teacher's assignedClasses with merged assignments
     teacher.assignedClasses = mergedAssignments;

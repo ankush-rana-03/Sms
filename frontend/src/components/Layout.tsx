@@ -45,6 +45,7 @@ const getMenuItems = (userRole: string) => {
     { text: 'Students', icon: <School />, path: '/students', roles: ['admin', 'principal', 'teacher'] },
     { text: 'Teachers', icon: <Person />, path: '/teachers', roles: ['admin', 'principal'] },
     { text: 'Teacher Management', icon: <ManageAccounts />, path: '/teacher-management', roles: ['admin'] },
+    { text: 'Actions', icon: <ManageAccounts />, path: '/actions', roles: ['admin'] },
     { text: 'Classes', icon: <Class />, path: '/classes', roles: ['admin', 'principal', 'teacher'] },
     { text: 'Teacher Attendance', icon: <People />, path: '/teacher-attendance', roles: ['teacher', 'admin'] },
     { text: 'WhatsApp Status', icon: <WhatsApp />, path: '/whatsapp-status', roles: ['admin'] },

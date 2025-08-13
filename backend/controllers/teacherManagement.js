@@ -1,6 +1,5 @@
 const Teacher = require('../models/Teacher');
 const User = require('../models/User');
-const Class = require('../models/Class');
 const LoginLog = require('../models/LoginLog');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -47,7 +46,6 @@ exports.getAllTeachers = async (req, res) => {
     
     const teachers = await Teacher.find(query)
       .populate('user', 'name email role isActive lastLogin')
-      .populate('assignedClasses.class', 'name grade section')
       .populate('classTeacherOf', 'name grade section')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -100,7 +98,6 @@ exports.getTeacherById = async (req, res) => {
     const { teacherId } = req.params;
     const teacher = await Teacher.findById(teacherId)
       .populate('user', 'name email role isActive lastLogin')
-      .populate('assignedClasses.class', 'name grade section')
       .populate('classTeacherOf', 'name grade section');
 
     if (!teacher) {
@@ -792,44 +789,44 @@ exports.assignClassesToTeacher = async (req, res) => {
       }
     }
     
-    // Merge new assignments with existing ones instead of completely replacing
-    // This allows adding multiple assignments over time
-    console.log('Current teacher assignments before merge:', JSON.stringify(teacher.assignedClasses, null, 2));
-    console.log('New assignments to merge:', JSON.stringify(assignedClasses, null, 2));
-    
-    // Create a map of existing assignments by class-section-subject combination for easy lookup
+    // Create a map of existing assignments by grade-section-subject combination for easy lookup
     const existingAssignmentsMap = new Map();
     teacher.assignedClasses.forEach(existing => {
-      const key = `${existing.class}-${existing.section}-${existing.subject}`;
+      const key = `${existing.grade}-${existing.section}-${existing.subject}`;
       existingAssignmentsMap.set(key, existing);
     });
     
     console.log('Existing assignments map keys:', Array.from(existingAssignmentsMap.keys()));
     
-    // Transform and merge new assignments
-    const mergedAssignments = [];
+    // Start with existing assignments and add/update new ones
+    const mergedAssignments = [...teacher.assignedClasses];
     
     for (const assignment of assignedClasses) {
-      const assignmentKey = `${assignment.class}-${assignment.section}-${assignment.subject}`;
+      const assignmentKey = `${assignment.grade}-${assignment.section}-${assignment.subject}`;
       console.log(`Processing assignment: ${assignmentKey}`);
       
       if (existingAssignmentsMap.has(assignmentKey)) {
         // Update existing assignment with new time/day if provided
-        const existing = existingAssignmentsMap.get(assignmentKey);
-        const updatedAssignment = {
-          ...existing,
-          time: assignment.time || existing.time || '9:00 AM',
-          day: assignment.day || existing.day || 'Monday'
-        };
-        mergedAssignments.push(updatedAssignment);
-        console.log(`Updated existing assignment: ${assignmentKey}`, updatedAssignment);
+        const existingIndex = mergedAssignments.findIndex(existing => 
+          existing.grade === assignment.grade && 
+          existing.section === assignment.section && 
+          existing.subject === assignment.subject
+        );
+        
+        if (existingIndex !== -1) {
+          mergedAssignments[existingIndex] = {
+            ...mergedAssignments[existingIndex],
+            time: assignment.time || mergedAssignments[existingIndex].time || '9:00 AM',
+            day: assignment.day || mergedAssignments[existingIndex].day || 'Monday'
+          };
+          console.log(`Updated existing assignment: ${assignmentKey}`, mergedAssignments[existingIndex]);
+        }
       } else {
         // Add new assignment
         const newAssignment = {
-          class: assignment.class,
+          grade: assignment.grade,
           section: assignment.section,
           subject: assignment.subject,
-          grade: assignment.grade,
           time: assignment.time || '9:00 AM',
           day: assignment.day || 'Monday'
         };
@@ -866,7 +863,6 @@ exports.assignClassesToTeacher = async (req, res) => {
 
     // Fetch the updated teacher with populated data
     const populatedTeacher = await Teacher.findById(teacherId)
-      .populate('assignedClasses.class', 'name grade section')
       .populate('user', 'name email role isActive');
 
     if (!populatedTeacher) {
@@ -881,10 +877,9 @@ exports.assignClassesToTeacher = async (req, res) => {
     // Ensure time and day fields are explicitly included in the response
     const responseData = populatedTeacher.toObject();
     responseData.assignedClasses = responseData.assignedClasses.map(ac => ({
-      class: ac.class,
+      grade: ac.grade,
       section: ac.section,
       subject: ac.subject,
-      grade: ac.grade,
       time: ac.time || '9:00 AM',
       day: ac.day || 'Monday'
     }));

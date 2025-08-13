@@ -168,3 +168,10 @@
 2025/08/13-10:54:53.705 4753 compacted to: files[ 0 1 1 0 0 0 0 ]
 2025/08/13-10:54:53.705 4753 Delete type=2 #725
 2025/08/13-10:54:53.705 4753 Manual compaction at level-0 from '\x00\xf7\x00\x00\x05' @ 100353 : 0 .. '\x00\xf8\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/08/13-12:21:27.982 a030 Compacting 1@1 + 1@2 files
+2025/08/13-12:21:27.985 a030 Generated table #727@1: 492 keys, 13967 bytes
+2025/08/13-12:21:27.985 a030 Compacted 1@1 + 1@2 files => 13967 bytes
+2025/08/13-12:21:27.986 a030 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/08/13-12:21:27.987 a030 Delete type=2 #726
+2025/08/13-12:21:27.987 a030 Delete type=2 #723
+2025/08/13-12:21:27.987 a030 Delete type=2 #388

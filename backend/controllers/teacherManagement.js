@@ -712,39 +712,25 @@ exports.deleteSubjectAssignment = async (req, res) => {
     console.log('🔍 Received delete request:', { classId, section, subject });
     console.log('🔍 Current teacher assignments:', JSON.stringify(teacher.assignedClasses, null, 2));
     
-    // SIMPLIFIED DELETION LOGIC - Just remove the exact match
-    console.log('🔍 SIMPLE DELETION: Looking for exact match...');
+    // FIXED DELETION LOGIC - Works with your actual database structure
+    console.log('🔍 FIXED DELETION: Looking for exact match in your data structure...');
     
     const beforeCount = teacher.assignedClasses.length;
     
-    // Remove the assignment that matches ALL criteria
+    // Remove the assignment that matches section and subject (no class field in your data)
     teacher.assignedClasses = teacher.assignedClasses.filter(assignment => {
-      // Try multiple ways to match the class
-      let classMatches = false;
-      
-      // Method 1: Direct string comparison
-      if (assignment.class === classId) {
-        classMatches = true;
-        console.log('✅ Method 1: Direct string match');
-      }
-      // Method 2: ObjectId comparison
-      else if (assignment.class && assignment.class._id && assignment.class._id.toString() === classId) {
-        classMatches = true;
-        console.log('✅ Method 2: ObjectId match');
-      }
-      // Method 3: Class name comparison (if class is stored as name)
-      else if (assignment.class && typeof assignment.class === 'string' && assignment.class.includes(classId)) {
-        classMatches = true;
-        console.log('✅ Method 3: Class name match');
-      }
-      
+      // Your data structure: section, subject, grade, time, day
       const sectionMatches = assignment.section === section;
       const subjectMatches = assignment.subject === subject;
       
-      const shouldKeep = !(classMatches && sectionMatches && subjectMatches);
+      // Optional: also check grade if you want to be more specific
+      const gradeMatches = !assignment.grade || assignment.grade === req.body.grade || !req.body.grade;
+      
+      const shouldKeep = !(sectionMatches && subjectMatches && gradeMatches);
       
       console.log(`🔍 Assignment: ${JSON.stringify(assignment)}`);
-      console.log(`🔍 Matches: class=${classMatches}, section=${sectionMatches}, subject=${subjectMatches}`);
+      console.log(`🔍 Looking for: section="${section}", subject="${subject}"`);
+      console.log(`🔍 Matches: section=${sectionMatches}, subject=${subjectMatches}, grade=${gradeMatches}`);
       console.log(`🔍 Will keep: ${shouldKeep}`);
       
       return shouldKeep;

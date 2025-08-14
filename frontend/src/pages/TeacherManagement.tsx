@@ -1943,7 +1943,11 @@ const TeacherManagement: React.FC = () => {
           return transformed;
         })()}
         onSave={handleSaveAssignments}
-        onDeleteSubject={handleDeleteSubject}
+                        onDeleteSubject={(classId, section, subject) => {
+                  // Note: classId is not used in your data structure, but keeping for compatibility
+                  console.log('🗑️ Deleting subject:', { classId, section, subject });
+                  handleDeleteSubject(classId, section, subject);
+                }}
       />
 
       {/* Snackbar */}

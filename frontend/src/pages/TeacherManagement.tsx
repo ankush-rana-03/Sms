@@ -314,15 +314,7 @@ const TeacherManagement: React.FC = () => {
     setOpenAssignDialog(true);
   };
 
-  const handleAddSubjectChip = () => {
-    const value = assignForm.subjectInput.trim();
-    if (!value) return;
-    if (!assignForm.subjects.includes(value)) {
-      setAssignForm(prev => ({ ...prev, subjects: [...prev.subjects, value], subjectInput: '' }));
-    } else {
-      setAssignForm(prev => ({ ...prev, subjectInput: '' }));
-    }
-  };
+  // Add button removed; all subject input handled on Save
 
   const handleRemoveSubjectChip = (subject: string) => {
     setAssignForm(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== subject) }));
@@ -330,14 +322,22 @@ const TeacherManagement: React.FC = () => {
 
   const handleSaveAssignedClassSubjects = async () => {
     if (!selectedTeacher) return;
-    const { grade, section, subjects } = assignForm;
-    if (!grade || !section || subjects.length === 0) {
-      showSnackbar('Please select class, section, and add at least one subject', 'error');
+    const { grade, section, subjects, subjectInput } = assignForm;
+
+    // Merge typed input (comma-separated supported) with selected chips, unique + trimmed
+    const typed = subjectInput
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    const merged = Array.from(new Set([...subjects, ...typed]));
+
+    if (!grade || !section || merged.length === 0) {
+      showSnackbar('Please select class, section, and at least one subject', 'error');
       return;
     }
 
     const payload = {
-      assignedClasses: subjects.map(sub => ({ grade, section, subject: sub }))
+      assignedClasses: merged.map(sub => ({ grade, section, subject: sub }))
     };
 
     try {
@@ -1765,11 +1765,16 @@ const TeacherManagement: React.FC = () => {
                      key={sub}
                      label={sub}
                      onClick={() => {
-                       setAssignForm(prev => ({ ...prev, subjectInput: sub }));
+                       // Toggle selection in subjects array; also reflect in input for visibility
+                       setAssignForm(prev => {
+                         const exists = prev.subjects.includes(sub);
+                         const subjects = exists ? prev.subjects.filter(s => s !== sub) : [...prev.subjects, sub];
+                         return { ...prev, subjects, subjectInput: exists ? prev.subjectInput : sub };
+                       });
                        setTimeout(() => subjectInputRef.current?.focus(), 0);
                      }}
-                     variant={assignForm.subjectInput === sub ? 'filled' : 'outlined'}
-                     color={assignForm.subjectInput === sub ? 'primary' : 'default'}
+                     variant={assignForm.subjects.includes(sub) ? 'filled' : 'outlined'}
+                     color={assignForm.subjects.includes(sub) ? 'primary' : 'default'}
                      size="small"
                    />
                  ))}
@@ -1781,9 +1786,9 @@ const TeacherManagement: React.FC = () => {
                    inputRef={subjectInputRef}
                    value={assignForm.subjectInput}
                    onChange={(e) => setAssignForm(prev => ({ ...prev, subjectInput: e.target.value }))}
-                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubjectChip(); } }}
+                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); /* Enter disabled; use Save */ } }}
                  />
-                <Button variant="contained" onClick={handleAddSubjectChip}>Add</Button>
+                
               </Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
                 {assignForm.subjects.map(sub => (

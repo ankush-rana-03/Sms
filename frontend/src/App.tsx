@@ -22,7 +22,7 @@ import LoginDebug from './components/LoginDebug';
 
 import TeacherAttendance from './pages/TeacherAttendance';
 import TeacherManagement from './pages/TeacherManagement';
-import WhatsAppStatus from './components/WhatsAppStatus';
+
 
 const queryClient = new QueryClient();
 
@@ -105,11 +105,7 @@ const App: React.FC = () => {
                   </RoleBasedRoute>
                 } />
 
-                <Route path="whatsapp-status" element={
-                  <RoleBasedRoute allowedRoles={['admin']}>
-                    <WhatsAppStatus />
-                  </RoleBasedRoute>
-                } />
+
               </Route>
             </Routes>
           </Router>

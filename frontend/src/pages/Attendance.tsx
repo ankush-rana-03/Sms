@@ -38,7 +38,7 @@ import {
   Save,
   Edit,
   Visibility,
-  WhatsApp,
+
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -183,7 +183,7 @@ const Attendance: React.FC = () => {
 
       setSnackbar({
         open: true,
-        message: 'Attendance marked successfully! WhatsApp notifications sent to parents.',
+        message: 'Attendance marked successfully! Notifications sent to parents.',
         severity: 'success'
       });
 
@@ -258,7 +258,7 @@ const Attendance: React.FC = () => {
 
       setSnackbar({
         open: true,
-        message: 'Attendance updated successfully! WhatsApp notification sent to parent.',
+        message: 'Attendance updated successfully! Notification sent to parent.',
         severity: 'success'
       });
 
@@ -414,7 +414,6 @@ const Attendance: React.FC = () => {
                                   Roll No: {student.rollNumber}
                                 </Typography>
                                 <Chip
-                                  icon={<WhatsApp />}
                                   label="Parent notified"
                                   size="small"
                                   color="success"

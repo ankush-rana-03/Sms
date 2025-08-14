@@ -34,7 +34,7 @@ import {
   Refresh,
   Edit,
   Save,
-  WhatsApp,
+
   Visibility
 } from '@mui/icons-material';
 import teacherService, { Student, TodayAttendanceRecord } from '../services/teacherService';
@@ -183,7 +183,7 @@ const TeacherAttendance: React.FC = () => {
     try {
       await teacherService.markAttendance(studentId, status, selectedDate);
       
-      setSuccess(`Attendance marked as ${status} successfully! WhatsApp notification sent to parent.`);
+      setSuccess(`Attendance marked as ${status} successfully! Notification sent to parent.`);
       if (viewMode === 'mark') {
         fetchTodayAttendance();
       } else {
@@ -227,7 +227,7 @@ const TeacherAttendance: React.FC = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      setSuccess('Attendance marked successfully! WhatsApp notifications sent to all parents.');
+      setSuccess('Attendance marked successfully! Notifications sent to all parents.');
       setViewMode('view');
       fetchAttendanceHistory();
       
@@ -263,7 +263,7 @@ const TeacherAttendance: React.FC = () => {
         )
       );
 
-      setSuccess('Attendance updated successfully! WhatsApp notification sent to parent.');
+      setSuccess('Attendance updated successfully! Notification sent to parent.');
       setEditDialogOpen(false);
       setEditingAttendance(null);
       
@@ -487,7 +487,6 @@ const TeacherAttendance: React.FC = () => {
                             </Typography>
                             {student.parentPhone && (
                               <Chip
-                                icon={<WhatsApp />}
                                 label="Notified"
                                 size="small"
                                 color="success"

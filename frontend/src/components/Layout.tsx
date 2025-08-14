@@ -30,7 +30,7 @@ import {
   Notifications,
   Logout,
   Settings,
-  WhatsApp,
+
   ManageAccounts,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
@@ -48,7 +48,7 @@ const getMenuItems = (userRole: string) => {
 
     { text: 'Classes', icon: <Class />, path: '/classes', roles: ['admin', 'principal', 'teacher'] },
     { text: 'Teacher Attendance', icon: <People />, path: '/teacher-attendance', roles: ['teacher', 'admin'] },
-    { text: 'WhatsApp Status', icon: <WhatsApp />, path: '/whatsapp-status', roles: ['admin'] },
+
     { text: 'Homework', icon: <Assignment />, path: '/homework', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
     { text: 'Tests', icon: <Quiz />, path: '/tests', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
     { text: 'Results', icon: <Assessment />, path: '/results', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },

@@ -3,7 +3,7 @@ const Student = require('../models/Student');
 const Class = require('../models/Class');
 const ErrorResponse = require('../utils/errorResponse');
 const { validateAttendanceDate, canEditAttendance } = require('../utils/dateValidation');
-const whatsappService = require('../services/whatsappService');
+
 
 // @desc    Mark attendance manually
 // @route   POST /api/attendance/mark
@@ -50,25 +50,7 @@ exports.markAttendance = async (req, res, next) => {
       remarks
     });
 
-    // Send WhatsApp notification to parent
-    try {
-      const formattedDate = attendanceDate.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      
-      await whatsappService.sendAttendanceNotification(
-        student.parentPhone,
-        student.name,
-        status,
-        formattedDate
-      );
-    } catch (whatsappError) {
-      console.error('WhatsApp notification failed:', whatsappError);
-      // Don't fail the attendance marking if WhatsApp fails
-    }
+    // Notifications disabled (WhatsApp removed)
 
     res.status(201).json({
       success: true,
@@ -188,26 +170,7 @@ exports.updateAttendance = async (req, res, next) => {
 
     await attendance.save();
 
-    // Send WhatsApp notification if status changed
-    if (status && status !== attendance.status && attendance.student) {
-      try {
-        const formattedDate = attendance.date.toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-        
-        await whatsappService.sendAttendanceNotification(
-          attendance.student.parentPhone,
-          attendance.student.name,
-          status,
-          formattedDate
-        );
-      } catch (whatsappError) {
-        console.error('WhatsApp notification failed:', whatsappError);
-      }
-    }
+    // Notifications disabled (WhatsApp removed)
 
     res.status(200).json({
       success: true,
@@ -234,7 +197,7 @@ exports.bulkMarkAttendance = async (req, res, next) => {
 
     const attendanceRecords = [];
     const errors = [];
-    const notifications = [];
+    const notifications = []; // WhatsApp removed
 
     for (const record of attendanceData) {
       try {
@@ -274,28 +237,7 @@ exports.bulkMarkAttendance = async (req, res, next) => {
 
         attendanceRecords.push(attendance);
 
-        // Send WhatsApp notification
-        try {
-          const formattedDate = attendanceDate.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          });
-          
-          const notificationSent = await whatsappService.sendAttendanceNotification(
-            student.parentPhone,
-            student.name,
-            status,
-            formattedDate
-          );
-          
-          if (notificationSent) {
-            notifications.push(`Notification sent to ${student.name}'s parent`);
-          }
-        } catch (whatsappError) {
-          console.error('WhatsApp notification failed for student:', student.name, whatsappError);
-        }
+        // Notifications disabled (WhatsApp removed)
       } catch (error) {
         errors.push(`Error marking attendance for student ${record.studentId}: ${error.message}`);
       }

@@ -61,15 +61,8 @@ class ApiService {
   }
 
   async delete<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    console.log('🔍 API Service DELETE - URL:', url);
-    console.log('🔍 API Service DELETE - Data:', data);
-    console.log('🔍 API Service DELETE - Config:', config);
-    
     const requestConfig = { ...config, data };
-    console.log('🔍 API Service DELETE - Final request config:', requestConfig);
-    
     const response = await this.api.delete<T>(url, requestConfig);
-    console.log('🔍 API Service DELETE - Response:', response.data);
     return response.data;
   }
 

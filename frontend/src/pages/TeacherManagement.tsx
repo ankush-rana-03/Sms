@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import SubjectClassAssignment from '../components/SubjectClassAssignment';
+
 import {
   Box,
   Typography,
@@ -43,7 +43,7 @@ import {
   OnlinePrediction,
   Search,
   Refresh,
-  School,
+
   Person,
   Warning,
   People,
@@ -164,7 +164,7 @@ const TeacherManagement: React.FC = () => {
   const [openLoginLogsDialog, setOpenLoginLogsDialog] = useState(false);
   const [openPasswordResetDialog, setOpenPasswordResetDialog] = useState(false);
 
-  const [openSubjectAssignmentDialog, setOpenSubjectAssignmentDialog] = useState(false)
+
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
@@ -183,14 +183,8 @@ const TeacherManagement: React.FC = () => {
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'success' });
 
-  // New state for password reset and class assignment
+  // New state for password reset
   const [newPassword, setNewPassword] = useState('');
-  const [availableClasses, setAvailableClasses] = useState<Array<{
-    _id: string;
-    name: string;
-    section: string;
-    grade: string;
-  }>>([]);
 
 
 
@@ -226,7 +220,6 @@ const TeacherManagement: React.FC = () => {
     if (user) {
       fetchTeachers();
       fetchStatistics();
-      fetchAvailableClasses();
     }
   }, [user, page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -281,59 +274,9 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const fetchAvailableClasses = async () => {
-    try {
-      const data = await apiService.get<{ success: boolean; data: Array<{ _id: string; name: string; section: string; grade: string }> }>('/classes');
-      console.log('Fetched classes from API:', data);
-      setAvailableClasses(data.data || []);
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-      // If we can't fetch classes, we'll work with empty array
-      // The UI will still work by using class IDs directly
-      setAvailableClasses([]);
-    }
-  };
 
-  const handleDeleteSubject = async (section: string, subject: string) => {
-    if (!selectedTeacher) return;
 
-    // Immediate visual feedback
-    alert(`TeacherManagement handleDeleteSubject called with: Section ${section}, Subject ${subject}`);
 
-    console.log('🔍 handleDeleteSubject called with:', { section, subject, teacherId: selectedTeacher._id });
-    console.log('🔍 selectedTeacher.assignedClasses:', selectedTeacher.assignedClasses);
-
-    try {
-      const deleteData = { section, subject };
-      console.log('📤 Sending delete request with data:', deleteData);
-      console.log('📤 Request URL:', `/admin/teachers/${selectedTeacher._id}/subject-assignment`);
-
-      console.log('🔍 About to call apiService.delete with:', {
-        url: `/admin/teachers/${selectedTeacher._id}/subject-assignment`,
-        deleteData,
-        selectedTeacher: selectedTeacher._id
-      });
-      
-      const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, deleteData);
-
-      console.log('✅ Delete response:', response);
-
-      if (response.success) {
-        showSnackbar('Subject assignment deleted successfully', 'success');
-        // Refresh teacher data
-        await refreshTeacherData(selectedTeacher._id);
-      } else {
-        showSnackbar(response.message || 'Error deleting subject assignment', 'error');
-      }
-    } catch (error: any) {
-      console.error('❌ Error deleting subject assignment:', error);
-      if (error.response) {
-        console.error('❌ Response status:', error.response.status);
-        console.error('❌ Response data:', error.response.data);
-      }
-      showSnackbar(error.response?.data?.message || 'Error deleting subject assignment', 'error');
-    }
-  };
 
   const fetchLoginLogs = async (teacherId: string) => {
     try {
@@ -499,111 +442,9 @@ const TeacherManagement: React.FC = () => {
 
 
 
-  const handleOpenSubjectAssignmentDialog = (teacher: Teacher) => {
-    setSelectedTeacher(teacher);
-    setOpenSubjectAssignmentDialog(true);
-    
-    console.log('=== OPENING ASSIGNMENT DIALOG ===');
-    console.log('Teacher:', teacher.name);
-    console.log('Teacher assigned classes:', teacher.assignedClasses);
-    
-    try {
-      // Transform backend data to frontend format
-      const transformedAssignments = teacher.assignedClasses.reduce((acc, ac) => {
-        // Extract class information - handle both string and object formats
-        let className: string;
-        let classId: string;
-        
-        if (typeof ac.class === 'object') {
-          className = ac.class.name;
-          classId = ac.class._id;
-        } else {
-          className = ac.class;
-          classId = ac.class;
-        }
-        
-        // Create unique key for grouping
-        const key = `${classId}-${ac.section}`;
-        
-        if (!acc[key]) {
-          acc[key] = {
-            id: `${classId}-${ac.section}-${Date.now()}`, // Assign a temporary ID
-            class: className,        // Use class name for form (e.g., "Nursery", "10")
-            className: className,    // Keep for display
-            section: ac.section,
-            subjects: [],
-            createdAt: new Date(),
-            updatedAt: new Date()
-          };
-        }
-        
-        // Add subject with time and day
-        acc[key].subjects.push({
-          id: `${classId}-${ac.section}-${Date.now()}-${acc[key].subjects.length}`, // Assign a temporary ID
-          name: ac.subject,
-          time: ac.time || '9:00 AM',
-          day: ac.day || 'Monday',
-          class: className, // Store individual class
-          section: ac.section // Store individual section
-        });
-        
-        return acc;
-      }, {} as Record<string, any>); // Changed to any as AssignmentItem is removed
 
-      const finalAssignments = Object.values(transformedAssignments);
-      console.log('Transformed assignments:', finalAssignments);
-      
-      // setAssignments(finalAssignments); // This state is removed
-      
-      // Reset form with defaults
-      // setAssignmentForm({ // This state is removed
-      //   class: '',
-      //   section: '',
-      //   subjectName: '',
-      //   subjectTime: '9:00 AM',
-      //   subjectDay: 'Monday',
-      //   editingIndex: -1
-      // });
-      
-      console.log('=== DIALOG OPENED SUCCESSFULLY ===');
-    } catch (error) {
-      console.error('Error opening assignment dialog:', error);
-      showSnackbar('Error loading assignments', 'error');
-    }
-  };
 
-  const handleSaveAssignments = async (assignments: any[]) => {
-    if (!selectedTeacher) return;
 
-    try {
-      // Transform assignments back to the format expected by the backend
-      const backendAssignments = assignments.flatMap(assignment => 
-        assignment.subjects.map((subject: string) => ({
-          class: assignment.classId,
-          section: assignment.section,
-          subject: subject,
-          grade: assignment.grade,
-          time: '',
-          day: ''
-        }))
-      );
-
-      const response = await apiService.post<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/assign-classes`, {
-        assignedClasses: backendAssignments
-      });
-
-      if (response.success) {
-        showSnackbar('Assignments updated successfully', 'success');
-        // Refresh teacher data
-        fetchTeachers();
-      } else {
-        showSnackbar(response.message || 'Error updating assignments', 'error');
-      }
-    } catch (error: any) {
-      console.error('Error saving assignments:', error);
-      showSnackbar(error.response?.data?.message || 'Error saving assignments', 'error');
-    }
-  };
 
 
 
@@ -1613,15 +1454,7 @@ const TeacherManagement: React.FC = () => {
                               </IconButton>
                             </Tooltip>
 
-                            <Tooltip title="Manage Assignments">
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleOpenSubjectAssignmentDialog(teacher)}
-                              >
-                                <School />
-                              </IconButton>
-                            </Tooltip>
+
 
                             <Tooltip title="Deactivate">
                               <IconButton
@@ -1908,50 +1741,7 @@ const TeacherManagement: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Subject Class Assignment Dialog */}
-      <SubjectClassAssignment
-        open={openSubjectAssignmentDialog}
-        onClose={() => setOpenSubjectAssignmentDialog(false)}
-        teacherId={selectedTeacher?._id || ''}
-        teacherName={selectedTeacher?.name || ''}
-        availableClasses={availableClasses}
-        currentAssignments={(() => {
-          if (!selectedTeacher?.assignedClasses) return [];
-          
-          console.log('🔍 Original assignedClasses:', selectedTeacher.assignedClasses);
-          
-          const transformed = Object.values(selectedTeacher.assignedClasses.reduce((acc, ac) => {
-            // Handle both string and ObjectId cases for the class field
-            const classValue = ac.class;
-            const classId = typeof classValue === 'string' ? classValue : classValue._id;
-            const className = typeof classValue === 'string' ? classValue : classValue.name;
-            
-            const key = `${classId}-${ac.section}`;
-            if (!acc[key]) {
-              acc[key] = {
-                classId: classId,
-                originalClass: classId, // Send the string ID for backend calls
-                className: className,
-                grade: ac.grade,
-                section: ac.section,
-                subjects: []
-              };
-            }
-            if (ac.subject && !acc[key].subjects.includes(ac.subject)) {
-              acc[key].subjects.push(ac.subject);
-            }
-            return acc;
-          }, {} as Record<string, any>));
-          
-          console.log('🔍 Transformed currentAssignments:', transformed);
-          return transformed;
-        })()}
-        onSave={handleSaveAssignments}
-                        onDeleteSubject={(section, subject) => {
-                  console.log('🗑️ Deleting subject:', { section, subject });
-                  handleDeleteSubject(section, subject);
-                }}
-      />
+      
 
       {/* Snackbar */}
       <Snackbar

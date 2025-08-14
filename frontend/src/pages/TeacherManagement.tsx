@@ -226,7 +226,7 @@ const TeacherManagement: React.FC = () => {
   const fetchTeachers = async () => {
     try {
       setLoading(true);
-      const response = await apiService.get<TeachersResponse>(`/admin/teachers?page=${page}&limit=${limit}&search=${searchTerm}`);
+      const response = await apiService.get<TeachersResponse>(`/admin/teachers?page=${page}&limit=${limit}&search=${encodeURIComponent(searchTerm)}&designation=${encodeURIComponent(designationFilter)}&status=${encodeURIComponent(statusFilter)}`);
       
       if (response.success) {
         setTeachers(response.data);
@@ -1267,7 +1267,7 @@ const TeacherManagement: React.FC = () => {
                 fullWidth
                 placeholder="Search teachers..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setPage(1); setSearchTerm(e.target.value); }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -1282,7 +1282,7 @@ const TeacherManagement: React.FC = () => {
                 <InputLabel>Designation</InputLabel>
                 <Select
                   value={designationFilter}
-                  onChange={(e) => setDesignationFilter(e.target.value)}
+                  onChange={(e) => { setPage(1); setDesignationFilter(e.target.value as string); }}
                   label="Designation"
                 >
                   <MenuItem value="">All</MenuItem>
@@ -1298,7 +1298,7 @@ const TeacherManagement: React.FC = () => {
                 <InputLabel>Status</InputLabel>
                 <Select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => { setPage(1); setStatusFilter(e.target.value as string); }}
                   label="Status"
                 >
                   <MenuItem value="">All</MenuItem>

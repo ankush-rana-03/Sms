@@ -19,17 +19,23 @@ const generatePassword = () => {
 // Get all teachers with detailed information
 exports.getAllTeachers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', designation = '', status = '' } = req.query;
+    const { page: pageRaw = 1, limit: limitRaw = 10, search = '', designation = '', status = '' } = req.query;
+
+    const page = Math.max(1, parseInt(pageRaw));
+    const limit = Math.max(1, Math.min(100, parseInt(limitRaw)));
     
     // Build query
     const query = {};
     
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { teacherId: { $regex: search, $options: 'i' } }
-      ];
+      const safe = String(search).trim();
+      if (safe.length > 0) {
+        query.$or = [
+          { name: { $regex: safe, $options: 'i' } },
+          { email: { $regex: safe, $options: 'i' } },
+          { teacherId: { $regex: safe, $options: 'i' } }
+        ];
+      }
     }
     
     if (designation) {
@@ -44,20 +50,21 @@ exports.getAllTeachers = async (req, res) => {
 
     const skip = (page - 1) * limit;
     
-    const teachers = await Teacher.find(query)
-      .populate('user', 'name email role isActive lastLogin')
-      .populate('classTeacherOf', 'name grade section')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Teacher.countDocuments(query);
+    const [teachers, total] = await Promise.all([
+      Teacher.find(query)
+        .populate('user', 'name email role isActive lastLogin')
+        .populate('classTeacherOf', 'name grade section')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Teacher.countDocuments(query)
+    ]);
 
     res.status(200).json({
       success: true,
       count: teachers.length,
       total,
-      page: parseInt(page),
+      page,
       totalPages: Math.ceil(total / limit),
       data: teachers.map(teacher => ({
         _id: teacher._id,

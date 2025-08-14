@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -195,6 +195,7 @@ const TeacherManagement: React.FC = () => {
     subjects: [],
     subjectInput: ''
   });
+  const subjectInputRef = useRef<HTMLInputElement | null>(null);
 
   // New state for password reset
   const [newPassword, setNewPassword] = useState('');
@@ -1759,25 +1760,29 @@ const TeacherManagement: React.FC = () => {
             <Grid item xs={12}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Subjects</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                {SUGGESTED_SUBJECTS.map(sub => (
-                  <Chip
-                    key={sub}
-                    label={sub}
-                    onClick={() => !assignForm.subjects.includes(sub) && setAssignForm(prev => ({ ...prev, subjects: [...prev.subjects, sub] }))}
-                    variant={assignForm.subjects.includes(sub) ? 'filled' : 'outlined'}
-                    color={assignForm.subjects.includes(sub) ? 'primary' : 'default'}
-                    size="small"
-                  />
-                ))}
+                                 {SUGGESTED_SUBJECTS.map(sub => (
+                   <Chip
+                     key={sub}
+                     label={sub}
+                     onClick={() => {
+                       setAssignForm(prev => ({ ...prev, subjectInput: sub }));
+                       setTimeout(() => subjectInputRef.current?.focus(), 0);
+                     }}
+                     variant={assignForm.subjectInput === sub ? 'filled' : 'outlined'}
+                     color={assignForm.subjectInput === sub ? 'primary' : 'default'}
+                     size="small"
+                   />
+                 ))}
               </Box>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <TextField
-                  fullWidth
-                  label="Add subject manually"
-                  value={assignForm.subjectInput}
-                  onChange={(e) => setAssignForm(prev => ({ ...prev, subjectInput: e.target.value }))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubjectChip(); } }}
-                />
+                                 <TextField
+                   fullWidth
+                   label="Add subject manually"
+                   inputRef={subjectInputRef}
+                   value={assignForm.subjectInput}
+                   onChange={(e) => setAssignForm(prev => ({ ...prev, subjectInput: e.target.value }))}
+                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubjectChip(); } }}
+                 />
                 <Button variant="contained" onClick={handleAddSubjectChip}>Add</Button>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>

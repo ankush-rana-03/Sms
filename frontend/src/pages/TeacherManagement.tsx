@@ -244,26 +244,7 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  // Add function to refresh specific teacher data
-  const refreshTeacherData = async (teacherId: string) => {
-    try {
-      const response = await apiService.get<{ success: boolean; data: Teacher }>(`/admin/teachers/${teacherId}`);
-      if (response.success) {
-        // Update the specific teacher in the teachers list
-        setTeachers(prev => prev.map(t => t._id === teacherId ? response.data : t));
-        
-        // If this teacher is currently selected, update selectedTeacher as well
-        if (selectedTeacher && selectedTeacher._id === teacherId) {
-          setSelectedTeacher(response.data);
-        }
-        
-        return response.data;
-      }
-    } catch (error: any) {
-      console.error('Error refreshing teacher data:', error);
-    }
-    return null;
-  };
+
 
   const fetchStatistics = async () => {
     try {
@@ -1251,7 +1232,7 @@ const TeacherManagement: React.FC = () => {
               <CardContent sx={{ textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-                    <School sx={{ fontSize: 40, mr: 1, color: '#ff9800' }} />
+                    <People sx={{ fontSize: 40, mr: 1, color: '#ff9800' }} />
                   </Box>
                   <Typography variant="h6" sx={{ opacity: 0.8, mb: 1 }}>
                     Designations

@@ -308,9 +308,13 @@ const TeacherManagement: React.FC = () => {
       console.log('📤 Sending delete request with data:', deleteData);
       console.log('📤 Request URL:', `/admin/teachers/${selectedTeacher._id}/subject-assignment`);
 
-      const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, {
-        data: deleteData
+      console.log('🔍 About to call apiService.delete with:', {
+        url: `/admin/teachers/${selectedTeacher._id}/subject-assignment`,
+        deleteData,
+        selectedTeacher: selectedTeacher._id
       });
+      
+      const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/subject-assignment`, deleteData);
 
       console.log('✅ Delete response:', response);
 

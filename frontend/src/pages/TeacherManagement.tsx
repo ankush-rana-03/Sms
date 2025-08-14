@@ -184,9 +184,9 @@ const TeacherManagement: React.FC = () => {
   }>({ open: false, message: '', severity: 'success' });
 
   // New module: Assigned Class & Subject
-  const GRADES_FOR_ASSIGNMENT = ['Nursery', '1','2','3','4','5','6','7','8','9','10','11','12'];
+  const GRADES_FOR_ASSIGNMENT = ['Nursery', 'LKG', 'UKG', '1','2','3','4','5','6','7','8','9','10','11','12'];
   const SECTIONS_FOR_ASSIGNMENT = ['A','B','C','D','E'];
-  const SUGGESTED_SUBJECTS = ['English','Maths','Science','Hindi','SST','Computer','EVS','Physics','Chemistry','Biology'];
+  const SUGGESTED_SUBJECTS = ['English','Mathematics','Science','Hindi','Social Studies','Computer','EVS','Physics','Chemistry','Biology','Geography','History','Civics','Moral Science','General Knowledge','Art','Music','Physical Education'];
 
   const [openAssignDialog, setOpenAssignDialog] = useState(false);
   const [assignForm, setAssignForm] = useState<{ grade: string; section: string; subjects: string[]; subjectInput: string }>({

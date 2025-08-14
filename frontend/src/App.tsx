@@ -15,7 +15,7 @@ import Tests from './pages/Tests';
 import Results from './pages/Results';
 import Profile from './pages/Profile';
 import Layout from './components/Layout';
-import Actions from './pages/Actions';
+
 import RoleBasedRoute from './components/RoleBasedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
 import LoginDebug from './components/LoginDebug';
@@ -104,11 +104,7 @@ const App: React.FC = () => {
                     <TeacherAttendance />
                   </RoleBasedRoute>
                 } />
-                <Route path="actions" element={
-                  <RoleBasedRoute allowedRoles={['admin']}>
-                    <Actions />
-                  </RoleBasedRoute>
-                } />
+
                 <Route path="whatsapp-status" element={
                   <RoleBasedRoute allowedRoles={['admin']}>
                     <WhatsAppStatus />

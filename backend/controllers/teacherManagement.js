@@ -838,9 +838,7 @@ exports.assignClassesToTeacher = async (req, res) => {
         const newAssignment = {
           grade: assignment.grade,
           section: assignment.section,
-          subject: assignment.subject,
-          time: assignment.time || '9:00 AM',
-          day: assignment.day || 'Monday'
+          subject: assignment.subject
         };
         mergedAssignments.push(newAssignment);
         console.log(`Added new assignment: ${assignmentKey}`, newAssignment);
@@ -850,20 +848,7 @@ exports.assignClassesToTeacher = async (req, res) => {
     console.log('Final merged assignments to save:', JSON.stringify(mergedAssignments, null, 2));
     console.log(`Total assignments after merge: ${mergedAssignments.length} (was ${teacher.assignedClasses.length})`);
 
-    // Validate no duplicate day/time slots for this teacher
-    const slotSet = new Set();
-    for (const a of mergedAssignments) {
-      const day = a.day || 'Monday';
-      const time = a.time || '9:00 AM';
-      const key = `${day}|${time}`;
-      if (slotSet.has(key)) {
-        return res.status(409).json({
-          success: false,
-          message: `Time conflict: Teacher already has an assignment on ${day} at ${time}`
-        });
-      }
-      slotSet.add(key);
-    }
+    // No time/day validation needed
     
     // Update the teacher's assignedClasses with merged assignments
     teacher.assignedClasses = mergedAssignments;
@@ -886,14 +871,12 @@ exports.assignClassesToTeacher = async (req, res) => {
 
     console.log('Populated teacher response:', JSON.stringify(populatedTeacher.assignedClasses, null, 2));
     
-    // Ensure time and day fields are explicitly included in the response
+    // Build response without time/day
     const responseData = populatedTeacher.toObject();
     responseData.assignedClasses = responseData.assignedClasses.map(ac => ({
       grade: ac.grade,
       section: ac.section,
-      subject: ac.subject,
-      time: ac.time || '9:00 AM',
-      day: ac.day || 'Monday'
+      subject: ac.subject
     }));
     
     console.log('Final response data:', JSON.stringify(responseData.assignedClasses, null, 2));

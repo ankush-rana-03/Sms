@@ -183,6 +183,19 @@ const TeacherManagement: React.FC = () => {
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'success' });
 
+  // New module: Assigned Class & Subject
+  const GRADES_FOR_ASSIGNMENT = ['Nursery', '1','2','3','4','5','6','7','8','9','10','11','12'];
+  const SECTIONS_FOR_ASSIGNMENT = ['A','B','C','D','E'];
+  const SUGGESTED_SUBJECTS = ['English','Maths','Science','Hindi','SST','Computer','EVS','Physics','Chemistry','Biology'];
+
+  const [openAssignDialog, setOpenAssignDialog] = useState(false);
+  const [assignForm, setAssignForm] = useState<{ grade: string; section: string; subjects: string[]; subjectInput: string }>({
+    grade: '',
+    section: '',
+    subjects: [],
+    subjectInput: ''
+  });
+
   // New state for password reset
   const [newPassword, setNewPassword] = useState('');
 
@@ -290,6 +303,55 @@ const TeacherManagement: React.FC = () => {
     } catch (error: any) {
       console.error('Error creating teacher:', error);
       showSnackbar(error.response?.data?.message || 'Error creating teacher', 'error');
+    }
+  };
+
+  // Handlers for Assigned Class & Subject module
+  const handleOpenAssignDialog = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setAssignForm({ grade: '', section: '', subjects: [], subjectInput: '' });
+    setOpenAssignDialog(true);
+  };
+
+  const handleAddSubjectChip = () => {
+    const value = assignForm.subjectInput.trim();
+    if (!value) return;
+    if (!assignForm.subjects.includes(value)) {
+      setAssignForm(prev => ({ ...prev, subjects: [...prev.subjects, value], subjectInput: '' }));
+    } else {
+      setAssignForm(prev => ({ ...prev, subjectInput: '' }));
+    }
+  };
+
+  const handleRemoveSubjectChip = (subject: string) => {
+    setAssignForm(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== subject) }));
+  };
+
+  const handleSaveAssignedClassSubjects = async () => {
+    if (!selectedTeacher) return;
+    const { grade, section, subjects } = assignForm;
+    if (!grade || !section || subjects.length === 0) {
+      showSnackbar('Please select class, section, and add at least one subject', 'error');
+      return;
+    }
+
+    const payload = {
+      assignedClasses: subjects.map(sub => ({ grade, section, subject: sub }))
+    };
+
+    try {
+      const res = await apiService.post<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/assign-classes`, payload);
+      if (res.success) {
+        showSnackbar('Assigned class & subjects saved', 'success');
+        setOpenAssignDialog(false);
+        // Refresh list
+        fetchTeachers();
+      } else {
+        showSnackbar(res.message || 'Failed to save assignments', 'error');
+      }
+    } catch (e: any) {
+      console.error('Error saving assigned class & subjects', e);
+      showSnackbar(e.response?.data?.message || 'Error saving assignments', 'error');
     }
   };
 
@@ -1434,7 +1496,14 @@ const TeacherManagement: React.FC = () => {
                                 <LockReset />
                               </IconButton>
                             </Tooltip>
-
+                            <Tooltip title="Assign Subjects">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenAssignDialog(teacher)}
+                              >
+                                <Add />
+                              </IconButton>
+                            </Tooltip>
 
 
                             <Tooltip title="Deactivate">
@@ -1653,6 +1722,89 @@ const TeacherManagement: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Assigned Class & Subject Dialog */}
+      <Dialog open={openAssignDialog} onClose={() => setOpenAssignDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Assigned Class & Subject</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Class</InputLabel>
+                <Select
+                  label="Class"
+                  value={assignForm.grade}
+                  onChange={(e) => setAssignForm(prev => ({ ...prev, grade: e.target.value as string }))}
+                >
+                  {GRADES_FOR_ASSIGNMENT.map(g => (
+                    <MenuItem key={g} value={g}>{g}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Section</InputLabel>
+                <Select
+                  label="Section"
+                  value={assignForm.section}
+                  onChange={(e) => setAssignForm(prev => ({ ...prev, section: e.target.value as string }))}
+                >
+                  {SECTIONS_FOR_ASSIGNMENT.map(s => (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Subjects</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                {SUGGESTED_SUBJECTS.map(sub => (
+                  <Chip
+                    key={sub}
+                    label={sub}
+                    onClick={() => !assignForm.subjects.includes(sub) && setAssignForm(prev => ({ ...prev, subjects: [...prev.subjects, sub] }))}
+                    variant={assignForm.subjects.includes(sub) ? 'filled' : 'outlined'}
+                    color={assignForm.subjects.includes(sub) ? 'primary' : 'default'}
+                    size="small"
+                  />
+                ))}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField
+                  fullWidth
+                  label="Add subject manually"
+                  value={assignForm.subjectInput}
+                  onChange={(e) => setAssignForm(prev => ({ ...prev, subjectInput: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubjectChip(); } }}
+                />
+                <Button variant="contained" onClick={handleAddSubjectChip}>Add</Button>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                {assignForm.subjects.map(sub => (
+                  <Chip key={sub} label={sub} onDelete={() => handleRemoveSubjectChip(sub)} />
+                ))}
+              </Box>
+            </Grid>
+
+            {selectedTeacher && selectedTeacher.assignedClasses?.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {selectedTeacher.assignedClasses.map((ac, idx) => (
+                    <Chip key={idx} label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} size="small" />
+                  ))}
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAssignDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveAssignedClassSubjects}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Login Logs Dialog */}
       <Dialog open={openLoginLogsDialog} onClose={() => setOpenLoginLogsDialog(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
@@ -1727,10 +1879,11 @@ const TeacherManagement: React.FC = () => {
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        autoHideDuration={4000}
         onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

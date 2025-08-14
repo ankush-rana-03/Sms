@@ -809,27 +809,30 @@ exports.assignClassesToTeacher = async (req, res) => {
     
     // Start with existing assignments and add/update new ones
     const mergedAssignments = [...teacher.assignedClasses];
+
+    // Prevent duplicates within incoming payload
+    const incomingKeys = new Set();
+    for (const a of assignedClasses) {
+      const k = `${a.grade}-${a.section}-${a.subject}`;
+      if (incomingKeys.has(k)) {
+        return res.status(409).json({
+          success: false,
+          message: `Duplicate in request: ${a.subject} for ${a.grade}-${a.section}`
+        });
+      }
+      incomingKeys.add(k);
+    }
     
     for (const assignment of assignedClasses) {
       const assignmentKey = `${assignment.grade}-${assignment.section}-${assignment.subject}`;
       console.log(`Processing assignment: ${assignmentKey}`);
       
       if (existingAssignmentsMap.has(assignmentKey)) {
-        // Update existing assignment with new time/day if provided
-        const existingIndex = mergedAssignments.findIndex(existing => 
-          existing.grade === assignment.grade && 
-          existing.section === assignment.section && 
-          existing.subject === assignment.subject
-        );
-        
-        if (existingIndex !== -1) {
-          mergedAssignments[existingIndex] = {
-            ...mergedAssignments[existingIndex],
-            time: assignment.time || mergedAssignments[existingIndex].time || '9:00 AM',
-            day: assignment.day || mergedAssignments[existingIndex].day || 'Monday'
-          };
-          console.log(`Updated existing assignment: ${assignmentKey}`, mergedAssignments[existingIndex]);
-        }
+        // Reject duplicates against existing data
+        return res.status(409).json({
+          success: false,
+          message: `Already assigned: ${assignment.subject} for ${assignment.grade}-${assignment.section}`
+        });
       } else {
         // Add new assignment
         const newAssignment = {

@@ -336,6 +336,24 @@ const TeacherManagement: React.FC = () => {
       return;
     }
 
+    // Frontend duplicate validation against current assignments
+    const existingKeys = new Set(
+      (selectedTeacher.assignedClasses || []).map(ac => `${ac.grade}-${ac.section}-${ac.subject}`)
+    );
+    const newKeys = new Set<string>();
+    for (const sub of merged) {
+      const key = `${grade}-${section}-${sub}`;
+      if (existingKeys.has(key)) {
+        showSnackbar(`Already assigned: ${sub} for ${grade}-${section}`, 'error');
+        return;
+      }
+      if (newKeys.has(key)) {
+        showSnackbar(`Duplicate in request: ${sub} for ${grade}-${section}`, 'error');
+        return;
+      }
+      newKeys.add(key);
+    }
+
     const payload = {
       assignedClasses: merged.map(sub => ({ grade, section, subject: sub }))
     };

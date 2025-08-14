@@ -690,10 +690,10 @@ exports.deleteSubjectAssignment = async (req, res) => {
       subject
     });
 
-    if (!classId || !section || !subject) {
+    if (!section || !subject) {
       return res.status(400).json({
         success: false,
-        message: 'Class ID, section, and subject are required'
+        message: 'Section and subject are required'
       });
     }
 

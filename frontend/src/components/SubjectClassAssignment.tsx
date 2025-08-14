@@ -51,7 +51,7 @@ interface SubjectClassAssignmentProps {
   availableClasses: ClassData[];
   currentAssignments: SubjectClassAssignmentData[];
   onSave: (assignments: SubjectClassAssignmentData[]) => void;
-  onDeleteSubject?: (classId: string, section: string, subject: string) => void;
+  onDeleteSubject?: (section: string, subject: string) => void;
 }
 
 const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
@@ -133,27 +133,27 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
     setAssignments(assignments.filter(a => a.classId !== classId));
   };
 
-  const handleDeleteSubject = (classId: string, section: string, subject: string) => {
-    console.log('🔍 SubjectClassAssignment handleDeleteSubject called with:', { classId, section, subject });
+  const handleDeleteSubject = (section: string, subject: string) => {
+    console.log('🔍 SubjectClassAssignment handleDeleteSubject called with:', { section, subject });
     
     // Immediate visual feedback
-    alert(`Delete request sent for: Class ${classId}, Section ${section}, Subject ${subject}`);
+    alert(`Delete request sent for: Section ${section}, Subject ${subject}`);
     
     if (onDeleteSubject) {
       console.log('📞 Calling onDeleteSubject prop');
-      onDeleteSubject(classId, section, subject);
+      onDeleteSubject(section, subject);
     } else {
       console.log('🔄 No onDeleteSubject prop, doing local deletion');
-      // Local deletion if no backend handler provided
-      setAssignments(prev => prev.map(assignment => {
-        if (assignment.classId === classId && assignment.section === section) {
-          return {
-            ...assignment,
-            subjects: assignment.subjects.filter(s => s !== subject)
-          };
-        }
-        return assignment;
-      }).filter(assignment => assignment.subjects.length > 0));
+              // Local deletion if no backend handler provided
+        setAssignments(prev => prev.map(assignment => {
+          if (assignment.section === section) {
+            return {
+              ...assignment,
+              subjects: assignment.subjects.filter(s => s !== subject)
+            };
+          }
+          return assignment;
+        }).filter(assignment => assignment.subjects.length > 0));
     }
   };
 
@@ -215,7 +215,7 @@ const SubjectClassAssignment: React.FC<SubjectClassAssignmentProps> = ({
                                 size="small"
                                 color="secondary"
                                 sx={{ mr: 0.5, mb: 0.5 }}
-                                onDelete={() => handleDeleteSubject(assignment.originalClass || assignment.classId, assignment.section, subject)}
+                                onDelete={() => handleDeleteSubject(assignment.section, subject)}
                                 deleteIcon={<Delete />}
                               />
                             ))}

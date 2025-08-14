@@ -294,17 +294,17 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleDeleteSubject = async (classId: string, section: string, subject: string) => {
+  const handleDeleteSubject = async (section: string, subject: string) => {
     if (!selectedTeacher) return;
 
     // Immediate visual feedback
-    alert(`TeacherManagement handleDeleteSubject called with: Class ${classId}, Section ${section}, Subject ${subject}`);
+    alert(`TeacherManagement handleDeleteSubject called with: Section ${section}, Subject ${subject}`);
 
-    console.log('🔍 handleDeleteSubject called with:', { classId, section, subject, teacherId: selectedTeacher._id });
+    console.log('🔍 handleDeleteSubject called with:', { section, subject, teacherId: selectedTeacher._id });
     console.log('🔍 selectedTeacher.assignedClasses:', selectedTeacher.assignedClasses);
 
     try {
-      const deleteData = { classId, section, subject };
+      const deleteData = { section, subject };
       console.log('📤 Sending delete request with data:', deleteData);
       console.log('📤 Request URL:', `/admin/teachers/${selectedTeacher._id}/subject-assignment`);
 
@@ -1943,10 +1943,9 @@ const TeacherManagement: React.FC = () => {
           return transformed;
         })()}
         onSave={handleSaveAssignments}
-                        onDeleteSubject={(classId, section, subject) => {
-                  // Note: classId is not used in your data structure, but keeping for compatibility
-                  console.log('🗑️ Deleting subject:', { classId, section, subject });
-                  handleDeleteSubject(classId, section, subject);
+                        onDeleteSubject={(section, subject) => {
+                  console.log('🗑️ Deleting subject:', { section, subject });
+                  handleDeleteSubject(section, subject);
                 }}
       />
 

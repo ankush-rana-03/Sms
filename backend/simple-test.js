@@ -95,4 +95,29 @@ async function runTests() {
   console.log('\n✅ Login testing completed!');
 }
 
-runTests();
+console.log('=== TESTING TEACHERS ROUTE LOADING ===');
+
+try {
+  console.log('1. Loading teachers route...');
+  const teachersRoute = require('./routes/teachers');
+  console.log('✅ Teachers route loaded successfully');
+  
+  console.log('2. Route type:', typeof teachersRoute);
+  console.log('3. Route stack length:', teachersRoute.stack ? teachersRoute.stack.length : 'No stack');
+  
+  if (teachersRoute.stack) {
+    console.log('4. Available routes:');
+    teachersRoute.stack.forEach((layer, index) => {
+      if (layer.route) {
+        console.log(`   ${index}: ${Object.keys(layer.route.methods).join(',')} ${layer.route.path}`);
+      }
+    });
+  }
+  
+  console.log('5. Testing route export...');
+  console.log('Route exported:', typeof teachersRoute === 'function' ? 'YES' : 'NO');
+  
+} catch (error) {
+  console.error('❌ Error loading teachers route:', error.message);
+  console.error('Stack:', error.stack);
+}

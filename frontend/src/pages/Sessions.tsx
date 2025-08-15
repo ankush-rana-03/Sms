@@ -47,7 +47,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/api';
+import { apiService as api } from '../services/api';
 
 interface Session {
   _id: string;

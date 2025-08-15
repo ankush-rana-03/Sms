@@ -40,6 +40,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
+import classService, { ClassWithSections } from '../services/classService';
 
 interface TeacherAssignment {
   grade: string;
@@ -71,12 +72,49 @@ const TeacherDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchAssignments();
+      fetchAvailableClasses();
     }
   }, [user]);
+
+  // Convert grade name to display name
+  const getGradeDisplayName = (grade: string) => {
+    if (!grade) return '';
+    
+    // First try to find in available classes
+    const classData = availableClasses.find(cls => cls.name === grade);
+    if (classData) {
+      return classData.displayName;
+    }
+    
+    // Fallback to manual conversion
+    switch (grade.toLowerCase()) {
+      case 'nursery': return 'Nursery';
+      case 'lkg': return 'LKG';
+      case 'ukg': return 'UKG';
+      default:
+        // For numeric grades, add "Class" prefix
+        if (/^\d+$/.test(grade)) {
+          return `Class ${grade}`;
+        }
+        return grade;
+    }
+  };
+
+  const fetchAvailableClasses = async () => {
+    try {
+      const response = await classService.getAvailableClassesForRegistration();
+      if (response.success && response.data) {
+        setAvailableClasses(response.data.classes);
+      }
+    } catch (error) {
+      console.error('Error fetching available classes:', error);
+    }
+  };
 
   const fetchAssignments = async () => {
     try {
@@ -312,7 +350,7 @@ const TeacherDashboard: React.FC = () => {
                           </Avatar>
                           <Box>
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                              Class {assignment.grade}-{assignment.section}
+                              {getGradeDisplayName(assignment.grade)} - Section {assignment.section}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               {assignment.subjects.length} subject{assignment.subjects.length !== 1 ? 's' : ''}

@@ -362,6 +362,30 @@ const TeacherManagement: React.FC = () => {
     return classData ? classData.sections : [];
   };
 
+  // Convert grade name to display name
+  const getGradeDisplayName = (grade: string) => {
+    if (!grade) return '';
+    
+    // First try to find in available classes
+    const classData = availableClasses.find(cls => cls.name === grade);
+    if (classData) {
+      return classData.displayName;
+    }
+    
+    // Fallback to manual conversion
+    switch (grade.toLowerCase()) {
+      case 'nursery': return 'Nursery';
+      case 'lkg': return 'LKG';
+      case 'ukg': return 'UKG';
+      default:
+        // For numeric grades, add "Class" prefix
+        if (/^\d+$/.test(grade)) {
+          return `Class ${grade}`;
+        }
+        return grade;
+    }
+  };
+
   // Handlers for Assigned Class & Subject module
   const handleOpenAssignDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
@@ -2172,7 +2196,7 @@ const TeacherManagement: React.FC = () => {
                       }}
                     >
                       <Chip 
-                        label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} 
+                        label={`${getGradeDisplayName(ac.grade)} ${ac.section || ''} - ${ac.subject}`} 
                         size="small" 
                         variant="outlined"
                         sx={{ 

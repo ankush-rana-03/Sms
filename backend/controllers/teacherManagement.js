@@ -924,14 +924,22 @@ exports.updateClassAssignment = async (req, res) => {
     }
 
     // Find the assignment to update
+    console.log(`Looking for assignment with ID: ${assignmentId}`);
+    console.log('Available assignment IDs:', teacher.assignedClasses.map(ac => ac._id.toString()));
+    
     const assignmentIndex = teacher.assignedClasses.findIndex(
       assignment => assignment._id.toString() === assignmentId
     );
 
+    console.log(`Assignment index found: ${assignmentIndex}`);
+    if (assignmentIndex !== -1) {
+      console.log('Found assignment:', teacher.assignedClasses[assignmentIndex]);
+    }
+
     if (assignmentIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: 'Assignment not found'
+        message: `Assignment not found with ID: ${assignmentId}. Available IDs: ${teacher.assignedClasses.map(ac => ac._id.toString()).join(', ')}`
       });
     }
 
@@ -996,14 +1004,22 @@ exports.deleteClassAssignment = async (req, res) => {
     }
 
     // Find the assignment to delete
+    console.log(`Looking for assignment to delete with ID: ${assignmentId}`);
+    console.log('Available assignment IDs:', teacher.assignedClasses.map(ac => ac._id.toString()));
+    
     const assignmentIndex = teacher.assignedClasses.findIndex(
       assignment => assignment._id.toString() === assignmentId
     );
 
+    console.log(`Assignment index found: ${assignmentIndex}`);
+    if (assignmentIndex !== -1) {
+      console.log('Found assignment to delete:', teacher.assignedClasses[assignmentIndex]);
+    }
+
     if (assignmentIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: 'Assignment not found'
+        message: `Assignment not found with ID: ${assignmentId}. Available IDs: ${teacher.assignedClasses.map(ac => ac._id.toString()).join(', ')}`
       });
     }
 

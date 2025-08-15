@@ -379,33 +379,8 @@ const TeacherManagement: React.FC = () => {
           subjectInput: ''
         });
         
-        // Update the local state immediately without refreshing
-        if (selectedTeacher) {
-          const newAssignments = merged.map(sub => ({ 
-            _id: `temp-${Date.now()}-${Math.random()}`, // Temporary ID for new assignments
-            grade, 
-            section, 
-            subject: sub 
-          }));
-          
-          setSelectedTeacher(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              assignedClasses: [...prev.assignedClasses, ...newAssignments]
-            };
-          });
-          
-          // Also update the teachers list
-          setTeachers(prev => prev.map(teacher => 
-            teacher._id === selectedTeacher._id
-              ? {
-                  ...teacher,
-                  assignedClasses: [...teacher.assignedClasses, ...newAssignments]
-                }
-              : teacher
-          ));
-        }
+        // Refresh the teacher data to get the real IDs from the backend
+        fetchTeachers();
       } else {
         showSnackbar(res.message || 'Failed to save assignments', 'error');
       }
@@ -417,6 +392,10 @@ const TeacherManagement: React.FC = () => {
 
   // Function to open edit assignment dialog
   const handleEditAssignment = (assignment: any) => {
+    console.log('Opening edit dialog for assignment:', assignment);
+    console.log('Assignment ID:', assignment._id);
+    console.log('Assignment data:', { grade: assignment.grade, section: assignment.section, subject: assignment.subject });
+    
     setEditingAssignment({
       id: assignment._id,
       grade: assignment.grade,
@@ -429,6 +408,10 @@ const TeacherManagement: React.FC = () => {
   // Function to save edited assignment
   const handleSaveEditedAssignment = async () => {
     if (!editingAssignment || !selectedTeacher) return;
+
+    console.log('Saving edited assignment:', editingAssignment);
+    console.log('Teacher ID:', selectedTeacher._id);
+    console.log('Assignment ID to update:', editingAssignment.id);
 
     try {
       const response = await apiService.put<{ success: boolean; message: string; data: any }>(

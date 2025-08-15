@@ -43,7 +43,8 @@ import {
   OnlinePrediction,
   Search,
   Refresh,
-
+  Visibility,
+  VisibilityOff,
   Person,
   Warning,
   People,
@@ -199,6 +200,7 @@ const TeacherManagement: React.FC = () => {
 
   // New state for password reset
   const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // State for editing assignments
   const [editingAssignment, setEditingAssignment] = useState<{
@@ -686,6 +688,7 @@ const TeacherManagement: React.FC = () => {
         showSnackbar(`Password reset successfully! ${emailMessage}`, 'success');
         setOpenPasswordResetDialog(false);
         setNewPassword('');
+        setShowPassword(false);
       } else {
         showSnackbar(response.message || 'Error resetting password', 'error');
       }
@@ -740,6 +743,7 @@ const TeacherManagement: React.FC = () => {
   const handleOpenPasswordResetDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setNewPassword('');
+    setShowPassword(false);
     setOpenPasswordResetDialog(true);
   };
 
@@ -2323,7 +2327,10 @@ const TeacherManagement: React.FC = () => {
       </Dialog>
 
       {/* Password Reset Dialog */}
-      <Dialog open={openPasswordResetDialog} onClose={() => setOpenPasswordResetDialog(false)}>
+              <Dialog open={openPasswordResetDialog} onClose={() => {
+          setOpenPasswordResetDialog(false);
+          setShowPassword(false);
+        }}>
         <DialogTitle>Reset Password - {selectedTeacher?.name}</DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
@@ -2332,17 +2339,34 @@ const TeacherManagement: React.FC = () => {
           <TextField
             fullWidth
             label="New Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             margin="normal"
-              required
+            required
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                    size="small"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
         </DialogContent>
         <DialogActions>
           <Button 
             variant="outlined" 
-            onClick={() => setOpenPasswordResetDialog(false)}
+            onClick={() => {
+              setOpenPasswordResetDialog(false);
+              setShowPassword(false);
+            }}
             sx={{ mr: 'auto' }}
           >
             Cancel

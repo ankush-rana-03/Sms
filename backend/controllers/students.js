@@ -92,7 +92,7 @@ exports.createStudent = async (req, res) => {
       }
     }
 
-    // Check if student already exists
+    // Check if student already exists (including deleted students)
     const existingStudent = await Student.findOne({ email });
     if (existingStudent) {
       return res.status(400).json({
@@ -101,8 +101,8 @@ exports.createStudent = async (req, res) => {
       });
     }
 
-    // Enforce unique roll number within grade + section
-    const existingRoll = await Student.findOne({ grade, section, rollNumber });
+    // Enforce unique roll number within grade + section (only for active students)
+    const existingRoll = await Student.findOne({ grade, section, rollNumber, deletedAt: null });
     if (existingRoll) {
       return res.status(400).json({
         success: false,
@@ -167,7 +167,7 @@ exports.getStudents = async (req, res) => {
   
   try {
     const { page = 1, limit = 20, search = '', grade = '', section = '', session = '' } = req.query;
-    const query = {};
+    const query = { deletedAt: null }; // Only get active (non-deleted) students
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -229,13 +229,13 @@ exports.updateStudent = async (req, res) => {
       }
     }
 
-    // Enforce unique roll number within grade + section
+    // Enforce unique roll number within grade + section (only for active students)
     if (update.rollNumber || update.grade || update.section) {
       const current = await Student.findById(studentId);
       const grade = update.grade || current.grade;
       const section = update.section || current.section;
       const rollNumber = update.rollNumber || current.rollNumber;
-      const dup = await Student.findOne({ _id: { $ne: studentId }, grade, section, rollNumber });
+      const dup = await Student.findOne({ _id: { $ne: studentId }, grade, section, rollNumber, deletedAt: null });
       if (dup) {
         return res.status(400).json({ success: false, message: `Roll number ${rollNumber} already exists for Class ${grade}-${section}` });
       }
@@ -251,16 +251,141 @@ exports.updateStudent = async (req, res) => {
   }
 };
 
-// Delete student
+// Delete student (soft delete)
 exports.deleteStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
-    const student = await Student.findByIdAndDelete(studentId);
-    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
-    res.status(200).json({ success: true, message: 'Student deleted successfully' });
+    const { reason } = req.body;
+    
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+    
+    if (student.deletedAt) {
+      return res.status(400).json({ success: false, message: 'Student is already deleted' });
+    }
+
+    // Soft delete the student
+    student.deletedAt = new Date();
+    student.deletedBy = req.user._id;
+    student.deletionReason = reason || '';
+    await student.save();
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Student deleted successfully',
+      data: student
+    });
   } catch (error) {
     console.error('Error deleting student:', error);
     res.status(500).json({ success: false, message: 'Error deleting student', error: error.message });
+  }
+};
+
+// Restore deleted student
+exports.restoreStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+    
+    if (!student.deletedAt) {
+      return res.status(400).json({ success: false, message: 'Student is not deleted' });
+    }
+
+    // Check for roll number conflicts before restoring
+    const existingStudent = await Student.findOne({
+      _id: { $ne: studentId },
+      grade: student.grade,
+      section: student.section,
+      rollNumber: student.rollNumber,
+      deletedAt: null
+    });
+
+    if (existingStudent) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Cannot restore student. Roll number ${student.rollNumber} already exists in Class ${student.grade}-${student.section}` 
+      });
+    }
+
+    // Restore the student
+    student.deletedAt = null;
+    student.deletedBy = null;
+    student.deletionReason = '';
+    await student.save();
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Student restored successfully',
+      data: student
+    });
+  } catch (error) {
+    console.error('Error restoring student:', error);
+    res.status(500).json({ success: false, message: 'Error restoring student', error: error.message });
+  }
+};
+
+// Permanently delete student (hard delete)
+exports.permanentlyDeleteStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+    
+    if (!student.deletedAt) {
+      return res.status(400).json({ success: false, message: 'Student must be soft deleted before permanent deletion' });
+    }
+
+    // Permanently delete the student
+    await Student.findByIdAndDelete(studentId);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Student permanently deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error permanently deleting student:', error);
+    res.status(500).json({ success: false, message: 'Error permanently deleting student', error: error.message });
+  }
+};
+
+// Get deleted students
+exports.getDeletedStudents = async (req, res) => {
+  try {
+    const { search, grade, section } = req.query;
+    
+    let query = { deletedAt: { $ne: null } };
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { rollNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (grade) query.grade = grade;
+    if (section) query.section = section;
+
+    const students = await Student.find(query)
+      .populate('deletedBy', 'name email')
+      .sort({ deletedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: students
+    });
+  } catch (error) {
+    console.error('Error fetching deleted students:', error);
+    res.status(500).json({ success: false, message: 'Error fetching deleted students', error: error.message });
   }
 };
 

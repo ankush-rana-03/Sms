@@ -88,6 +88,20 @@ const studentSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Soft delete fields
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  deletionReason: {
+    type: String,
+    default: ''
+  },
   attendance: [{
     date: {
       type: String,
@@ -111,5 +125,11 @@ const studentSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Add index for soft delete queries
+studentSchema.index({ deletedAt: 1 });
+
+// Add compound index for active students (deletedAt: null)
+studentSchema.index({ deletedAt: 1, grade: 1, section: 1, rollNumber: 1 }, { unique: true, partialFilterExpression: { deletedAt: null } });
 
 module.exports = mongoose.model('Student', studentSchema);

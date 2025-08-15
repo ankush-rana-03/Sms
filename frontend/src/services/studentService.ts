@@ -167,12 +167,49 @@ class StudentService {
     }
   }
 
-  async deleteStudent(studentId: string): Promise<{ success: boolean; message: string }> {
+  async deleteStudent(studentId: string, reason?: string): Promise<{ success: boolean; message: string; data: Student }> {
     try {
-      const response = await api.delete<{ success: boolean; message: string }>(`/students/${studentId}`);
+      const response = await api.delete<{ success: boolean; message: string; data: Student }>(`/students/${studentId}`, {
+        data: { reason }
+      });
       return response;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to delete student');
+    }
+  }
+
+  // Get deleted students
+  async getDeletedStudents(params?: { search?: string; grade?: string; section?: string }): Promise<{ success: boolean; data: Student[] }> {
+    try {
+      const query = new URLSearchParams();
+      if (params?.search) query.set('search', params.search);
+      if (params?.grade) query.set('grade', params.grade);
+      if (params?.section) query.set('section', params.section);
+
+      const response = await api.get<{ success: boolean; data: Student[] }>(`/students/deleted?${query.toString()}`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch deleted students');
+    }
+  }
+
+  // Restore deleted student
+  async restoreStudent(studentId: string): Promise<{ success: boolean; message: string; data: Student }> {
+    try {
+      const response = await api.put<{ success: boolean; message: string; data: Student }>(`/students/${studentId}/restore`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to restore student');
+    }
+  }
+
+  // Permanently delete student
+  async permanentlyDeleteStudent(studentId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await api.delete<{ success: boolean; message: string }>(`/students/${studentId}/permanent`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to permanently delete student');
     }
   }
 

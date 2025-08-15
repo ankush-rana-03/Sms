@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiService } from '../services/api';
+import classService, { ClassWithSections } from '../services/classService';
 import { useAuth } from '../contexts/AuthContext';
 
 import {
@@ -211,7 +212,7 @@ const TeacherManagement: React.FC = () => {
   const [openEditAssignmentDialog, setOpenEditAssignmentDialog] = useState(false);
 
   // Dynamic classes and sections from Classes API
-  const [dynamicClasses, setDynamicClasses] = useState<Array<{ name: string; section: string; _id: string }>>([]);
+  const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
   const [dynamicSections, setDynamicSections] = useState<string[]>([]);
   
   // Classes and sections are now dynamically fetched from the Classes API
@@ -287,17 +288,13 @@ const TeacherManagement: React.FC = () => {
   // Fetch dynamic classes and sections from Classes API
   const fetchDynamicClassesAndSections = async () => {
     try {
-      const response = await apiService.get<{ success: boolean; data: Array<{ _id: string; name: string; section: string }> }>('/classes');
-      if (response.success && (response as any).data) {
-        const classesData = (response as any).data;
-        setDynamicClasses(classesData);
+      const response = await classService.getAvailableClassesForRegistration();
+      if (response.success && response.data) {
+        setAvailableClasses(response.data.classes);
+        setDynamicSections(response.data.sections);
         
-        // Extract unique sections from classes
-        const uniqueSections = Array.from(new Set(classesData.map((cls: any) => cls.section))).sort() as string[];
-        setDynamicSections(uniqueSections);
-        
-        console.log('Dynamic classes fetched:', classesData);
-        console.log('Dynamic sections extracted:', uniqueSections);
+        console.log('Available classes fetched:', response.data.classes);
+        console.log('Available sections:', response.data.sections);
       }
     } catch (error) {
       console.error('Error fetching dynamic classes and sections:', error);
@@ -357,6 +354,12 @@ const TeacherManagement: React.FC = () => {
     } finally {
       setCreatingTeacher(false);
     }
+  };
+
+  // Get sections for selected class
+  const getSectionsForClass = (className: string) => {
+    const classData = availableClasses.find(cls => cls.name === className);
+    return classData ? classData.sections : [];
   };
 
   // Handlers for Assigned Class & Subject module
@@ -2038,15 +2041,15 @@ const TeacherManagement: React.FC = () => {
                 <Select
                   label="Class"
                   value={assignForm.grade}
-                  onChange={(e) => setAssignForm(prev => ({ ...prev, grade: e.target.value as string }))}
-                  disabled={dynamicClasses.length === 0}
+                  onChange={(e) => setAssignForm(prev => ({ ...prev, grade: e.target.value as string, section: '' }))}
+                  disabled={availableClasses.length === 0}
                 >
-                  {dynamicClasses.length === 0 ? (
+                  {availableClasses.length === 0 ? (
                     <MenuItem disabled>No classes available. Create classes first.</MenuItem>
                   ) : (
-                    dynamicClasses.map(cls => (
-                      <MenuItem key={cls._id} value={cls.name}>
-                        {cls.name}
+                    availableClasses.map(cls => (
+                      <MenuItem key={cls.name} value={cls.name}>
+                        {cls.displayName}
                       </MenuItem>
                     ))
                   )}
@@ -2060,13 +2063,17 @@ const TeacherManagement: React.FC = () => {
                   label="Section"
                   value={assignForm.section}
                   onChange={(e) => setAssignForm(prev => ({ ...prev, section: e.target.value as string }))}
-                  disabled={dynamicSections.length === 0}
+                  disabled={!assignForm.grade || availableClasses.length === 0}
                 >
-                  {dynamicSections.length === 0 ? (
-                    <MenuItem disabled>No sections available. Create classes first.</MenuItem>
+                  {!assignForm.grade ? (
+                    <MenuItem disabled>Select a class first</MenuItem>
+                  ) : getSectionsForClass(assignForm.grade).length === 0 ? (
+                    <MenuItem disabled>No sections available for this class</MenuItem>
                   ) : (
-                    dynamicSections.map(s => (
-                      <MenuItem key={s} value={s}>{s}</MenuItem>
+                    getSectionsForClass(assignForm.grade).map(section => (
+                      <MenuItem key={section} value={section}>
+                        Section {section}
+                      </MenuItem>
                     ))
                   )}
                 </Select>
@@ -2242,17 +2249,22 @@ const TeacherManagement: React.FC = () => {
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={6}>
               <FormControl fullWidth>
-                <InputLabel>Grade</InputLabel>
+                <InputLabel>Class</InputLabel>
                 <Select
                   value={editingAssignment?.grade || ''}
-                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, grade: e.target.value } : null)}
-                  label="Grade"
+                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, grade: e.target.value, section: '' } : null)}
+                  label="Class"
+                  disabled={availableClasses.length === 0}
                 >
-                  {dynamicClasses.map(cls => (
-                    <MenuItem key={cls._id} value={cls.name}>
-                      {cls.name}
-                    </MenuItem>
-                  ))}
+                  {availableClasses.length === 0 ? (
+                    <MenuItem disabled>No classes available</MenuItem>
+                  ) : (
+                    availableClasses.map(cls => (
+                      <MenuItem key={cls.name} value={cls.name}>
+                        {cls.displayName}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -2263,10 +2275,19 @@ const TeacherManagement: React.FC = () => {
                   value={editingAssignment?.section || ''}
                   onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, section: e.target.value } : null)}
                   label="Section"
+                  disabled={!editingAssignment?.grade || availableClasses.length === 0}
                 >
-                  {dynamicSections.map(s => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
+                  {!editingAssignment?.grade ? (
+                    <MenuItem disabled>Select a class first</MenuItem>
+                  ) : getSectionsForClass(editingAssignment.grade).length === 0 ? (
+                    <MenuItem disabled>No sections available for this class</MenuItem>
+                  ) : (
+                    getSectionsForClass(editingAssignment.grade).map(section => (
+                      <MenuItem key={section} value={section}>
+                        Section {section}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Grid>

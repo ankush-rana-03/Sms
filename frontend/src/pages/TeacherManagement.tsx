@@ -366,12 +366,15 @@ const TeacherManagement: React.FC = () => {
     };
 
     try {
-      const res = await apiService.post<{ success: boolean; message: string }>(`/admin/teachers/${selectedTeacher._id}/assign-classes`, payload);
+      const res = await apiService.post<{ success: boolean; message: string; data: any }>(`/admin/teachers/${selectedTeacher._id}/assign-classes`, payload);
       if (res.success) {
-        showSnackbar('Assigned class & subjects saved', 'success');
-        setOpenAssignDialog(false);
+        const addedCount = merged.length;
+        showSnackbar(`${addedCount} assignment(s) added successfully!`, 'success');
         
-        // Reset the form
+        // Keep dialog open for adding more assignments
+        // setOpenAssignDialog(false); // Removed this line
+        
+        // Reset the form for next assignment
         setAssignForm({
           grade: '',
           section: '',
@@ -379,8 +382,37 @@ const TeacherManagement: React.FC = () => {
           subjectInput: ''
         });
         
-        // Refresh the teacher data to get the real IDs from the backend
-        fetchTeachers();
+        // Update the local state immediately without refreshing
+        if (selectedTeacher && res.data && res.data.assignedClasses) {
+          // Get the newly added assignments from the response
+          const newAssignments = res.data.assignedClasses.filter((ac: any) => 
+            !selectedTeacher.assignedClasses.some((existing: any) => 
+              existing.grade === ac.grade && 
+              existing.section === ac.section && 
+              existing.subject === ac.subject
+            )
+          );
+          
+          if (newAssignments.length > 0) {
+            setSelectedTeacher(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                assignedClasses: [...prev.assignedClasses, ...newAssignments]
+              };
+            });
+            
+            // Also update the teachers list
+            setTeachers(prev => prev.map(teacher => 
+              teacher._id === selectedTeacher._id
+                ? {
+                    ...teacher,
+                    assignedClasses: [...teacher.assignedClasses, ...newAssignments]
+                  }
+                : teacher
+            ));
+          }
+        }
       } else {
         showSnackbar(res.message || 'Failed to save assignments', 'error');
       }
@@ -1990,7 +2022,14 @@ const TeacherManagement: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenAssignDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveAssignedClassSubjects}>Save</Button>
+          <Button variant="contained" onClick={handleSaveAssignedClassSubjects}>Add Assignment</Button>
+          <Button 
+            variant="outlined" 
+            onClick={() => setOpenAssignDialog(false)}
+            color="primary"
+          >
+            Done
+          </Button>
         </DialogActions>
       </Dialog>
 

@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const Class = require('../models/Class');
+const Teacher = require('../models/Teacher');
 
 // Get all classes
 router.get('/', protect, authorize('admin', 'principal', 'teacher'), async (req, res) => {
   try {
     const classes = await Class.find({ isActive: true })
-      .select('name section academicYear roomNumber capacity currentStrength')
-      .sort({ name: 1, section: 1 });
+      .select('name section academicYear roomNumber capacity currentStrength classTeacher')
+      .populate('classTeacher', 'name email');
 
     // Transform data to match frontend expectations
     const transformedClasses = classes.map(cls => ({
@@ -19,7 +20,8 @@ router.get('/', protect, authorize('admin', 'principal', 'teacher'), async (req,
       academicYear: cls.academicYear,
       roomNumber: cls.roomNumber,
       capacity: cls.capacity,
-      currentStrength: cls.currentStrength
+      currentStrength: cls.currentStrength,
+      classTeacher: cls.classTeacher ? { _id: cls.classTeacher._id, name: cls.classTeacher.name, email: cls.classTeacher.email } : null
     }));
 
     res.status(200).json({
@@ -78,6 +80,77 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       message: 'Error creating class',
       error: error.message
     });
+  }
+});
+
+// Assign class teacher
+router.put('/:classId/class-teacher', protect, authorize('admin', 'principal'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { teacherId } = req.body;
+
+    if (!teacherId) {
+      return res.status(400).json({ success: false, message: 'teacherId is required' });
+    }
+
+    const cls = await Class.findById(classId);
+    if (!cls) return res.status(404).json({ success: false, message: 'Class not found' });
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) return res.status(404).json({ success: false, message: 'Teacher not found' });
+    if (teacher.isActive === false) return res.status(400).json({ success: false, message: 'Cannot assign an inactive teacher' });
+
+    // If this class already has a class teacher, clear that teacher's flags
+    if (cls.classTeacher && String(cls.classTeacher) !== String(teacherId)) {
+      await Teacher.findByIdAndUpdate(cls.classTeacher, { isClassTeacher: false, classTeacherOf: null });
+    }
+
+    // If this teacher is class teacher of another class, clear that class
+    if (teacher.classTeacherOf && String(teacher.classTeacherOf) !== String(classId)) {
+      await Class.findByIdAndUpdate(teacher.classTeacherOf, { $unset: { classTeacher: 1 } });
+    }
+
+    // Set up new links
+    cls.classTeacher = teacher._id;
+    await cls.save();
+
+    teacher.isClassTeacher = true;
+    teacher.classTeacherOf = cls._id;
+    await teacher.save();
+
+    const populated = await Class.findById(classId).select('name section classTeacher').populate('classTeacher', 'name email');
+
+    res.status(200).json({ success: true, message: 'Class teacher assigned', data: {
+      _id: populated._id,
+      name: populated.name,
+      section: populated.section,
+      classTeacher: populated.classTeacher ? { _id: populated.classTeacher._id, name: populated.classTeacher.name, email: populated.classTeacher.email } : null
+    }});
+  } catch (error) {
+    console.error('Error assigning class teacher:', error);
+    res.status(500).json({ success: false, message: 'Error assigning class teacher', error: error.message });
+  }
+});
+
+// Unassign class teacher
+router.delete('/:classId/class-teacher', protect, authorize('admin', 'principal'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const cls = await Class.findById(classId);
+    if (!cls) return res.status(404).json({ success: false, message: 'Class not found' });
+
+    if (cls.classTeacher) {
+      // Clear teacher flags
+      await Teacher.findByIdAndUpdate(cls.classTeacher, { isClassTeacher: false, classTeacherOf: null });
+      // Clear class link
+      cls.classTeacher = undefined;
+      await cls.save();
+    }
+
+    res.status(200).json({ success: true, message: 'Class teacher unassigned' });
+  } catch (error) {
+    console.error('Error unassigning class teacher:', error);
+    res.status(500).json({ success: false, message: 'Error unassigning class teacher', error: error.message });
   }
 });
 

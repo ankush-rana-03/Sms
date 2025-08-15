@@ -78,11 +78,16 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
     }
 
     // Check if class already exists in current session
-    const existingClass = await Class.findOne({ name, section, academicYear, session: currentSession.name });
+    const existingClass = await Class.findOne({ 
+      name, 
+      section, 
+      session: currentSession.name 
+    });
+    
     if (existingClass) {
       return res.status(400).json({
         success: false,
-        message: 'Class with this name, section, and academic year already exists in the current session'
+        message: `Class ${name} Section ${section} already exists in the current session (${currentSession.name})`
       });
     }
 
@@ -106,15 +111,10 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
     // Handle specific MongoDB duplicate key errors
     if (error.code === 11000) {
       const duplicateFields = Object.keys(error.keyPattern || {});
-      if (duplicateFields.includes('name') && duplicateFields.includes('section') && duplicateFields.includes('academicYear')) {
+      if (duplicateFields.includes('name') && duplicateFields.includes('section') && duplicateFields.includes('session')) {
         return res.status(409).json({
           success: false,
-          message: `A class with name "${name}", section "${section}", and academic year "${academicYear}" already exists.`
-        });
-      } else if (duplicateFields.includes('name') && duplicateFields.includes('section')) {
-        return res.status(409).json({
-          success: false,
-          message: `A class with name "${name}" and section "${section}" already exists in this academic year.`
+          message: `A class with name "${name}" and section "${section}" already exists in the current session.`
         });
       }
     }

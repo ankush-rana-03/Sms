@@ -36,6 +36,27 @@ const Classes: React.FC = () => {
     capacity: 40
   });
 
+  // Predefined class options
+  const classOptions = [
+    { value: 'nursery', label: 'Nursery' },
+    { value: 'lkg', label: 'LKG' },
+    { value: 'ukg', label: 'UKG' },
+    { value: '1', label: 'Class 1' },
+    { value: '2', label: 'Class 2' },
+    { value: '3', label: 'Class 3' },
+    { value: '4', label: 'Class 4' },
+    { value: '5', label: 'Class 5' },
+    { value: '6', label: 'Class 6' },
+    { value: '7', label: 'Class 7' },
+    { value: '8', label: 'Class 8' },
+    { value: '9', label: 'Class 9' },
+    { value: '10', label: 'Class 10' },
+    { value: '11', label: 'Class 11' },
+    { value: '12', label: 'Class 12' }
+  ];
+
+  const sectionOptions = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
   const fetchClasses = async () => {
     try {
       setLoading(true);
@@ -245,7 +266,12 @@ const Classes: React.FC = () => {
                       <ClassIcon />
                     </Avatar>
                     <Box>
-                      <Typography variant="h6">{cls.name} - Section {cls.section}</Typography>
+                      <Typography variant="h6">
+                        {cls.name === 'nursery' ? 'Nursery' : 
+                         cls.name === 'lkg' ? 'LKG' : 
+                         cls.name === 'ukg' ? 'UKG' : 
+                         `Class ${cls.name}`} - Section {cls.section}
+                      </Typography>
                       {cls.classTeacher ? (
                         <Typography variant="body2" color="text.secondary">
                           Class Teacher: {cls.classTeacher.name}
@@ -279,22 +305,34 @@ const Classes: React.FC = () => {
         <DialogContent>
           <TextField
             fullWidth
+            select
             label="Class Name"
             value={newClass.name}
             onChange={(e) => setNewClass(prev => ({ ...prev, name: e.target.value }))}
             margin="normal"
-            placeholder="e.g., Class 10"
             required
-          />
+          >
+            {classOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             fullWidth
+            select
             label="Section"
             value={newClass.section}
             onChange={(e) => setNewClass(prev => ({ ...prev, section: e.target.value }))}
             margin="normal"
-            placeholder="e.g., A, B, C"
             required
-          />
+          >
+            {sectionOptions.map((section) => (
+              <MenuItem key={section} value={section}>
+                Section {section}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             fullWidth
             label="Academic Year"

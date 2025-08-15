@@ -77,20 +77,29 @@ exports.createStudent = async (req, res) => {
       });
     }
 
+    // Enforce unique roll number within grade + section
+    const existingRoll = await Student.findOne({ grade, section, rollNumber });
+    if (existingRoll) {
+      return res.status(400).json({
+        success: false,
+        message: `Roll number ${rollNumber} already exists for Grade ${grade}-${section}`
+      });
+    }
+
     // Create student
     const student = await Student.create({
-      name,
-      email,
-      phone,
-      address,
+      name: name?.trim(),
+      email: email?.trim().toLowerCase(),
+      phone: phone?.trim(),
+      address: address?.trim(),
       dateOfBirth,
       grade,
       section,
-      rollNumber,
+      rollNumber: rollNumber?.trim(),
       gender,
       bloodGroup,
-      parentName,
-      parentPhone
+      parentName: parentName?.trim(),
+      parentPhone: parentPhone?.trim()
     });
 
     console.log('Student created successfully:', student._id);

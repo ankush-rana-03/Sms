@@ -21,6 +21,7 @@ const Students: React.FC = () => {
   }, []);
 
   const fetchStudents = async () => {
+    setError(null);
     try {
       setFetchingStudents(true);
       const response = await studentService.getStudents();
@@ -38,31 +39,27 @@ const Students: React.FC = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
-    
     try {
-      // The student is already saved in the form component
-      // Just refresh the students list and show success
-      await fetchStudents();
-      
-      // Show success toast
+      const res = await studentService.createStudent(data);
+      // Optimistic UI: prepend new student
+      if (res?.data) {
+        setStudents(prev => [res.data, ...prev]);
+      } else {
+        await fetchStudents();
+      }
       setToastMessage('Student registered successfully!');
       setToastSeverity('success');
       setShowToast(true);
-      
       setSuccess('Student registered successfully!');
       setOpenRegistration(false);
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => setSuccess(null), 2000);
     } catch (error: any) {
       console.error('Error handling student registration:', error);
-      
-      // Show error toast
-      setToastMessage('Failed to complete registration');
+      const msg = error?.message || 'Failed to complete registration';
+      setToastMessage(msg);
       setToastSeverity('error');
       setShowToast(true);
-      
-      setError('Failed to complete registration');
+      setError(msg);
     } finally {
       setLoading(false);
     }

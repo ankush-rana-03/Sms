@@ -54,7 +54,7 @@ import {
   Dashboard
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import staffAttendanceService, { StaffAttendance, StaffAttendanceStatistics, StaffAttendanceDashboard } from '../services/staffAttendanceService';
+import staffAttendanceService, { StaffAttendance as StaffAttendanceRecord, StaffAttendanceStatistics, StaffAttendanceDashboard } from '../services/staffAttendanceService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -85,7 +85,7 @@ const StaffAttendance: React.FC = () => {
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [attendanceData, setAttendanceData] = useState<StaffAttendance[]>([]);
+  const [attendanceData, setAttendanceData] = useState<StaffAttendanceRecord[]>([]);
   const [statistics, setStatistics] = useState<StaffAttendanceStatistics | null>(null);
   const [dashboard, setDashboard] = useState<StaffAttendanceDashboard | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({

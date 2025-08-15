@@ -41,7 +41,8 @@ const drawerWidth = 240;
 const getMenuItems = (userRole: string) => {
   const allItems = [
     { text: 'Dashboard', icon: <Dashboard />, path: '/', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
-    { text: 'Attendance', icon: <People />, path: '/attendance', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
+    { text: 'Student Attendance', icon: <School />, path: '/student-attendance', roles: ['admin', 'principal', 'teacher'] },
+    { text: 'Staff Attendance', icon: <People />, path: '/staff-attendance', roles: ['admin', 'principal', 'teacher'] },
     { text: 'Students', icon: <School />, path: '/students', roles: ['admin', 'principal', 'teacher'] },
     { text: 'Teacher Management', icon: <ManageAccounts />, path: '/teacher-management', roles: ['admin'] },
     { text: 'Classes', icon: <Class />, path: '/classes', roles: ['admin', 'principal', 'teacher'] },

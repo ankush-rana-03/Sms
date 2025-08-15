@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
+import StudentAttendance from './pages/StudentAttendance';
+import StaffAttendance from './pages/StaffAttendance';
 import Students from './pages/Students';
 import Teachers from './pages/Teachers';
 import Classes from './pages/Classes';
@@ -76,6 +78,16 @@ const App: React.FC = () => {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="attendance" element={<Attendance />} />
+                <Route path="student-attendance" element={
+                  <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
+                    <StudentAttendance />
+                  </RoleBasedRoute>
+                } />
+                <Route path="staff-attendance" element={
+                  <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
+                    <StaffAttendance />
+                  </RoleBasedRoute>
+                } />
                 <Route path="students" element={
                   <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
                     <Students />

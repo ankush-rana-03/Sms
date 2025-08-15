@@ -2012,29 +2012,72 @@ const TeacherManagement: React.FC = () => {
             {selectedTeacher && selectedTeacher.assignedClasses?.length > 0 && (
               <Grid item xs={12}>
                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
                   {selectedTeacher.assignedClasses.map((ac, idx) => (
-                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Box 
+                      key={idx} 
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        backgroundColor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        padding: '4px 8px',
+                        gap: 0.5,
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          borderColor: 'primary.main',
+                          boxShadow: 1,
+                          transform: 'translateY(-1px)'
+                        }
+                      }}
+                    >
                       <Chip 
                         label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} 
                         size="small" 
                         variant="outlined"
+                        sx={{ 
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          '& .MuiChip-label': {
+                            px: 1,
+                            py: 0.5
+                          }
+                        }}
                       />
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEditAssignment(ac)}
-                        sx={{ ml: 0.5 }}
-                      >
-                        <Edit fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteAssignment(ac._id)}
-                        sx={{ ml: 0.5 }}
-                        color="error"
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditAssignment(ac)}
+                          sx={{ 
+                            width: 24, 
+                            height: 24,
+                            color: 'primary.main',
+                            '&:hover': {
+                              backgroundColor: 'primary.light',
+                              color: 'primary.contrastText'
+                            }
+                          }}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteAssignment(ac._id)}
+                          sx={{ 
+                            width: 24, 
+                            height: 24,
+                            color: 'error.main',
+                            '&:hover': {
+                              backgroundColor: 'error.light',
+                              color: 'error.contrastText'
+                            }
+                          }}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Box>
                     </Box>
                   ))}
                 </Box>

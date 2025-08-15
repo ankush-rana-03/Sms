@@ -117,7 +117,7 @@ const Sessions: React.FC = () => {
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
     queryKey: ['sessions'],
     queryFn: async () => {
-      const response = await api.get('/sessions');
+      const response = await api.get<Session[]>('/sessions');
       return response.data;
     }
   });
@@ -126,7 +126,7 @@ const Sessions: React.FC = () => {
   const { data: currentSession } = useQuery({
     queryKey: ['currentSession'],
     queryFn: async () => {
-      const response = await api.get('/sessions/current');
+      const response = await api.get<Session | null>('/sessions/current');
       return response.data;
     }
   });
@@ -134,7 +134,7 @@ const Sessions: React.FC = () => {
   // Create session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await api.post('/sessions', data);
+      const response = await api.post<Session>('/sessions', data);
       return response.data;
     },
     onSuccess: () => {
@@ -157,7 +157,7 @@ const Sessions: React.FC = () => {
   // Update session mutation
   const updateSessionMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await api.put(`/sessions/${id}`, data);
+      const response = await api.put<Session>(`/sessions/${id}`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -170,7 +170,7 @@ const Sessions: React.FC = () => {
   // Process promotions mutation
   const processPromotionsMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const response = await api.post(`/sessions/${sessionId}/process-promotions`);
+      const response = await api.post<any>(`/sessions/${sessionId}/process-promotions`);
       return response.data;
     },
     onSuccess: (data) => {
@@ -182,7 +182,7 @@ const Sessions: React.FC = () => {
   // Archive session mutation
   const archiveSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const response = await api.post(`/sessions/${sessionId}/archive`);
+      const response = await api.post<any>(`/sessions/${sessionId}/archive`);
       return response.data;
     },
     onSuccess: () => {
@@ -195,7 +195,7 @@ const Sessions: React.FC = () => {
   // Fresh start mutation
   const freshStartMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const response = await api.post(`/sessions/${sessionId}/fresh-start`);
+      const response = await api.post<any>(`/sessions/${sessionId}/fresh-start`);
       return response.data;
     },
     onSuccess: () => {
@@ -208,7 +208,7 @@ const Sessions: React.FC = () => {
   // Delete session mutation
   const deleteSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      const response = await api.delete(`/sessions/${sessionId}`);
+      const response = await api.delete<any>(`/sessions/${sessionId}`);
       return response.data;
     },
     onSuccess: () => {

@@ -13,7 +13,9 @@ const {
   updateTeacherStatus,
   getOnlineTeachers,
   assignClassesToTeacher,
-  getTeacherStatistics
+  getTeacherStatistics,
+  updateClassAssignment,
+  deleteClassAssignment
 } = require('../controllers/teacherManagement');
 
 // All routes require admin authorization
@@ -232,6 +234,8 @@ router.put('/:teacherId/status', updateTeacherStatus);
 
 // Class assignments
 router.post('/:teacherId/assign-classes', assignClassesToTeacher);
+router.put('/:teacherId/assign-classes/:assignmentId', updateClassAssignment);
+router.delete('/:teacherId/assign-classes/:assignmentId', deleteClassAssignment);
 
 // Statistics and monitoring
 router.get('/online/teachers', getOnlineTeachers);

@@ -200,6 +200,17 @@ const TeacherManagement: React.FC = () => {
   // New state for password reset
   const [newPassword, setNewPassword] = useState('');
 
+  // State for editing assignments
+  const [editingAssignment, setEditingAssignment] = useState<{
+    id: string;
+    grade: string;
+    section: string;
+    subject: string;
+    time?: string;
+    day?: string;
+  } | null>(null);
+  const [openEditAssignmentDialog, setOpenEditAssignmentDialog] = useState(false);
+
 
 
 
@@ -372,6 +383,79 @@ const TeacherManagement: React.FC = () => {
       console.error('Error saving assigned class & subjects', e);
       showSnackbar(e.response?.data?.message || 'Error saving assignments', 'error');
     }
+  };
+
+  // Function to open edit assignment dialog
+  const handleEditAssignment = (assignment: any) => {
+    setEditingAssignment({
+      id: assignment._id,
+      grade: assignment.grade,
+      section: assignment.section,
+      subject: assignment.subject,
+      time: assignment.time,
+      day: assignment.day
+    });
+    setOpenEditAssignmentDialog(true);
+  };
+
+  // Function to save edited assignment
+  const handleSaveEditedAssignment = async () => {
+    if (!editingAssignment || !selectedTeacher) return;
+
+    try {
+      const response = await apiService.put<{ success: boolean; message: string; data: any }>(
+        `/admin/teachers/${selectedTeacher._id}/assign-classes/${editingAssignment.id}`,
+        {
+          grade: editingAssignment.grade,
+          section: editingAssignment.section,
+          subject: editingAssignment.subject,
+          time: editingAssignment.time,
+          day: editingAssignment.day
+        }
+      );
+
+      if (response.success) {
+        showSnackbar('Assignment updated successfully', 'success');
+        handleCloseEditDialog();
+        // Refresh the teacher data
+        fetchTeachers();
+      } else {
+        showSnackbar(response.message || 'Error updating assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error updating assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error updating assignment', 'error');
+    }
+  };
+
+  // Function to delete assignment
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    if (!selectedTeacher) return;
+    
+    if (!window.confirm('Are you sure you want to delete this assignment? This action cannot be undone.')) return;
+
+    try {
+      const response = await apiService.delete<{ success: boolean; message: string }>(
+        `/admin/teachers/${selectedTeacher._id}/assign-classes/${assignmentId}`
+      );
+
+      if (response.success) {
+        showSnackbar('Assignment deleted successfully', 'success');
+        // Refresh the teacher data
+        fetchTeachers();
+      } else {
+        showSnackbar(response.message || 'Error deleting assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error deleting assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error deleting assignment', 'error');
+    }
+  };
+
+  // Function to close edit dialog and reset state
+  const handleCloseEditDialog = () => {
+    setOpenEditAssignmentDialog(false);
+    setEditingAssignment(null);
   };
 
   const handleUpdateTeacher = async () => {
@@ -1820,7 +1904,28 @@ const TeacherManagement: React.FC = () => {
                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {selectedTeacher.assignedClasses.map((ac, idx) => (
-                    <Chip key={idx} label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} size="small" />
+                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Chip 
+                        label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} 
+                        size="small" 
+                        variant="outlined"
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditAssignment(ac)}
+                        sx={{ ml: 0.5 }}
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteAssignment(ac._id)}
+                        sx={{ ml: 0.5 }}
+                        color="error"
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
                   ))}
                 </Box>
               </Grid>
@@ -1830,6 +1935,82 @@ const TeacherManagement: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenAssignDialog(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSaveAssignedClassSubjects}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Assignment Dialog */}
+      <Dialog open={openEditAssignmentDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Assignment</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={6}>
+              <FormControl fullWidth>
+                <InputLabel>Grade</InputLabel>
+                <Select
+                  value={editingAssignment?.grade || ''}
+                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, grade: e.target.value } : null)}
+                  label="Grade"
+                >
+                  {GRADES_FOR_ASSIGNMENT.map(g => (
+                    <MenuItem key={g} value={g}>{g}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth>
+                <InputLabel>Section</InputLabel>
+                <Select
+                  value={editingAssignment?.section || ''}
+                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, section: e.target.value } : null)}
+                  label="Section"
+                >
+                  {SECTIONS_FOR_ASSIGNMENT.map(s => (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Subject"
+                value={editingAssignment?.subject || ''}
+                onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, subject: e.target.value } : null)}
+                margin="normal"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Time (Optional)"
+                value={editingAssignment?.time || ''}
+                onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, time: e.target.value } : null)}
+                margin="normal"
+                placeholder="e.g., 9:00 AM"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Day (Optional)"
+                value={editingAssignment?.day || ''}
+                onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, day: e.target.value } : null)}
+                margin="normal"
+                placeholder="e.g., Monday"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveEditedAssignment}
+            disabled={!editingAssignment?.grade || !editingAssignment?.section || !editingAssignment?.subject}
+          >
+            Update Assignment
+          </Button>
         </DialogActions>
       </Dialog>
 

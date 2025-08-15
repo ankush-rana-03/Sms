@@ -897,6 +897,139 @@ exports.assignClassesToTeacher = async (req, res) => {
   }
 };
 
+// Update a specific class assignment for a teacher
+exports.updateClassAssignment = async (req, res) => {
+  try {
+    const { teacherId, assignmentId } = req.params;
+    const { grade, section, subject, time, day } = req.body;
+
+    console.log(`Updating assignment ${assignmentId} for teacher ${teacherId}`);
+    console.log('Update data:', { grade, section, subject, time, day });
+
+    // Validate required fields
+    if (!grade || !section || !subject) {
+      return res.status(400).json({
+        success: false,
+        message: 'Grade, section, and subject are required'
+      });
+    }
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Find the assignment to update
+    const assignmentIndex = teacher.assignedClasses.findIndex(
+      assignment => assignment._id.toString() === assignmentId
+    );
+
+    if (assignmentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Check for conflicts with other assignments (excluding the current one)
+    const hasConflict = teacher.assignedClasses.some((assignment, index) => {
+      if (index === assignmentIndex) return false; // Skip current assignment
+      return assignment.grade === grade && 
+             assignment.section === section && 
+             assignment.subject === subject;
+    });
+
+    if (hasConflict) {
+      return res.status(409).json({
+        success: false,
+        message: `Assignment already exists: ${subject} for ${grade}-${section}`
+      });
+    }
+
+    // Update the assignment
+    teacher.assignedClasses[assignmentIndex] = {
+      ...teacher.assignedClasses[assignmentIndex],
+      grade,
+      section,
+      subject,
+      time: time || teacher.assignedClasses[assignmentIndex].time,
+      day: day || teacher.assignedClasses[assignmentIndex].day
+    };
+
+    // Save the updated teacher
+    const savedTeacher = await teacher.save();
+    console.log('Assignment updated successfully');
+
+    // Return the updated assignment
+    const updatedAssignment = savedTeacher.assignedClasses[assignmentIndex];
+    
+    res.status(200).json({
+      success: true,
+      message: 'Assignment updated successfully',
+      data: updatedAssignment
+    });
+  } catch (error) {
+    console.error('Error updating class assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating class assignment',
+      error: error.message
+    });
+  }
+};
+
+// Delete a specific class assignment for a teacher
+exports.deleteClassAssignment = async (req, res) => {
+  try {
+    const { teacherId, assignmentId } = req.params;
+
+    console.log(`Deleting assignment ${assignmentId} for teacher ${teacherId}`);
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Find the assignment to delete
+    const assignmentIndex = teacher.assignedClasses.findIndex(
+      assignment => assignment._id.toString() === assignmentId
+    );
+
+    if (assignmentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Remove the assignment
+    const deletedAssignment = teacher.assignedClasses.splice(assignmentIndex, 1)[0];
+    
+    // Save the updated teacher
+    await teacher.save();
+    console.log('Assignment deleted successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Assignment deleted successfully',
+      data: deletedAssignment
+    });
+  } catch (error) {
+    console.error('Error deleting class assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting class assignment',
+      error: error.message
+    });
+  }
+};
+
 // Get teacher statistics
 exports.getTeacherStatistics = async (req, res) => {
   try {

@@ -794,10 +794,10 @@ exports.assignClassesToTeacher = async (req, res) => {
       }
     }
     
-    // Create a map of existing assignments by grade-section-subject combination for easy lookup
+    // Create a map of existing assignments by className-section-subject combination for easy lookup
     const existingAssignmentsMap = new Map();
     teacher.assignedClasses.forEach(existing => {
-      const key = `${existing.grade}-${existing.section}-${existing.subject}`;
+      const key = `${existing.className}-${existing.section}-${existing.subject}`;
       existingAssignmentsMap.set(key, existing);
     });
     
@@ -809,30 +809,30 @@ exports.assignClassesToTeacher = async (req, res) => {
     // Prevent duplicates within incoming payload
     const incomingKeys = new Set();
     for (const a of assignedClasses) {
-      const k = `${a.grade}-${a.section}-${a.subject}`;
+      const k = `${a.className}-${a.section}-${a.subject}`;
       if (incomingKeys.has(k)) {
         return res.status(409).json({
           success: false,
-          message: `Duplicate in request: ${a.subject} for ${a.grade}-${a.section}`
+          message: `Duplicate in request: ${a.subject} for ${a.className}-${a.section}`
         });
       }
       incomingKeys.add(k);
     }
     
     for (const assignment of assignedClasses) {
-      const assignmentKey = `${assignment.grade}-${assignment.section}-${assignment.subject}`;
+      const assignmentKey = `${assignment.className}-${assignment.section}-${assignment.subject}`;
       console.log(`Processing assignment: ${assignmentKey}`);
       
       if (existingAssignmentsMap.has(assignmentKey)) {
         // Reject duplicates against existing data
         return res.status(409).json({
           success: false,
-          message: `Already assigned: ${assignment.subject} for ${assignment.grade}-${assignment.section}`
+          message: `Already assigned: ${assignment.subject} for ${assignment.className}-${assignment.section}`
         });
       } else {
         // Add new assignment
         const newAssignment = {
-          grade: assignment.grade,
+          className: assignment.className,
           section: assignment.section,
           subject: assignment.subject
         };
@@ -871,7 +871,7 @@ exports.assignClassesToTeacher = async (req, res) => {
     const responseData = populatedTeacher.toObject();
     responseData.assignedClasses = responseData.assignedClasses.map(ac => ({
       _id: ac._id,
-      grade: ac.grade,
+      className: ac.className,
       section: ac.section,
       subject: ac.subject
     }));
@@ -898,16 +898,16 @@ exports.assignClassesToTeacher = async (req, res) => {
 exports.updateClassAssignment = async (req, res) => {
   try {
     const { teacherId, assignmentId } = req.params;
-    const { grade, section, subject } = req.body;
+    const { className, section, subject } = req.body;
 
     console.log(`Updating assignment ${assignmentId} for teacher ${teacherId}`);
-    console.log('Update data:', { grade, section, subject });
+    console.log('Update data:', { className, section, subject });
 
     // Validate required fields
-    if (!grade || !section || !subject) {
+    if (!className || !section || !subject) {
       return res.status(400).json({
         success: false,
-        message: 'Grade, section, and subject are required'
+        message: 'Class name, section, and subject are required'
       });
     }
 
@@ -942,7 +942,7 @@ exports.updateClassAssignment = async (req, res) => {
     // Check for conflicts with other assignments (excluding the current one)
     const hasConflict = teacher.assignedClasses.some((assignment, index) => {
       if (index === assignmentIndex) return false; // Skip current assignment
-      return assignment.grade === grade && 
+      return assignment.className === className && 
              assignment.section === section && 
              assignment.subject === subject;
     });
@@ -950,14 +950,14 @@ exports.updateClassAssignment = async (req, res) => {
     if (hasConflict) {
       return res.status(409).json({
         success: false,
-        message: `Assignment already exists: ${subject} for ${grade}-${section}`
+        message: `Assignment already exists: ${subject} for ${className}-${section}`
       });
     }
 
     // Update the assignment
     teacher.assignedClasses[assignmentIndex] = {
       ...teacher.assignedClasses[assignmentIndex],
-      grade,
+      className,
       section,
       subject
     };

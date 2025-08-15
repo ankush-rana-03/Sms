@@ -2016,7 +2016,23 @@ const TeacherManagement: React.FC = () => {
 
             {selectedTeacher && selectedTeacher.assignedClasses?.length > 0 && (
               <Grid item xs={12}>
-                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    mt: 3, 
+                    mb: 2, 
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    borderBottom: '2px solid',
+                    borderColor: 'primary.main',
+                    pb: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}
+                >
+                  📚 Current Assignments
+                </Typography>
                 <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
                   {selectedTeacher.assignedClasses.map((ac, idx) => {
                     console.log('Rendering assignment:', ac);

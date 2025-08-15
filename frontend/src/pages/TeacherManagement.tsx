@@ -428,6 +428,12 @@ const TeacherManagement: React.FC = () => {
     console.log('Assignment ID:', assignment._id);
     console.log('Assignment data:', { grade: assignment.grade, section: assignment.section, subject: assignment.subject });
     
+    // Also log the current state of all assignments for debugging
+    if (selectedTeacher) {
+      console.log('Current assignedClasses in selectedTeacher:', selectedTeacher.assignedClasses);
+      console.log('Available assignment IDs:', selectedTeacher.assignedClasses.map(ac => ac._id));
+    }
+    
     setEditingAssignment({
       id: assignment._id,
       grade: assignment.grade,
@@ -458,15 +464,24 @@ const TeacherManagement: React.FC = () => {
       if (response.success) {
         showSnackbar('Assignment updated successfully', 'success');
         
+        console.log('Backend response data:', response.data);
+        console.log('Updated assignment from backend:', response.data);
+        
         // Update the local state immediately without refreshing
-        if (selectedTeacher) {
+        if (selectedTeacher && response.data) {
+          // Use the backend response data which has the correct MongoDB ID
+          const updatedAssignment = response.data;
+          
+          console.log('Updating local state with assignment ID:', updatedAssignment._id);
+          console.log('Previous editing assignment ID:', editingAssignment.id);
+          
           setSelectedTeacher(prev => {
             if (!prev) return prev;
             return {
               ...prev,
               assignedClasses: prev.assignedClasses.map(ac => 
                 ac._id === editingAssignment.id 
-                  ? { ...ac, ...editingAssignment }
+                  ? updatedAssignment  // Use backend data with correct ID
                   : ac
               )
             };
@@ -479,7 +494,7 @@ const TeacherManagement: React.FC = () => {
                   ...teacher,
                   assignedClasses: teacher.assignedClasses.map(ac => 
                     ac._id === editingAssignment.id 
-                      ? { ...ac, ...editingAssignment }
+                      ? updatedAssignment  // Use backend data with correct ID
                       : ac
                   )
                 }

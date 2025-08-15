@@ -106,7 +106,7 @@ exports.createStudent = async (req, res) => {
     if (existingRoll) {
       return res.status(400).json({
         success: false,
-        message: `Roll number ${rollNumber} already exists for Grade ${grade}-${section}`
+        message: `Roll number ${rollNumber} already exists for Class ${grade}-${section}`
       });
     }
 
@@ -237,7 +237,7 @@ exports.updateStudent = async (req, res) => {
       const rollNumber = update.rollNumber || current.rollNumber;
       const dup = await Student.findOne({ _id: { $ne: studentId }, grade, section, rollNumber });
       if (dup) {
-        return res.status(400).json({ success: false, message: `Roll number ${rollNumber} already exists for Grade ${grade}-${section}` });
+        return res.status(400).json({ success: false, message: `Roll number ${rollNumber} already exists for Class ${grade}-${section}` });
       }
     }
 

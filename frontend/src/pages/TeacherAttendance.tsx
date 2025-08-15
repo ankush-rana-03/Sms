@@ -58,7 +58,7 @@ const TeacherAttendance: React.FC = () => {
   const [editStatus, setEditStatus] = useState<'present' | 'absent' | 'late' | 'half-day'>('present');
   const [editRemarks, setEditRemarks] = useState('');
 
-  const grades = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const grades = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const sections = ['A', 'B', 'C', 'D', 'E'];
 
 
@@ -343,15 +343,18 @@ const TeacherAttendance: React.FC = () => {
         <Grid container spacing={2}>
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
-              <InputLabel>Grade</InputLabel>
+              <InputLabel>Class</InputLabel>
               <Select
                 value={selectedGrade}
                 onChange={(e) => setSelectedGrade(e.target.value)}
-                label="Grade"
+                label="Class"
               >
                 {grades.map((grade) => (
                   <MenuItem key={grade} value={grade}>
-                    Grade {grade}
+                    {grade === 'nursery' ? 'Nursery' : 
+                     grade === 'lkg' ? 'LKG' : 
+                     grade === 'ukg' ? 'UKG' : 
+                     `Class ${grade}`}
                   </MenuItem>
                 ))}
               </Select>

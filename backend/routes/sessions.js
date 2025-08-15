@@ -254,11 +254,18 @@ router.post('/:id/fresh-start', protect, authorize('admin', 'principal'), async 
       student.previousGrade = student.grade;
       student.previousSection = student.section;
       
-      // Increment grade (simple logic - you might want to customize this)
-      const gradeNumber = parseInt(student.grade);
-      if (!isNaN(gradeNumber)) {
-        student.grade = (gradeNumber + 1).toString();
+      // Increment grade/class (handle nursery, lkg, ukg, and numeric grades)
+      const gradeMap = {
+        'nursery': 'lkg',
+        'lkg': 'ukg',
+        'ukg': '1',
+        '1': '2', '2': '3', '3': '4', '4': '5', '5': '6', '6': '7', '7': '8', '8': '9', '9': '10', '10': '11', '11': '12'
+      };
+      
+      if (gradeMap[student.grade]) {
+        student.grade = gradeMap[student.grade];
       }
+      // If grade is '12', student graduates (no further promotion)
       
       student.currentSession = null; // Will be set when new session is created
       student.promotionStatus = 'pending';

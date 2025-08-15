@@ -20,7 +20,7 @@ const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
   phone: yup.string().required('Phone is required'),
   address: yup.string().required('Address is required'),
-  grade: yup.string().required('Grade is required'),
+  grade: yup.string().oneOf(['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'], 'Please select a valid class').required('Class is required'),
   section: yup.string().required('Section is required'),
   rollNumber: yup.string().required('Roll number is required'),
   dateOfBirth: yup.string().required('Date of birth is required'),
@@ -163,14 +163,17 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
             <TextField
               fullWidth
               select
-              label="Grade"
+              label="Class"
               {...register('grade')}
               error={!!errors.grade}
               helperText={errors.grade?.message}
             >
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((grade) => (
+              {['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((grade) => (
                 <MenuItem key={grade} value={grade}>
-                  Grade {grade}
+                  {grade === 'nursery' ? 'Nursery' : 
+                   grade === 'lkg' ? 'LKG' : 
+                   grade === 'ukg' ? 'UKG' : 
+                   `Class ${grade}`}
                 </MenuItem>
               ))}
             </TextField>

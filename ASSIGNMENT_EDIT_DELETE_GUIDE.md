@@ -32,7 +32,7 @@ This guide explains how to use the new functionality that allows administrators 
    - Click the **Edit** button (pencil icon) next to any assignment
    - A new dialog will open with the current assignment details
    - Modify the fields as needed:
-     - **Grade**: Select from dropdown (Nursery, LKG, UKG, 1-12)
+     - **Class**: Select from dropdown (Nursery, LKG, UKG, 1-12)
      - **Section**: Select from dropdown (A, B, C, D, E)
      - **Subject**: Type the subject name
      - **Time** (Optional): Enter time (e.g., "9:00 AM")

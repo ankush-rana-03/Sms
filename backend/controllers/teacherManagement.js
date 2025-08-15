@@ -907,7 +907,7 @@ exports.updateClassAssignment = async (req, res) => {
     if (!grade || !section || !subject) {
       return res.status(400).json({
         success: false,
-        message: 'Grade, section, and subject are required'
+        message: 'Class, section, and subject are required'
       });
     }
 

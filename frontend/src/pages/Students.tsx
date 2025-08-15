@@ -94,10 +94,15 @@ const Students: React.FC = () => {
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <TextField size="small" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchStudents()} />
-        <TextField size="small" select label="Grade" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} sx={{ minWidth: 140 }}>
-          <MenuItem value="">All Grades</MenuItem>
-          {['1','2','3','4','5','6','7','8','9','10','11','12'].map(g => (
-            <MenuItem key={g} value={g}>Grade {g}</MenuItem>
+        <TextField size="small" select label="Class" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} sx={{ minWidth: 140 }}>
+          <MenuItem value="">All Classes</MenuItem>
+          {['nursery','lkg','ukg','1','2','3','4','5','6','7','8','9','10','11','12'].map(g => (
+            <MenuItem key={g} value={g}>
+              {g === 'nursery' ? 'Nursery' : 
+               g === 'lkg' ? 'LKG' : 
+               g === 'ukg' ? 'UKG' : 
+               `Class ${g}`}
+            </MenuItem>
           ))}
         </TextField>
         <TextField size="small" select label="Section" value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} sx={{ minWidth: 140 }}>
@@ -146,7 +151,10 @@ const Students: React.FC = () => {
                     <Box>
                       <Typography variant="h6">{student.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Grade: {student.grade} | Email: {student.email}
+                        Class: {student.grade === 'nursery' ? 'Nursery' : 
+                                student.grade === 'lkg' ? 'LKG' : 
+                                student.grade === 'ukg' ? 'UKG' : 
+                                `Class ${student.grade}`} | Email: {student.email}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Phone: {student.phone}

@@ -16,7 +16,7 @@ exports.getStudentsByClass = async (req, res) => {
     if (!grade) {
       return res.status(400).json({
         success: false,
-        message: 'Grade is required'
+        message: 'Class is required'
       });
     }
 
@@ -208,7 +208,7 @@ exports.getTodayAttendance = async (req, res) => {
     if (!grade) {
       return res.status(400).json({
         success: false,
-        message: 'Grade is required'
+        message: 'Class is required'
       });
     }
 

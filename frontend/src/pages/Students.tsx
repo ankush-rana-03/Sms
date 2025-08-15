@@ -1,113 +1,148 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar, TextField, MenuItem, DialogActions, Chip } from '@mui/material';
-import { Add, Person, Refresh } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Avatar,
+  Chip,
+  Alert,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  MenuItem,
+} from '@mui/material';
+import { Add, Person } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
-import studentService, { Student } from '../services/studentService';
+import studentService from '../services/studentService';
+import classService, { ClassWithSections } from '../services/classService';
+import { useAuth } from '../contexts/AuthContext';
 
 const Students: React.FC = () => {
+  const { user } = useAuth();
+  const [students, setStudents] = useState<any[]>([]);
   const [openRegistration, setOpenRegistration] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [students, setStudents] = useState<Student[]>([]);
   const [fetchingStudents, setFetchingStudents] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
   const [search, setSearch] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
+  const [showToast, setShowToast] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
 
-  // Fetch students on component mount
   useEffect(() => {
     fetchStudents();
+    fetchAvailableClasses();
   }, []);
 
+  const fetchAvailableClasses = async () => {
+    try {
+      setLoadingClasses(true);
+      const response = await classService.getAvailableClassesForRegistration();
+      if (response.success) {
+        setAvailableClasses(response.data.classes);
+      }
+    } catch (error: any) {
+      console.error('Error fetching classes:', error);
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
   const fetchStudents = async () => {
-    setError(null);
     try {
       setFetchingStudents(true);
+      setError(null);
       const response = await studentService.getStudents({ search, grade: gradeFilter, section: sectionFilter });
       setStudents(response.data);
-      setError(null);
     } catch (error: any) {
       console.error('Error fetching students:', error);
-      setError('Failed to fetch students');
+      setError(error.message || 'Failed to fetch students');
     } finally {
       setFetchingStudents(false);
     }
   };
 
   const handleRegisterStudent = async (data: any) => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
     try {
-      const res = await studentService.createStudent(data);
-      // Optimistic UI: prepend new student
-      if (res?.data) {
-        setStudents(prev => [res.data, ...prev]);
-      } else {
-        await fetchStudents();
+      const response = await studentService.createStudent(data);
+      if (response.success) {
+        setStudents(prev => [response.data, ...prev]);
+        setToastMessage('Student registered successfully!');
+        setToastSeverity('success');
+        setShowToast(true);
+        setSuccess('Student registered successfully!');
+        setOpenRegistration(false);
       }
-      setToastMessage('Student registered successfully!');
-      setToastSeverity('success');
-      setShowToast(true);
-      setSuccess('Student registered successfully!');
-      setOpenRegistration(false);
-      setTimeout(() => setSuccess(null), 2000);
     } catch (error: any) {
       console.error('Error handling student registration:', error);
       const msg = error?.message || 'Failed to complete registration';
       setToastMessage(msg);
       setToastSeverity('error');
       setShowToast(true);
-      setError(msg);
-    } finally {
-      setLoading(false);
     }
   };
 
+  // Get sections for selected class
+  const getSectionsForClass = (className: string) => {
+    const classData = availableClasses.find(cls => cls.name === className);
+    return classData ? classData.sections : [];
+  };
+
   return (
-    <Box sx={{ flexGrow: 1 }}>
+    <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Students Management</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button 
-            variant="outlined" 
-            startIcon={<Refresh />}
-            onClick={fetchStudents}
-            disabled={fetchingStudents}
-          >
-            Refresh
-          </Button>
-          <Button 
-            variant="contained" 
-            startIcon={<Add />}
-            onClick={() => setOpenRegistration(true)}
-          >
-            Add Student
-          </Button>
-        </Box>
+        <Typography variant="h4" component="h1">
+          Students
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setOpenRegistration(true)}
+        >
+          Add Student
+        </Button>
       </Box>
 
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <TextField size="small" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchStudents()} />
-        <TextField size="small" select label="Class" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} sx={{ minWidth: 140 }}>
+        <TextField 
+          size="small" 
+          select 
+          label="Class" 
+          value={gradeFilter} 
+          onChange={(e) => setGradeFilter(e.target.value)} 
+          sx={{ minWidth: 140 }}
+          disabled={loadingClasses}
+        >
           <MenuItem value="">All Classes</MenuItem>
-          {['nursery','lkg','ukg','1','2','3','4','5','6','7','8','9','10','11','12'].map(g => (
-            <MenuItem key={g} value={g}>
-              {g === 'nursery' ? 'Nursery' : 
-               g === 'lkg' ? 'LKG' : 
-               g === 'ukg' ? 'UKG' : 
-               `Class ${g}`}
+          {availableClasses.map(cls => (
+            <MenuItem key={cls.name} value={cls.name}>
+              {cls.displayName}
             </MenuItem>
           ))}
         </TextField>
-        <TextField size="small" select label="Section" value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} sx={{ minWidth: 140 }}>
+        <TextField 
+          size="small" 
+          select 
+          label="Section" 
+          value={sectionFilter} 
+          onChange={(e) => setSectionFilter(e.target.value)} 
+          sx={{ minWidth: 140 }}
+          disabled={!gradeFilter || loadingClasses}
+        >
           <MenuItem value="">All Sections</MenuItem>
-          {['A','B','C','D','E'].map(s => (
+          {gradeFilter && getSectionsForClass(gradeFilter).map(s => (
             <MenuItem key={s} value={s}>Section {s}</MenuItem>
           ))}
         </TextField>
@@ -195,20 +230,6 @@ const Students: React.FC = () => {
                         }
                       }}>Approve</Button>
                     )}
-                    <Button size="small" color="error" variant="outlined" onClick={async () => {
-                      if (!window.confirm('Delete this student?')) return;
-                      try {
-                        await studentService.deleteStudent(student._id);
-                        setStudents(prev => prev.filter(s => s._id !== student._id));
-                        setToastMessage('Student deleted');
-                        setToastSeverity('success');
-                        setShowToast(true);
-                      } catch (e: any) {
-                        setToastMessage(e.message || 'Delete failed');
-                        setToastSeverity('error');
-                        setShowToast(true);
-                      }
-                    }}>Delete</Button>
                   </Box>
                 </CardContent>
               </Card>
@@ -217,8 +238,9 @@ const Students: React.FC = () => {
         </Grid>
       )}
 
-      <Dialog 
-        open={openRegistration} 
+      {/* Registration Dialog */}
+      <Dialog
+        open={openRegistration}
         onClose={() => setOpenRegistration(false)}
         maxWidth="md"
         fullWidth
@@ -227,7 +249,7 @@ const Students: React.FC = () => {
         <DialogContent>
           <StudentRegistrationForm
             onSubmit={handleRegisterStudent}
-            loading={loading}
+            loading={fetchingStudents}
           />
         </DialogContent>
         <DialogActions>
@@ -238,20 +260,21 @@ const Students: React.FC = () => {
       </Dialog>
 
       {/* Toast Notification */}
-      <Snackbar
-        open={showToast}
-        autoHideDuration={4000}
-        onClose={() => setShowToast(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={() => setShowToast(false)} 
+      {showToast && (
+        <Alert
           severity={toastSeverity}
-          sx={{ width: '100%' }}
+          sx={{
+            position: 'fixed',
+            top: 20,
+            right: 20,
+            zIndex: 9999,
+            minWidth: 300
+          }}
+          onClose={() => setShowToast(false)}
         >
           {toastMessage}
         </Alert>
-      </Snackbar>
+      )}
     </Box>
   );
 };

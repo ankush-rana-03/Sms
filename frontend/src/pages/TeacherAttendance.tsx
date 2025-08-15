@@ -1,67 +1,91 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
-  Typography,
   Paper,
+  Typography,
   Grid,
-  Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Chip,
-  Alert,
-  CircularProgress,
+  TextField,
+  Button,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
+  Alert,
+  CircularProgress,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
+  TextareaAutosize,
+  ToggleButton,
+  ToggleButtonGroup,
+  Card,
+  CardContent,
+  Avatar,
+  IconButton,
   Tooltip
 } from '@mui/material';
 import {
+  Save,
+  Refresh,
+  Edit,
   CheckCircle,
   Cancel,
   Schedule,
   Person,
-  Refresh,
-  Edit,
-  Save,
-
-  Visibility
+  Visibility,
+  VisibilityOff
 } from '@mui/icons-material';
-import teacherService, { Student, TodayAttendanceRecord } from '../services/teacherService';
 import { useAuth } from '../contexts/AuthContext';
+import teacherService from '../services/teacherService';
+import classService, { ClassWithSections } from '../services/classService';
 
 const TeacherAttendance: React.FC = () => {
   const { user } = useAuth();
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [selectedSection, setSelectedSection] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [todayAttendance, setTodayAttendance] = useState<TodayAttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'mark' | 'view'>('mark');
+  const [students, setStudents] = useState<any[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const [editingAttendance, setEditingAttendance] = useState<any>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editStatus, setEditStatus] = useState<'present' | 'absent' | 'late' | 'half-day'>('present');
   const [editRemarks, setEditRemarks] = useState('');
+  const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
 
-  const grades = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const sections = ['A', 'B', 'C', 'D', 'E'];
 
+  // Fetch available classes
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoadingClasses(true);
+        const response = await classService.getAvailableClassesForRegistration();
+        if (response.success) {
+          setAvailableClasses(response.data.classes);
+        }
+      } catch (error: any) {
+        console.error('Error fetching classes:', error);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
 
+    fetchClasses();
+  }, []);
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -153,124 +177,88 @@ const TeacherAttendance: React.FC = () => {
       }));
 
       setAttendanceHistory(mockHistory);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching attendance history:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   }, [selectedGrade, selectedDate, students, user?.name]);
 
+  // Fetch data when selections change
   useEffect(() => {
     if (selectedGrade) {
       fetchStudents();
-      if (viewMode === 'mark') {
-        fetchTodayAttendance();
-      } else {
-        fetchAttendanceHistory();
-      }
+      fetchTodayAttendance();
     }
   }, [selectedGrade, selectedSection, selectedDate, viewMode, fetchStudents, fetchTodayAttendance, fetchAttendanceHistory]);
 
-  const handleMarkAttendance = async (studentId: string, status: 'present' | 'absent' | 'late') => {
-    if (!canMarkAttendance(selectedDate)) {
-      setError(user?.role === 'teacher' 
-        ? 'Teachers can only mark attendance for the current day'
-        : 'Cannot mark attendance for future dates'
-      );
-      return;
-    }
-
-    try {
-      await teacherService.markAttendance(studentId, status, selectedDate);
-      
-      setSuccess(`Attendance marked as ${status} successfully! Notification sent to parent.`);
-      if (viewMode === 'mark') {
-        fetchTodayAttendance();
-      } else {
-        fetchAttendanceHistory();
-      }
-      
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (error: any) {
-      console.error('Error marking attendance:', error);
-      setError(error.message);
-    }
-  };
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleBulkSaveAttendance = async () => {
     if (!selectedGrade || students.length === 0) {
-      setError('Please select a class and ensure students are loaded');
-      return;
-    }
-
-    if (!canMarkAttendance(selectedDate)) {
-      setError(user?.role === 'teacher' 
-        ? 'Teachers can only mark attendance for the current day'
-        : 'Cannot mark attendance for future dates'
-      );
       return;
     }
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // await attendanceService.bulkMarkAttendance({
-      //   classId: selectedGrade,
-      //   date: selectedDate,
-      //   attendanceData: students.map(student => ({
-      //     studentId: student.id,
-      //     status: 'present' as const, // Default status, in real app this would be from UI
-      //     remarks: ''
-      //   }))
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      setSuccess('Attendance marked successfully! Notifications sent to all parents.');
-      setViewMode('view');
-      fetchAttendanceHistory();
+      // In real app, call the API to save all attendance
+      console.log('Saving attendance for all students...');
       
-      setTimeout(() => setSuccess(null), 3000);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setError(null);
+      // Refresh data
+      fetchTodayAttendance();
     } catch (error: any) {
       console.error('Error saving attendance:', error);
-      setError('Error saving attendance. Please try again.');
+      setError(error.message || 'Failed to save attendance');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleEditAttendance = async () => {
+  const handleEditAttendance = (attendance: any) => {
+    setEditingAttendance(attendance);
+    setEditStatus(attendance.status);
+    setEditRemarks(attendance.remarks || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
     if (!editingAttendance) return;
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // await attendanceService.updateAttendance(editingAttendance.id, {
-      //   status: editStatus,
-      //   remarks: editRemarks
-      // });
-
+      // In real app, call the API to update attendance
+      console.log('Updating attendance:', editingAttendance.id, editStatus, editRemarks);
+      
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Update local state
-      setAttendanceHistory(prev =>
-        prev.map(record =>
-          record.id === editingAttendance.id
-            ? { ...record, status: editStatus, remarks: editRemarks }
-            : record
-        )
-      );
-
-      setSuccess('Attendance updated successfully! Notification sent to parent.');
+      if (viewMode === 'mark') {
+        setTodayAttendance(prev => prev.map(att => 
+          att.studentId === editingAttendance.studentId 
+            ? { ...att, status: editStatus, remarks: editRemarks }
+            : att
+        ));
+      } else {
+        setAttendanceHistory(prev => prev.map(att => 
+          att.id === editingAttendance.id 
+            ? { ...att, status: editStatus, remarks: editRemarks }
+            : att
+        ));
+      }
+      
       setEditDialogOpen(false);
       setEditingAttendance(null);
-      
-      setTimeout(() => setSuccess(null), 3000);
     } catch (error: any) {
       console.error('Error updating attendance:', error);
-      setError('Error updating attendance. Please try again.');
+      setError(error.message || 'Failed to update attendance');
     } finally {
       setSaving(false);
     }
@@ -282,7 +270,6 @@ const TeacherAttendance: React.FC = () => {
       case 'absent': return 'error';
       case 'late': return 'warning';
       case 'half-day': return 'info';
-      case 'not_marked': return 'default';
       default: return 'default';
     }
   };
@@ -292,47 +279,16 @@ const TeacherAttendance: React.FC = () => {
       case 'present': return <CheckCircle />;
       case 'absent': return <Cancel />;
       case 'late': return <Schedule />;
-      case 'not_marked': return <Person />;
+      case 'half-day': return <Person />;
       default: return <Person />;
     }
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          📚 Teacher Attendance Management
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant={viewMode === 'mark' ? 'contained' : 'outlined'}
-            startIcon={<Edit />}
-            onClick={() => setViewMode('mark')}
-          >
-            Mark Attendance
-          </Button>
-          <Button
-            variant={viewMode === 'view' ? 'contained' : 'outlined'}
-            startIcon={<Visibility />}
-            onClick={() => setViewMode('view')}
-          >
-            View Attendance
-          </Button>
-        </Box>
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {success}
-        </Alert>
-      )}
+      <Typography variant="h4" gutterBottom>
+        📊 Attendance Management
+      </Typography>
 
       {/* Class Selection */}
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
@@ -348,13 +304,11 @@ const TeacherAttendance: React.FC = () => {
                 value={selectedGrade}
                 onChange={(e) => setSelectedGrade(e.target.value)}
                 label="Class"
+                disabled={loadingClasses}
               >
-                {grades.map((grade) => (
-                  <MenuItem key={grade} value={grade}>
-                    {grade === 'nursery' ? 'Nursery' : 
-                     grade === 'lkg' ? 'LKG' : 
-                     grade === 'ukg' ? 'UKG' : 
-                     `Class ${grade}`}
+                {availableClasses.map((cls) => (
+                  <MenuItem key={cls.name} value={cls.name}>
+                    {cls.displayName}
                   </MenuItem>
                 ))}
               </Select>
@@ -443,117 +397,81 @@ const TeacherAttendance: React.FC = () => {
             )}
           </Box>
 
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress />
             </Box>
-          ) : students.length > 0 ? (
+          ) : students.length === 0 ? (
+            <Alert severity="info">
+              No students found for the selected class and section.
+            </Alert>
+          ) : (
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Name</TableCell>
+                    <TableCell>Student</TableCell>
                     <TableCell>Roll No</TableCell>
-                    <TableCell>Grade/Section</TableCell>
-                    <TableCell>Parent Phone</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Marked By</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {students.map((student) => {
-                    const todayRecord = todayAttendance.find(
-                      record => record.studentId === student.id
-                    );
-                    const todayStatus = todayRecord?.todayStatus || 'not_marked';
+                    const attendance = viewMode === 'mark' 
+                      ? todayAttendance.find(att => att.studentId === student.id)
+                      : attendanceHistory.find(att => att.student.id === student.id);
 
                     return (
                       <TableRow key={student.id}>
                         <TableCell>
-                          <Box>
-                            <Typography variant="body1" fontWeight="bold">
-                              {student.name}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {student.email}
-                            </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Avatar sx={{ mr: 2, width: 32, height: 32 }}>
+                              <Person />
+                            </Avatar>
+                            <Box>
+                              <Typography variant="body2" fontWeight="medium">
+                                {student.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {student.email}
+                              </Typography>
+                            </Box>
                           </Box>
                         </TableCell>
                         <TableCell>{student.rollNumber}</TableCell>
                         <TableCell>
-                          Grade {student.grade} - Section {student.section}
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2">
-                              {student.parentPhone || 'N/A'}
-                            </Typography>
-                            {student.parentPhone && (
-                              <Chip
-                                label="Notified"
-                                size="small"
-                                color="success"
-                              />
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            icon={getStatusIcon(todayStatus)}
-                            label={todayStatus.replace('_', ' ')}
-                            color={getStatusColor(todayStatus) as any}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {viewMode === 'mark' ? (
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="success"
-                                onClick={() => handleMarkAttendance(student.id, 'present')}
-                                disabled={todayStatus === 'present'}
-                              >
-                                Present
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="warning"
-                                onClick={() => handleMarkAttendance(student.id, 'late')}
-                                disabled={todayStatus === 'late'}
-                              >
-                                Late
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="error"
-                                onClick={() => handleMarkAttendance(student.id, 'absent')}
-                                disabled={todayStatus === 'absent'}
-                              >
-                                Absent
-                              </Button>
-                            </Box>
+                          {attendance ? (
+                            <Chip
+                              icon={getStatusIcon(attendance.status)}
+                              label={attendance.status.toUpperCase()}
+                              color={getStatusColor(attendance.status) as any}
+                              size="small"
+                            />
                           ) : (
-                            <Tooltip title="View/Edit Attendance">
-                              <IconButton
-                                size="small"
-                                onClick={() => {
-                                  const record = attendanceHistory.find(r => r.student.id === student.id);
-                                  if (record && canEditAttendance(record.date)) {
-                                    setEditingAttendance(record);
-                                    setEditStatus(record.status);
-                                    setEditRemarks(record.remarks || '');
-                                    setEditDialogOpen(true);
-                                  }
-                                }}
-                              >
-                                <Edit />
-                              </IconButton>
-                            </Tooltip>
+                            <Chip label="NOT MARKED" color="default" size="small" />
                           )}
+                        </TableCell>
+                        <TableCell>
+                          {attendance?.markedBy || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title="Edit Attendance">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEditAttendance(attendance || { studentId: student.id, status: 'present', remarks: '' })}
+                              disabled={!canEditAttendance(selectedDate)}
+                            >
+                              <Edit />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     );
@@ -561,10 +479,6 @@ const TeacherAttendance: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-          ) : (
-            <Alert severity="info">
-              No students found for Grade {selectedGrade} {selectedSection && `Section ${selectedSection}`}
-            </Alert>
           )}
         </Paper>
       )}
@@ -573,43 +487,42 @@ const TeacherAttendance: React.FC = () => {
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Edit Attendance</DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              {editingAttendance?.student.name} - {editingAttendance?.student.rollNumber}
-            </Typography>
-            
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Status</InputLabel>
-              <Select
+          <Box sx={{ mt: 2 }}>
+            <FormControl component="fieldset" fullWidth>
+              <Typography variant="subtitle1" gutterBottom>
+                Status
+              </Typography>
+              <RadioGroup
                 value={editStatus}
-                label="Status"
                 onChange={(e) => setEditStatus(e.target.value as any)}
+                row
               >
-                <MenuItem value="present">Present</MenuItem>
-                <MenuItem value="absent">Absent</MenuItem>
-                <MenuItem value="late">Late</MenuItem>
-                <MenuItem value="half-day">Half Day</MenuItem>
-              </Select>
+                <FormControlLabel value="present" control={<Radio />} label="Present" />
+                <FormControlLabel value="absent" control={<Radio />} label="Absent" />
+                <FormControlLabel value="late" control={<Radio />} label="Late" />
+                <FormControlLabel value="half-day" control={<Radio />} label="Half Day" />
+              </RadioGroup>
             </FormControl>
 
             <TextField
               fullWidth
+              multiline
+              rows={3}
               label="Remarks"
               value={editRemarks}
               onChange={(e) => setEditRemarks(e.target.value)}
-              multiline
-              rows={3}
+              sx={{ mt: 2 }}
             />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleEditAttendance}
+          <Button 
+            onClick={handleSaveEdit} 
             variant="contained"
             disabled={saving}
           >
-            {saving ? <CircularProgress size={20} /> : 'Update'}
+            {saving ? <CircularProgress size={20} /> : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>

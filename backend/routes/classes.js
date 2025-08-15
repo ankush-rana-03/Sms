@@ -198,4 +198,70 @@ router.delete('/:classId/class-teacher', protect, authorize('admin', 'principal'
   }
 });
 
+// Get available classes and sections for student registration
+router.get('/available-for-registration', protect, async (req, res) => {
+  try {
+    // Get current session
+    const Session = require('../models/Session');
+    const currentSession = await Session.findOne({ isCurrent: true });
+    
+    if (!currentSession) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active session found. Please create or activate a session first.'
+      });
+    }
+
+    // Get all active classes from current session
+    const classes = await Class.find({ 
+      session: currentSession.name,
+      isActive: true 
+    }).select('name section');
+
+    // Extract unique class names and sections
+    const classNames = [...new Set(classes.map(cls => cls.name))].sort((a, b) => {
+      // Custom sorting: nursery, lkg, ukg, then numeric classes
+      const order = { 'nursery': 0, 'lkg': 1, 'ukg': 2 };
+      const aOrder = order[a] !== undefined ? order[a] : parseInt(a) + 3;
+      const bOrder = order[b] !== undefined ? order[b] : parseInt(b) + 3;
+      return aOrder - bOrder;
+    });
+
+    const sections = [...new Set(classes.map(cls => cls.section))].sort();
+
+    // Get sections for each class
+    const classesWithSections = classNames.map(className => {
+      const classSections = classes
+        .filter(cls => cls.name === className)
+        .map(cls => cls.section)
+        .sort();
+      
+      return {
+        name: className,
+        displayName: className === 'nursery' ? 'Nursery' : 
+                    className === 'lkg' ? 'LKG' : 
+                    className === 'ukg' ? 'UKG' : 
+                    `Class ${className}`,
+        sections: classSections
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        classes: classesWithSections,
+        sections: sections,
+        currentSession: currentSession.name
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching available classes for registration:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching available classes for registration',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

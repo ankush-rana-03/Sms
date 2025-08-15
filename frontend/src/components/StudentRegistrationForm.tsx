@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -14,13 +14,14 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { StudentFormData as ServiceStudentFormData } from '../services/studentService';
+import classService, { ClassWithSections } from '../services/classService';
 
 const schema = yup.object().shape({
   name: yup.string().required('Name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   phone: yup.string().required('Phone is required'),
   address: yup.string().required('Address is required'),
-  grade: yup.string().oneOf(['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'], 'Please select a valid class').required('Class is required'),
+  grade: yup.string().required('Class is required'),
   section: yup.string().required('Section is required'),
   rollNumber: yup.string().required('Roll number is required'),
   dateOfBirth: yup.string().required('Date of birth is required'),
@@ -57,14 +58,52 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
+  const [availableSections, setAvailableSections] = useState<string[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [selectedClass, setSelectedClass] = useState<string>('');
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<StudentFormData>({
     resolver: yupResolver(schema),
   });
+
+  const watchedGrade = watch('grade');
+
+  // Fetch available classes and sections
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoadingClasses(true);
+        const response = await classService.getAvailableClassesForRegistration();
+        if (response.success) {
+          setAvailableClasses(response.data.classes);
+          setAvailableSections(response.data.sections);
+        }
+      } catch (error: any) {
+        console.error('Error fetching classes:', error);
+        setError('Failed to load available classes. Please try again.');
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+
+    fetchClasses();
+  }, []);
+
+  // Update available sections when class changes
+  useEffect(() => {
+    if (watchedGrade) {
+      const selectedClassData = availableClasses.find(cls => cls.name === watchedGrade);
+      if (selectedClassData) {
+        setSelectedClass(watchedGrade);
+      }
+    }
+  }, [watchedGrade, availableClasses]);
 
   const onFormSubmit = async (data: StudentFormData) => {
     try {
@@ -102,6 +141,22 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
     }
   };
 
+  // Get sections for selected class
+  const getSectionsForClass = (className: string) => {
+    const classData = availableClasses.find(cls => cls.name === className);
+    return classData ? classData.sections : [];
+  };
+
+  if (loadingClasses) {
+    return (
+      <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+          <CircularProgress />
+        </Box>
+      </Paper>
+    );
+  }
+
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
       <Typography variant="h5" gutterBottom>
@@ -117,6 +172,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
       {success && (
         <Alert severity="success" sx={{ mb: 2 }}>
           {success}
+        </Alert>
+      )}
+
+      {availableClasses.length === 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          No classes are available for registration. Please create classes first.
         </Alert>
       )}
 
@@ -167,13 +228,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               {...register('grade')}
               error={!!errors.grade}
               helperText={errors.grade?.message}
+              disabled={availableClasses.length === 0}
             >
-              {['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((grade) => (
-                <MenuItem key={grade} value={grade}>
-                  {grade === 'nursery' ? 'Nursery' : 
-                   grade === 'lkg' ? 'LKG' : 
-                   grade === 'ukg' ? 'UKG' : 
-                   `Class ${grade}`}
+              {availableClasses.map((cls) => (
+                <MenuItem key={cls.name} value={cls.name}>
+                  {cls.displayName}
                 </MenuItem>
               ))}
             </TextField>
@@ -186,8 +245,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               {...register('section')}
               error={!!errors.section}
               helperText={errors.section?.message}
+              disabled={!selectedClass || availableClasses.length === 0}
             >
-              {['A', 'B', 'C', 'D', 'E'].map((section) => (
+              {selectedClass && getSectionsForClass(selectedClass).map((section) => (
                 <MenuItem key={section} value={section}>
                   Section {section}
                 </MenuItem>
@@ -268,7 +328,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || isSubmitting}
+            disabled={loading || isSubmitting || availableClasses.length === 0}
             startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
           >
             {isSubmitting ? 'Creating Student...' : 'Register Student'}

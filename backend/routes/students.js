@@ -15,7 +15,7 @@ const {
 router.get('/test/all', getAllStudentsTest);
 
 // Student routes
-router.post('/', protect, authorize('admin', 'principal'), createStudent);
+router.post('/', protect, authorize('admin', 'principal', 'teacher'), createStudent);
 router.get('/', protect, authorize('admin', 'principal', 'teacher'), getStudents);
 router.put('/:studentId', protect, authorize('admin', 'principal'), updateStudent);
 router.delete('/:studentId', protect, authorize('admin', 'principal'), deleteStudent);

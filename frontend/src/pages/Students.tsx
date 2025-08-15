@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar, TextField, MenuItem, DialogActions } from '@mui/material';
+import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar, TextField, MenuItem, DialogActions, Chip } from '@mui/material';
 import { Add, Person, Refresh } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import studentService, { Student } from '../services/studentService';
@@ -154,6 +154,9 @@ const Students: React.FC = () => {
                     </Box>
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    {Boolean((student as any).pendingApproval) && (
+                      <Chip label="Pending Approval" color="warning" size="small" />
+                    )}
                     <Button size="small" variant="outlined" onClick={async () => {
                       // quick demo: toggle section between A/B
                       const nextSection = student.section === 'A' ? 'B' : 'A';
@@ -169,6 +172,21 @@ const Students: React.FC = () => {
                         setShowToast(true);
                       }
                     }}>Edit</Button>
+                    {Boolean((student as any).pendingApproval) && (
+                      <Button size="small" color="success" variant="contained" onClick={async () => {
+                        try {
+                          const res = await studentService.approveStudent(student._id);
+                          setStudents(prev => prev.map(s => s._id === student._id ? res.data : s));
+                          setToastMessage('Student approved');
+                          setToastSeverity('success');
+                          setShowToast(true);
+                        } catch (e: any) {
+                          setToastMessage(e.message || 'Approval failed');
+                          setToastSeverity('error');
+                          setShowToast(true);
+                        }
+                      }}>Approve</Button>
+                    )}
                     <Button size="small" color="error" variant="outlined" onClick={async () => {
                       if (!window.confirm('Delete this student?')) return;
                       try {

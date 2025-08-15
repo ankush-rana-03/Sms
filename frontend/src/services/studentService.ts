@@ -175,6 +175,15 @@ class StudentService {
       throw new Error(error.response?.data?.message || 'Failed to delete student');
     }
   }
+
+  async approveStudent(studentId: string): Promise<{ success: boolean; message: string; data: Student }> {
+    try {
+      const response = await api.put<{ success: boolean; message: string; data: Student }>(`/students/${studentId}/approve`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to approve student');
+    }
+  }
 }
 
 const studentService = new StudentService();

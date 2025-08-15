@@ -200,6 +200,9 @@ const TeacherManagement: React.FC = () => {
   // New state for password reset
   const [newPassword, setNewPassword] = useState('');
 
+  // New state for editing assignments
+  const [editingAssignment, setEditingAssignment] = useState<{ index: number; assignment: any } | null>(null);
+
 
 
 
@@ -311,6 +314,7 @@ const TeacherManagement: React.FC = () => {
   const handleOpenAssignDialog = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setAssignForm({ grade: '', section: '', subjects: [], subjectInput: '' });
+    setEditingAssignment(null); // Reset editing state
     setOpenAssignDialog(true);
   };
 
@@ -318,6 +322,13 @@ const TeacherManagement: React.FC = () => {
 
   const handleRemoveSubjectChip = (subject: string) => {
     setAssignForm(prev => ({ ...prev, subjects: prev.subjects.filter(s => s !== subject) }));
+  };
+
+  // Add handler to close assignment dialog and reset state
+  const handleCloseAssignDialog = () => {
+    setOpenAssignDialog(false);
+    setEditingAssignment(null);
+    setAssignForm({ grade: '', section: '', subjects: [], subjectInput: '' });
   };
 
   const handleSaveAssignedClassSubjects = async () => {
@@ -371,6 +382,140 @@ const TeacherManagement: React.FC = () => {
     } catch (e: any) {
       console.error('Error saving assigned class & subjects', e);
       showSnackbar(e.response?.data?.message || 'Error saving assignments', 'error');
+    }
+  };
+
+  // New functions for editing and deleting assignments
+  const handleEditAssignment = (index: number) => {
+    if (!selectedTeacher || !selectedTeacher.assignedClasses[index]) return;
+    
+    const assignment = selectedTeacher.assignedClasses[index];
+    setEditingAssignment({ index, assignment });
+    
+    // Pre-fill the form with current assignment data
+    setAssignForm({
+      grade: assignment.grade || '',
+      section: assignment.section || '',
+      subjects: [assignment.subject],
+      subjectInput: assignment.subject
+    });
+    
+    setOpenAssignDialog(true);
+  };
+
+  const handleDeleteAssignment = async (index: number) => {
+    if (!selectedTeacher || !selectedTeacher.assignedClasses[index]) return;
+    
+    const assignment = selectedTeacher.assignedClasses[index];
+    const confirmMessage = `Are you sure you want to delete the assignment: ${assignment.subject} for ${assignment.grade}-${assignment.section}?`;
+    
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      // Create updated assignments array without the deleted one
+      const updatedAssignments = selectedTeacher.assignedClasses.filter((_, i) => i !== index);
+      
+      // Transform to backend format
+      const payload = {
+        assignedClasses: updatedAssignments.map(ac => ({
+          grade: ac.grade,
+          section: ac.section,
+          subject: ac.subject
+        }))
+      };
+
+      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher._id}/assign-classes`,
+        payload
+      );
+
+      if (response.success) {
+        showSnackbar('Assignment deleted successfully', 'success');
+        // Update the teacher data in the list
+        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+        setSelectedTeacher(response.data);
+      } else {
+        showSnackbar(response.message || 'Error deleting assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error deleting assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error deleting assignment', 'error');
+    }
+  };
+
+  const handleUpdateAssignment = async () => {
+    if (!selectedTeacher || !editingAssignment) return;
+    
+    const { grade, section, subjects, subjectInput } = assignForm;
+
+    // Merge typed input with selected chips
+    const typed = subjectInput
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    const merged = Array.from(new Set([...subjects, ...typed]));
+
+    if (!grade || !section || merged.length === 0) {
+      showSnackbar('Please select class, section, and at least one subject', 'error');
+      return;
+    }
+
+    if (merged.length > 1) {
+      showSnackbar('Can only edit one subject at a time', 'error');
+      return;
+    }
+
+    const newSubject = merged[0];
+    const oldAssignment = editingAssignment.assignment;
+
+    // Check for duplicates (excluding the current assignment being edited)
+    const existingKeys = new Set(
+      selectedTeacher.assignedClasses
+        .filter((_, i) => i !== editingAssignment.index)
+        .map(ac => `${ac.grade}-${ac.section}-${ac.subject}`)
+    );
+
+    const newKey = `${grade}-${section}-${newSubject}`;
+    if (existingKeys.has(newKey)) {
+      showSnackbar(`Already assigned: ${newSubject} for ${grade}-${section}`, 'error');
+      return;
+    }
+
+    try {
+      // Create updated assignments array with the edited assignment
+      const updatedAssignments = selectedTeacher.assignedClasses.map((ac, i) => 
+        i === editingAssignment.index 
+          ? { ...ac, grade, section, subject: newSubject }
+          : ac
+      );
+
+      // Transform to backend format
+      const payload = {
+        assignedClasses: updatedAssignments.map(ac => ({
+          grade: ac.grade,
+          section: ac.section,
+          subject: ac.subject
+        }))
+      };
+
+      const response = await apiService.post<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher._id}/assign-classes`,
+        payload
+      );
+
+      if (response.success) {
+        showSnackbar('Assignment updated successfully', 'success');
+        setOpenAssignDialog(false);
+        setEditingAssignment(null);
+        // Update the teacher data in the list
+        setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
+        setSelectedTeacher(response.data);
+      } else {
+        showSnackbar(response.message || 'Error updating assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error updating assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error updating assignment', 'error');
     }
   };
 
@@ -1742,9 +1887,14 @@ const TeacherManagement: React.FC = () => {
       </Dialog>
 
       {/* Assigned Class & Subject Dialog */}
-      <Dialog open={openAssignDialog} onClose={() => setOpenAssignDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Assigned Class & Subject</DialogTitle>
+      <Dialog open={openAssignDialog} onClose={handleCloseAssignDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingAssignment ? 'Edit Assignment' : 'Assign Class & Subject'}</DialogTitle>
         <DialogContent>
+          {editingAssignment && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Editing assignment: {editingAssignment.assignment.subject} for {editingAssignment.assignment.grade}-{editingAssignment.assignment.section}
+            </Alert>
+          )}
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
@@ -1817,10 +1967,29 @@ const TeacherManagement: React.FC = () => {
 
             {selectedTeacher && selectedTeacher.assignedClasses?.length > 0 && (
               <Grid item xs={12}>
-                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                  Current Assignments 
+                  <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                    (Click to edit, X to delete)
+                  </Typography>
+                </Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {selectedTeacher.assignedClasses.map((ac, idx) => (
-                    <Chip key={idx} label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} size="small" />
+                    <Chip
+                      key={idx}
+                      label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`}
+                      size="small"
+                      color={editingAssignment?.index === idx ? 'primary' : 'default'}
+                      variant={editingAssignment?.index === idx ? 'filled' : 'outlined'}
+                      onDelete={() => handleDeleteAssignment(idx)}
+                      onClick={() => handleEditAssignment(idx)}
+                      sx={{ 
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: editingAssignment?.index === idx ? 'primary.dark' : 'action.hover'
+                        }
+                      }}
+                    />
                   ))}
                 </Box>
               </Grid>
@@ -1828,8 +1997,10 @@ const TeacherManagement: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAssignDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveAssignedClassSubjects}>Save</Button>
+          <Button onClick={handleCloseAssignDialog}>Cancel</Button>
+          <Button variant="contained" onClick={editingAssignment ? handleUpdateAssignment : handleSaveAssignedClassSubjects}>
+            {editingAssignment ? 'Update Assignment' : 'Save Assignments'}
+          </Button>
         </DialogActions>
       </Dialog>
 

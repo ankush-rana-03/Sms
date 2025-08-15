@@ -61,6 +61,7 @@ interface Teacher {
   designation: 'TGT' | 'PGT' | 'JBT' | 'NTT';
   subjects: string[];
   assignedClasses: Array<{
+    _id: string;
     class: string | { _id: string; name: string; grade: string; section: string };
     section: string;
     subject: string;

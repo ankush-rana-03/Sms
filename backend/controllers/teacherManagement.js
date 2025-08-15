@@ -871,9 +871,10 @@ exports.assignClassesToTeacher = async (req, res) => {
 
     console.log('Populated teacher response:', JSON.stringify(populatedTeacher.assignedClasses, null, 2));
     
-    // Build response without time/day
+    // Build response with _id but without time/day
     const responseData = populatedTeacher.toObject();
     responseData.assignedClasses = responseData.assignedClasses.map(ac => ({
+      _id: ac._id,
       grade: ac.grade,
       section: ac.section,
       subject: ac.subject

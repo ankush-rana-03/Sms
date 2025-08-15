@@ -75,6 +75,23 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating class:', error);
+    
+    // Handle specific MongoDB duplicate key errors
+    if (error.code === 11000) {
+      const duplicateFields = Object.keys(error.keyPattern || {});
+      if (duplicateFields.includes('name') && duplicateFields.includes('section') && duplicateFields.includes('academicYear')) {
+        return res.status(409).json({
+          success: false,
+          message: `A class with name "${name}", section "${section}", and academic year "${academicYear}" already exists.`
+        });
+      } else if (duplicateFields.includes('name') && duplicateFields.includes('section')) {
+        return res.status(409).json({
+          success: false,
+          message: `A class with name "${name}" and section "${section}" already exists in this academic year.`
+        });
+      }
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error creating class',

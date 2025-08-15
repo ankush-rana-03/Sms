@@ -56,7 +56,7 @@ const classSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for name and section
-classSchema.index({ name: 1, section: 1 }, { unique: true });
+// Compound index for name, section, and academic year
+classSchema.index({ name: 1, section: 1, academicYear: 1 }, { unique: true });
 
 module.exports = mongoose.model('Class', classSchema);

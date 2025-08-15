@@ -5,11 +5,10 @@ const Student = require('../models/Student');
 const Class = require('../models/Class');
 const Result = require('../models/Result');
 const Attendance = require('../models/Attendance');
-const auth = require('../middleware/auth');
-const { checkRole } = require('../middleware/roleCheck');
+const { protect, authorize } = require('../middleware/auth');
 
 // Get all sessions
-router.get('/', auth, async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const sessions = await Session.find().sort({ createdAt: -1 });
     res.json(sessions);
@@ -19,7 +18,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get current session
-router.get('/current', auth, async (req, res) => {
+router.get('/current', protect, async (req, res) => {
   try {
     const currentSession = await Session.findOne({ isCurrent: true });
     res.json(currentSession);
@@ -29,7 +28,7 @@ router.get('/current', auth, async (req, res) => {
 });
 
 // Create new session
-router.post('/', auth, checkRole(['admin', 'principal']), async (req, res) => {
+router.post('/', protect, authorize('admin', 'principal'), async (req, res) => {
   try {
     const { name, academicYear, startDate, endDate, description, promotionCriteria } = req.body;
 
@@ -58,7 +57,7 @@ router.post('/', auth, checkRole(['admin', 'principal']), async (req, res) => {
 });
 
 // Update session
-router.put('/:id', auth, checkRole(['admin', 'principal']), async (req, res) => {
+router.put('/:id', protect, authorize('admin', 'principal'), async (req, res) => {
   try {
     const { name, academicYear, startDate, endDate, description, promotionCriteria, status } = req.body;
     
@@ -84,7 +83,7 @@ router.put('/:id', auth, checkRole(['admin', 'principal']), async (req, res) => 
 });
 
 // Set session as current
-router.patch('/:id/set-current', auth, checkRole(['admin', 'principal']), async (req, res) => {
+router.patch('/:id/set-current', protect, authorize('admin', 'principal'), async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) {
@@ -100,7 +99,7 @@ router.patch('/:id/set-current', auth, checkRole(['admin', 'principal']), async 
 });
 
 // Process student promotions
-router.post('/:id/process-promotions', auth, checkRole(['admin', 'principal']), async (req, res) => {
+router.post('/:id/process-promotions', protect, authorize('admin', 'principal'), async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) {
@@ -186,7 +185,7 @@ router.post('/:id/process-promotions', auth, checkRole(['admin', 'principal']), 
 });
 
 // Archive session data
-router.post('/:id/archive', auth, checkRole(['admin', 'principal']), async (req, res) => {
+router.post('/:id/archive', protect, authorize('admin', 'principal'), async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) {
@@ -232,7 +231,7 @@ router.post('/:id/archive', auth, checkRole(['admin', 'principal']), async (req,
 });
 
 // Fresh start - prepare for new session
-router.post('/:id/fresh-start', auth, checkRole(['admin', 'principal']), async (req, res) => {
+router.post('/:id/fresh-start', protect, authorize('admin', 'principal'), async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) {
@@ -280,7 +279,7 @@ router.post('/:id/fresh-start', auth, checkRole(['admin', 'principal']), async (
 });
 
 // Get session statistics
-router.get('/:id/statistics', auth, async (req, res) => {
+router.get('/:id/statistics', protect, async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) {
@@ -319,7 +318,7 @@ router.get('/:id/statistics', auth, async (req, res) => {
 });
 
 // Delete session (only if archived)
-router.delete('/:id', auth, checkRole(['admin']), async (req, res) => {
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) {

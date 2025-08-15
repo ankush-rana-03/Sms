@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -16,7 +16,6 @@ import {
   Select,
   MenuItem,
   Chip,
-  Alert,
   IconButton,
   Table,
   TableBody,
@@ -26,11 +25,9 @@ import {
   TableRow,
   Paper,
   LinearProgress,
-  Divider,
   List,
   ListItem,
-  ListItemText,
-  ListItemSecondaryAction
+  ListItemText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,7 +37,6 @@ import {
   Refresh as RefreshIcon,
   School as SchoolIcon,
   TrendingUp as TrendingUpIcon,
-  Assessment as AssessmentIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon
@@ -79,18 +75,7 @@ interface Session {
   createdAt: string;
 }
 
-interface SessionStatistics {
-  totalStudents: number;
-  totalClasses: number;
-  totalResults: number;
-  promotionBreakdown: {
-    promoted: number;
-    retained: number;
-    graduated: number;
-    pending: number;
-  };
-  averageAttendance: number;
-}
+
 
 const Sessions: React.FC = () => {
   const { user } = useAuth();
@@ -118,7 +103,7 @@ const Sessions: React.FC = () => {
     queryKey: ['sessions'],
     queryFn: async () => {
       const response = await api.get<Session[]>('/sessions');
-      return response.data;
+      return response;
     }
   });
 
@@ -127,7 +112,7 @@ const Sessions: React.FC = () => {
     queryKey: ['currentSession'],
     queryFn: async () => {
       const response = await api.get<Session | null>('/sessions/current');
-      return response.data;
+      return response;
     }
   });
 
@@ -135,7 +120,7 @@ const Sessions: React.FC = () => {
   const createSessionMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await api.post<Session>('/sessions', data);
-      return response.data;
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
@@ -158,7 +143,7 @@ const Sessions: React.FC = () => {
   const updateSessionMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const response = await api.put<Session>(`/sessions/${id}`, data);
-      return response.data;
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
@@ -171,7 +156,7 @@ const Sessions: React.FC = () => {
   const processPromotionsMutation = useMutation({
     mutationFn: async (sessionId: string) => {
       const response = await api.post<any>(`/sessions/${sessionId}/process-promotions`);
-      return response.data;
+      return response;
     },
     onSuccess: (data) => {
       setPromotionResults(data.results);
@@ -183,7 +168,7 @@ const Sessions: React.FC = () => {
   const archiveSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
       const response = await api.post<any>(`/sessions/${sessionId}/archive`);
-      return response.data;
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
@@ -196,7 +181,7 @@ const Sessions: React.FC = () => {
   const freshStartMutation = useMutation({
     mutationFn: async (sessionId: string) => {
       const response = await api.post<any>(`/sessions/${sessionId}/fresh-start`);
-      return response.data;
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
@@ -209,7 +194,7 @@ const Sessions: React.FC = () => {
   const deleteSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
       const response = await api.delete<any>(`/sessions/${sessionId}`);
-      return response.data;
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });

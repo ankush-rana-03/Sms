@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar, TextField, MenuItem } from '@mui/material';
+import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar, TextField, MenuItem, DialogActions } from '@mui/material';
 import { Add, Person, Refresh } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import studentService, { Student } from '../services/studentService';
@@ -204,6 +204,11 @@ const Students: React.FC = () => {
             loading={loading}
           />
         </DialogContent>
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setOpenRegistration(false)} sx={{ mr: 'auto' }}>
+            Cancel
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Toast Notification */}

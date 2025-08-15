@@ -185,8 +185,7 @@ const TeacherManagement: React.FC = () => {
   }>({ open: false, message: '', severity: 'success' });
 
   // New module: Assigned Class & Subject
-  const GRADES_FOR_ASSIGNMENT = ['Nursery', 'LKG', 'UKG', '1','2','3','4','5','6','7','8','9','10','11','12'];
-  const SECTIONS_FOR_ASSIGNMENT = ['A','B','C','D','E'];
+
   const SUGGESTED_SUBJECTS = ['English','Mathematics','Science','Hindi','Social Studies','Computer','EVS','Physics','Chemistry','Biology','Geography','History','Civics','Moral Science','General Knowledge','Art','Music','Physical Education'];
 
   const [openAssignDialog, setOpenAssignDialog] = useState(false);
@@ -211,13 +210,12 @@ const TeacherManagement: React.FC = () => {
   } | null>(null);
   const [openEditAssignmentDialog, setOpenEditAssignmentDialog] = useState(false);
 
-  // Dynamic classes and sections from Classes API (commented hardcoded values for later use)
+  // Dynamic classes and sections from Classes API
   const [dynamicClasses, setDynamicClasses] = useState<Array<{ name: string; section: string; _id: string }>>([]);
   const [dynamicSections, setDynamicSections] = useState<string[]>([]);
   
-  // TODO: Replace hardcoded arrays with dynamic data from Classes API
-  // In the future, these will be completely removed and replaced with dynamic data
-  // These are currently used as fallback when the Classes API is not available
+  // Classes and sections are now dynamically fetched from the Classes API
+  // This ensures data consistency across the entire system
 
   // Add teacherFormData state for create/edit dialog
   const [teacherFormData, setTeacherFormData] = useState({
@@ -2041,17 +2039,15 @@ const TeacherManagement: React.FC = () => {
                   label="Class"
                   value={assignForm.grade}
                   onChange={(e) => setAssignForm(prev => ({ ...prev, grade: e.target.value as string }))}
+                  disabled={dynamicClasses.length === 0}
                 >
-                  {/* Use dynamic classes if available, otherwise fallback to hardcoded grades */}
-                  {dynamicClasses.length > 0 ? (
+                  {dynamicClasses.length === 0 ? (
+                    <MenuItem disabled>No classes available. Create classes first.</MenuItem>
+                  ) : (
                     dynamicClasses.map(cls => (
                       <MenuItem key={cls._id} value={cls.name}>
                         {cls.name}
                       </MenuItem>
-                    ))
-                  ) : (
-                    GRADES_FOR_ASSIGNMENT.map(g => (
-                      <MenuItem key={g} value={g}>{g}</MenuItem>
                     ))
                   )}
                 </Select>
@@ -2064,14 +2060,12 @@ const TeacherManagement: React.FC = () => {
                   label="Section"
                   value={assignForm.section}
                   onChange={(e) => setAssignForm(prev => ({ ...prev, section: e.target.value as string }))}
+                  disabled={dynamicSections.length === 0}
                 >
-                  {/* Use dynamic sections if available, otherwise fallback to hardcoded sections */}
-                  {dynamicSections.length > 0 ? (
-                    dynamicSections.map(s => (
-                      <MenuItem key={s} value={s}>{s}</MenuItem>
-                    ))
+                  {dynamicSections.length === 0 ? (
+                    <MenuItem disabled>No sections available. Create classes first.</MenuItem>
                   ) : (
-                    SECTIONS_FOR_ASSIGNMENT.map(s => (
+                    dynamicSections.map(s => (
                       <MenuItem key={s} value={s}>{s}</MenuItem>
                     ))
                   )}
@@ -2254,18 +2248,11 @@ const TeacherManagement: React.FC = () => {
                   onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, grade: e.target.value } : null)}
                   label="Grade"
                 >
-                  {/* Use dynamic classes if available, otherwise fallback to hardcoded grades */}
-                  {dynamicClasses.length > 0 ? (
-                    dynamicClasses.map(cls => (
-                      <MenuItem key={cls._id} value={cls.name}>
-                        {cls.name}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    GRADES_FOR_ASSIGNMENT.map(g => (
-                      <MenuItem key={g} value={g}>{g}</MenuItem>
-                    ))
-                  )}
+                  {dynamicClasses.map(cls => (
+                    <MenuItem key={cls._id} value={cls.name}>
+                      {cls.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>
@@ -2277,16 +2264,9 @@ const TeacherManagement: React.FC = () => {
                   onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, section: e.target.value } : null)}
                   label="Section"
                 >
-                  {/* Use dynamic sections if available, otherwise fallback to hardcoded sections */}
-                  {dynamicSections.length > 0 ? (
-                    dynamicSections.map(s => (
-                      <MenuItem key={s} value={s}>{s}</MenuItem>
-                    ))
-                  ) : (
-                    SECTIONS_FOR_ASSIGNMENT.map(s => (
-                      <MenuItem key={s} value={s}>{s}</MenuItem>
-                    ))
-                  )}
+                  {dynamicSections.map(s => (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>

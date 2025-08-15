@@ -62,12 +62,9 @@ interface Teacher {
   subjects: string[];
   assignedClasses: Array<{
     _id: string;
-    class: string | { _id: string; name: string; grade: string; section: string };
     section: string;
     subject: string;
     grade: string;
-    time?: string;
-    day?: string;
   }>;
   qualification: {
     degree: string;
@@ -207,8 +204,6 @@ const TeacherManagement: React.FC = () => {
     grade: string;
     section: string;
     subject: string;
-    time?: string;
-    day?: string;
   } | null>(null);
   const [openEditAssignmentDialog, setOpenEditAssignmentDialog] = useState(false);
 
@@ -375,8 +370,42 @@ const TeacherManagement: React.FC = () => {
       if (res.success) {
         showSnackbar('Assigned class & subjects saved', 'success');
         setOpenAssignDialog(false);
-        // Refresh list
-        fetchTeachers();
+        
+        // Reset the form
+        setAssignForm({
+          grade: '',
+          section: '',
+          subjects: [],
+          subjectInput: ''
+        });
+        
+        // Update the local state immediately without refreshing
+        if (selectedTeacher) {
+          const newAssignments = merged.map(sub => ({ 
+            _id: `temp-${Date.now()}-${Math.random()}`, // Temporary ID for new assignments
+            grade, 
+            section, 
+            subject: sub 
+          }));
+          
+          setSelectedTeacher(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              assignedClasses: [...prev.assignedClasses, ...newAssignments]
+            };
+          });
+          
+          // Also update the teachers list
+          setTeachers(prev => prev.map(teacher => 
+            teacher._id === selectedTeacher._id
+              ? {
+                  ...teacher,
+                  assignedClasses: [...teacher.assignedClasses, ...newAssignments]
+                }
+              : teacher
+          ));
+        }
       } else {
         showSnackbar(res.message || 'Failed to save assignments', 'error');
       }
@@ -392,9 +421,7 @@ const TeacherManagement: React.FC = () => {
       id: assignment._id,
       grade: assignment.grade,
       section: assignment.section,
-      subject: assignment.subject,
-      time: assignment.time,
-      day: assignment.day
+      subject: assignment.subject
     });
     setOpenEditAssignmentDialog(true);
   };
@@ -409,17 +436,43 @@ const TeacherManagement: React.FC = () => {
         {
           grade: editingAssignment.grade,
           section: editingAssignment.section,
-          subject: editingAssignment.subject,
-          time: editingAssignment.time,
-          day: editingAssignment.day
+          subject: editingAssignment.subject
         }
       );
 
       if (response.success) {
         showSnackbar('Assignment updated successfully', 'success');
+        
+        // Update the local state immediately without refreshing
+        if (selectedTeacher) {
+          setSelectedTeacher(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              assignedClasses: prev.assignedClasses.map(ac => 
+                ac._id === editingAssignment.id 
+                  ? { ...ac, ...editingAssignment }
+                  : ac
+              )
+            };
+          });
+          
+          // Also update the teachers list
+          setTeachers(prev => prev.map(teacher => 
+            teacher._id === selectedTeacher._id
+              ? {
+                  ...teacher,
+                  assignedClasses: teacher.assignedClasses.map(ac => 
+                    ac._id === editingAssignment.id 
+                      ? { ...ac, ...editingAssignment }
+                      : ac
+                  )
+                }
+              : teacher
+          ));
+        }
+        
         handleCloseEditDialog();
-        // Refresh the teacher data
-        fetchTeachers();
       } else {
         showSnackbar(response.message || 'Error updating assignment', 'error');
       }
@@ -442,8 +495,27 @@ const TeacherManagement: React.FC = () => {
 
       if (response.success) {
         showSnackbar('Assignment deleted successfully', 'success');
-        // Refresh the teacher data
-        fetchTeachers();
+        
+        // Update the local state immediately without refreshing
+        if (selectedTeacher) {
+          setSelectedTeacher(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              assignedClasses: prev.assignedClasses.filter(ac => ac._id !== assignmentId)
+            };
+          });
+          
+          // Also update the teachers list
+          setTeachers(prev => prev.map(teacher => 
+            teacher._id === selectedTeacher._id
+              ? {
+                  ...teacher,
+                  assignedClasses: teacher.assignedClasses.filter(ac => ac._id !== assignmentId)
+                }
+              : teacher
+          ));
+        }
       } else {
         showSnackbar(response.message || 'Error deleting assignment', 'error');
       }
@@ -1973,32 +2045,27 @@ const TeacherManagement: React.FC = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Subject</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                {SUGGESTED_SUBJECTS.map(sub => (
+                  <Chip
+                    key={sub}
+                    label={sub}
+                    onClick={() => {
+                      setEditingAssignment(prev => prev ? { ...prev, subject: sub } : null);
+                    }}
+                    variant={editingAssignment?.subject === sub ? 'filled' : 'outlined'}
+                    color={editingAssignment?.subject === sub ? 'primary' : 'default'}
+                    size="small"
+                  />
+                ))}
+              </Box>
               <TextField
                 fullWidth
-                label="Subject"
+                label="Or type subject manually"
                 value={editingAssignment?.subject || ''}
                 onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, subject: e.target.value } : null)}
                 margin="normal"
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Time (Optional)"
-                value={editingAssignment?.time || ''}
-                onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, time: e.target.value } : null)}
-                margin="normal"
-                placeholder="e.g., 9:00 AM"
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Day (Optional)"
-                value={editingAssignment?.day || ''}
-                onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, day: e.target.value } : null)}
-                margin="normal"
-                placeholder="e.g., Monday"
               />
             </Grid>
           </Grid>

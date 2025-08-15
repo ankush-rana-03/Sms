@@ -902,10 +902,10 @@ exports.assignClassesToTeacher = async (req, res) => {
 exports.updateClassAssignment = async (req, res) => {
   try {
     const { teacherId, assignmentId } = req.params;
-    const { grade, section, subject, time, day } = req.body;
+    const { grade, section, subject } = req.body;
 
     console.log(`Updating assignment ${assignmentId} for teacher ${teacherId}`);
-    console.log('Update data:', { grade, section, subject, time, day });
+    console.log('Update data:', { grade, section, subject });
 
     // Validate required fields
     if (!grade || !section || !subject) {
@@ -955,9 +955,7 @@ exports.updateClassAssignment = async (req, res) => {
       ...teacher.assignedClasses[assignmentIndex],
       grade,
       section,
-      subject,
-      time: time || teacher.assignedClasses[assignmentIndex].time,
-      day: day || teacher.assignedClasses[assignmentIndex].day
+      subject
     };
 
     // Save the updated teacher

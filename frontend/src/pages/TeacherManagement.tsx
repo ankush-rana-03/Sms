@@ -197,6 +197,17 @@ const TeacherManagement: React.FC = () => {
   });
   const subjectInputRef = useRef<HTMLInputElement | null>(null);
 
+  // New state for editing assignments
+  const [openEditAssignmentDialog, setOpenEditAssignmentDialog] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<{
+    grade: string;
+    section: string;
+    subject: string;
+    originalGrade: string;
+    originalSection: string;
+    originalSubject: string;
+  } | null>(null);
+
   // New state for password reset
   const [newPassword, setNewPassword] = useState('');
 
@@ -372,6 +383,109 @@ const TeacherManagement: React.FC = () => {
       console.error('Error saving assigned class & subjects', e);
       showSnackbar(e.response?.data?.message || 'Error saving assignments', 'error');
     }
+  };
+
+  // Handle editing an assignment
+  const handleEditAssignment = (assignment: any) => {
+    setEditingAssignment({
+      grade: assignment.grade,
+      section: assignment.section,
+      subject: assignment.subject,
+      originalGrade: assignment.grade,
+      originalSection: assignment.section,
+      originalSubject: assignment.subject
+    });
+    setOpenEditAssignmentDialog(true);
+  };
+
+  // Handle saving edited assignment
+  const handleSaveEditedAssignment = async () => {
+    if (!selectedTeacher || !editingAssignment) return;
+
+    const { grade, section, subject, originalGrade, originalSection, originalSubject } = editingAssignment;
+
+    if (!grade || !section || !subject) {
+      showSnackbar('Please fill in all fields', 'error');
+      return;
+    }
+
+    // Check for conflicts with other assignments
+    const hasConflict = selectedTeacher.assignedClasses.some(ac => 
+      ac.grade === grade && ac.section === section && ac.subject === subject &&
+      !(ac.grade === originalGrade && ac.section === originalSection && ac.subject === originalSubject)
+    );
+
+    if (hasConflict) {
+      showSnackbar(`Assignment ${grade}-${section}-${subject} already exists`, 'error');
+      return;
+    }
+
+    try {
+      const res = await apiService.put<{ success: boolean; message: string }>(
+        `/admin/teachers/${selectedTeacher._id}/subject-assignment`,
+        {
+          oldGrade: originalGrade,
+          oldSection: originalSection,
+          oldSubject: originalSubject,
+          newGrade: grade,
+          newSection: section,
+          newSubject: subject
+        }
+      );
+
+      if (res.success) {
+        showSnackbar('Assignment updated successfully', 'success');
+        resetEditAssignmentForm();
+        // Refresh list
+        fetchTeachers();
+      } else {
+        showSnackbar(res.message || 'Failed to update assignment', 'error');
+      }
+    } catch (e: any) {
+      console.error('Error updating assignment', e);
+      showSnackbar(e.response?.data?.message || 'Error updating assignment', 'error');
+    }
+  };
+
+  // Handle deleting an assignment
+  const handleDeleteAssignment = async (assignment: any) => {
+    if (!selectedTeacher) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to remove ${assignment.subject} from ${assignment.grade}-${assignment.section}?`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const res = await apiService.delete<{ success: boolean; message: string }>(
+        `/admin/teachers/${selectedTeacher._id}/subject-assignment`,
+        {
+          data: {
+            grade: assignment.grade,
+            section: assignment.section,
+            subject: assignment.subject
+          }
+        }
+      );
+
+      if (res.success) {
+        showSnackbar('Assignment deleted successfully', 'success');
+        // Refresh list
+        fetchTeachers();
+      } else {
+        showSnackbar(res.message || 'Failed to delete assignment', 'error');
+      }
+    } catch (e: any) {
+      console.error('Error deleting assignment', e);
+      showSnackbar(e.response?.data?.message || 'Error deleting assignment', 'error');
+    }
+  };
+
+  // Reset edit assignment form
+  const resetEditAssignmentForm = () => {
+    setEditingAssignment(null);
+    setOpenEditAssignmentDialog(false);
   };
 
   const handleUpdateTeacher = async () => {
@@ -1820,7 +1934,27 @@ const TeacherManagement: React.FC = () => {
                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {selectedTeacher.assignedClasses.map((ac, idx) => (
-                    <Chip key={idx} label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} size="small" />
+                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Chip 
+                        label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} 
+                        size="small" 
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditAssignment(ac)}
+                        sx={{ ml: 0.5 }}
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteAssignment(ac)}
+                        sx={{ ml: 0.5 }}
+                        color="error"
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
                   ))}
                 </Box>
               </Grid>
@@ -1830,6 +1964,55 @@ const TeacherManagement: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenAssignDialog(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSaveAssignedClassSubjects}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Assignment Dialog */}
+      <Dialog open={openEditAssignmentDialog} onClose={resetEditAssignmentForm} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Assignment</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Class</InputLabel>
+                <Select
+                  label="Class"
+                  value={editingAssignment?.grade || ''}
+                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, grade: e.target.value as string } : null)}
+                >
+                  {GRADES_FOR_ASSIGNMENT.map(g => (
+                    <MenuItem key={g} value={g}>{g}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Section</InputLabel>
+                <Select
+                  label="Section"
+                  value={editingAssignment?.section || ''}
+                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, section: e.target.value as string } : null)}
+                >
+                  {SECTIONS_FOR_ASSIGNMENT.map(s => (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Subject"
+                value={editingAssignment?.subject || ''}
+                onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, subject: e.target.value } : null)}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={resetEditAssignmentForm}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveEditedAssignment}>Update</Button>
         </DialogActions>
       </Dialog>
 

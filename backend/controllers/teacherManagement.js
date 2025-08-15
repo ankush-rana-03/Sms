@@ -897,6 +897,146 @@ exports.assignClassesToTeacher = async (req, res) => {
   }
 };
 
+// Delete a specific subject assignment from a teacher
+exports.deleteSubjectAssignment = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { grade, section, subject } = req.body;
+
+    console.log(`Deleting assignment for teacher ${teacherId}: ${grade}-${section}-${subject}`);
+
+    if (!grade || !section || !subject) {
+      return res.status(400).json({
+        success: false,
+        message: 'Grade, section, and subject are required'
+      });
+    }
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Find and remove the specific assignment
+    const initialLength = teacher.assignedClasses.length;
+    teacher.assignedClasses = teacher.assignedClasses.filter(assignment => 
+      !(assignment.grade === grade && assignment.section === section && assignment.subject === subject)
+    );
+
+    if (teacher.assignedClasses.length === initialLength) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Save the updated teacher
+    const savedTeacher = await teacher.save();
+    console.log(`Successfully deleted assignment: ${grade}-${section}-${subject}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subject assignment deleted successfully',
+      data: {
+        teacherId: savedTeacher._id,
+        deletedAssignment: { grade, section, subject },
+        remainingAssignments: savedTeacher.assignedClasses.length
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting subject assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting subject assignment',
+      error: error.message
+    });
+  }
+};
+
+// Update a specific subject assignment for a teacher
+exports.updateSubjectAssignment = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { oldGrade, oldSection, oldSubject, newGrade, newSection, newSubject } = req.body;
+
+    console.log(`Updating assignment for teacher ${teacherId}: ${oldGrade}-${oldSection}-${oldSubject} to ${newGrade}-${newSection}-${newSubject}`);
+
+    if (!oldGrade || !oldSection || !oldSubject || !newGrade || !newSection || !newSubject) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required: oldGrade, oldSection, oldSubject, newGrade, newSection, newSubject'
+      });
+    }
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Check if the new assignment already exists (excluding the one being updated)
+    const hasConflict = teacher.assignedClasses.some(assignment => 
+      assignment.grade === newGrade && 
+      assignment.section === newSection && 
+      assignment.subject === newSubject &&
+      !(assignment.grade === oldGrade && assignment.section === oldSection && assignment.subject === oldSubject)
+    );
+
+    if (hasConflict) {
+      return res.status(409).json({
+        success: false,
+        message: `Assignment ${newGrade}-${newSection}-${newSubject} already exists`
+      });
+    }
+
+    // Find and update the specific assignment
+    const assignmentIndex = teacher.assignedClasses.findIndex(assignment => 
+      assignment.grade === oldGrade && assignment.section === oldSection && assignment.subject === oldSubject
+    );
+
+    if (assignmentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Update the assignment
+    teacher.assignedClasses[assignmentIndex] = {
+      ...teacher.assignedClasses[assignmentIndex],
+      grade: newGrade,
+      section: newSection,
+      subject: newSubject
+    };
+
+    // Save the updated teacher
+    const savedTeacher = await teacher.save();
+    console.log(`Successfully updated assignment from ${oldGrade}-${oldSection}-${oldSubject} to ${newGrade}-${newSection}-${newSubject}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subject assignment updated successfully',
+      data: {
+        teacherId: savedTeacher._id,
+        oldAssignment: { grade: oldGrade, section: oldSection, subject: oldSubject },
+        newAssignment: { grade: newGrade, section: newSection, subject: newSubject }
+      }
+    });
+  } catch (error) {
+    console.error('Error updating subject assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating subject assignment',
+      error: error.message
+    });
+  }
+};
+
 // Get teacher statistics
 exports.getTeacherStatistics = async (req, res) => {
   try {

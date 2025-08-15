@@ -51,9 +51,21 @@ const Classes: React.FC = () => {
   const fetchTeachers = async () => {
     try {
       const res = await apiService.get<{ success: boolean; data: any[]; count?: number }>('/admin/teachers');
-      const list = (res as any).data?.map((t: any) => ({ _id: t._id, name: t.name, email: t.email, isActive: t.isActive })) || [];
-      setTeachers(list);
-    } catch (e) { /* noop */ }
+      const allTeachers = (res as any).data?.map((t: any) => ({ _id: t._id, name: t.name, email: t.email, isActive: t.isActive })) || [];
+      
+      // Filter out teachers who are already assigned as class teachers
+      const availableTeachers = allTeachers.filter((teacher: { _id: string; name: string; email: string; isActive: boolean }) => {
+        // Check if this teacher is already assigned to any class
+        const isAlreadyAssigned = classes.some(cls => cls.classTeacher?._id === teacher._id);
+        return !isAlreadyAssigned && teacher.isActive;
+      });
+      
+      setTeachers(availableTeachers);
+      console.log('Available teachers for assignment:', availableTeachers);
+    } catch (e) { 
+      console.error('Error fetching teachers:', e);
+      setTeachers([]);
+    }
   };
 
   useEffect(() => { fetchClasses(); }, []);
@@ -74,6 +86,9 @@ const Classes: React.FC = () => {
         setClasses(prev => prev.map(c => c._id === updated._id ? { ...c, classTeacher: updated.classTeacher } : c));
         setSnackbar({ open: true, message: 'Class teacher assigned', severity: 'success' });
         setOpenAssign(false);
+        
+        // Refresh the teacher list to remove the newly assigned teacher
+        await fetchTeachers();
       } else {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to assign', severity: 'error' });
       }
@@ -88,6 +103,9 @@ const Classes: React.FC = () => {
       if ((res as any).success) {
         setClasses(prev => prev.map(c => c._id === cls._id ? { ...c, classTeacher: null } : c));
         setSnackbar({ open: true, message: 'Class teacher unassigned', severity: 'success' });
+        
+        // Refresh the teacher list to include the newly unassigned teacher
+        await fetchTeachers();
       } else {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to unassign', severity: 'error' });
       }
@@ -248,7 +266,14 @@ const Classes: React.FC = () => {
 
       {/* Assign Class Teacher Dialog */}
       <Dialog open={openAssign} onClose={() => setOpenAssign(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Assign Class Teacher</DialogTitle>
+        <DialogTitle>
+          Assign Class Teacher
+          {teachers.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontWeight: 'normal' }}>
+              Only available teachers are shown (teachers not already assigned to other classes)
+            </Typography>
+          )}
+        </DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
@@ -257,12 +282,17 @@ const Classes: React.FC = () => {
             value={teacherId}
             onChange={(e) => setTeacherId(e.target.value)}
             margin="normal"
+            disabled={teachers.length === 0}
           >
-            {teachers.map(t => (
-              <MenuItem key={t._id} value={t._id} disabled={!t.isActive}>
-                {t.name} ({t.email}) {t.isActive ? '' : ' - inactive'}
-              </MenuItem>
-            ))}
+            {teachers.length === 0 ? (
+              <MenuItem disabled>No available teachers. All teachers are already assigned as class teachers.</MenuItem>
+            ) : (
+              teachers.map(t => (
+                <MenuItem key={t._id} value={t._id} disabled={!t.isActive}>
+                  {t.name} ({t.email}) {t.isActive ? '' : ' - inactive'}
+                </MenuItem>
+              ))
+            )}
           </TextField>
         </DialogContent>
         <DialogActions>

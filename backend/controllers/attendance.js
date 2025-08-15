@@ -187,12 +187,10 @@ exports.updateAttendance = async (req, res, next) => {
 // @access  Private (Teacher only)
 exports.bulkMarkAttendance = async (req, res, next) => {
   try {
-    const { classId, date, attendanceData } = req.body;
+    const attendanceData = req.body; // Array of attendance records
 
-    // Validate date based on user role
-    const dateValidation = validateAttendanceDate(date || new Date(), req.user.role);
-    if (!dateValidation.isValid) {
-      return next(new ErrorResponse(dateValidation.message, 400));
+    if (!Array.isArray(attendanceData) || attendanceData.length === 0) {
+      return next(new ErrorResponse('Attendance data must be a non-empty array', 400));
     }
 
     const attendanceRecords = [];
@@ -200,10 +198,24 @@ exports.bulkMarkAttendance = async (req, res, next) => {
     const notifications = []; // WhatsApp removed
 
     for (const record of attendanceData) {
-      try {
-        const { studentId, status, remarks } = record;
+      const { studentId, status, date, remarks } = record;
 
-        // Check if attendance already exists
+      // Validate date based on user role
+      const dateValidation = validateAttendanceDate(date || new Date(), req.user.role);
+      if (!dateValidation.isValid) {
+        errors.push({ studentId, error: dateValidation.message });
+        continue;
+      }
+
+      try {
+        // Find student
+        const student = await Student.findById(studentId).populate('class');
+        if (!student) {
+          errors.push({ studentId, error: 'Student not found' });
+          continue;
+        }
+
+        // Check if attendance already marked for the specified date
         const attendanceDate = new Date(date || new Date());
         attendanceDate.setHours(0, 0, 0, 0);
         
@@ -216,41 +228,202 @@ exports.bulkMarkAttendance = async (req, res, next) => {
         });
 
         if (existingAttendance) {
-          errors.push(`Attendance already marked for student ${studentId}`);
-          continue;
+          // Update existing attendance
+          existingAttendance.status = status;
+          existingAttendance.remarks = remarks;
+          existingAttendance.markedBy = req.user.id;
+          await existingAttendance.save();
+          attendanceRecords.push(existingAttendance);
+        } else {
+          // Create new attendance record
+          const attendance = await Attendance.create({
+            student: studentId,
+            class: student.class._id,
+            date: attendanceDate,
+            status,
+            markedBy: req.user.id,
+            remarks
+          });
+          attendanceRecords.push(attendance);
         }
 
-        const student = await Student.findById(studentId);
-        if (!student) {
-          errors.push(`Student ${studentId} not found`);
-          continue;
+        // Add to notifications if absent
+        if (status === 'absent' && student.parentPhone) {
+          notifications.push({
+            phone: student.parentPhone,
+            message: `Dear Parent, ${student.name} was absent on ${attendanceDate.toLocaleDateString()}. Please ensure regular attendance.`
+          });
         }
-
-        const attendance = await Attendance.create({
-          student: studentId,
-          class: classId,
-          date: attendanceDate,
-          status,
-          markedBy: req.user.id,
-          remarks
-        });
-
-        attendanceRecords.push(attendance);
-
-        // Notifications disabled (WhatsApp removed)
       } catch (error) {
-        errors.push(`Error marking attendance for student ${record.studentId}: ${error.message}`);
+        errors.push({ studentId, error: error.message });
       }
     }
+
+    // Send notifications (disabled for now)
+    // if (notifications.length > 0) {
+    //   // WhatsApp notification logic here
+    // }
+
+    res.status(200).json({
+      success: true,
+      data: attendanceRecords,
+      message: `Successfully marked attendance for ${attendanceRecords.length} students`,
+      errors: errors.length > 0 ? errors : undefined,
+      notificationsCount: notifications.length
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get class attendance statistics
+// @route   GET /api/attendance/class/:classId/statistics
+// @access  Private
+exports.getClassAttendanceStatistics = async (req, res, next) => {
+  try {
+    const { classId } = req.params;
+    const { date } = req.query;
+
+    const attendanceDate = new Date(date || new Date());
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    const attendance = await Attendance.find({
+      class: classId,
+      date: {
+        $gte: attendanceDate,
+        $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
+      }
+    }).populate('student', 'name rollNumber');
+
+    const totalStudents = await Student.countDocuments({ class: classId });
+    const presentCount = attendance.filter(a => a.status === 'present').length;
+    const absentCount = attendance.filter(a => a.status === 'absent').length;
+    const lateCount = attendance.filter(a => a.status === 'late').length;
+    const halfDayCount = attendance.filter(a => a.status === 'half-day').length;
+    const attendancePercentage = totalStudents > 0 ? ((presentCount + lateCount + halfDayCount) / totalStudents) * 100 : 0;
 
     res.status(200).json({
       success: true,
       data: {
-        marked: attendanceRecords.length,
-        errors,
-        notifications,
-        records: attendanceRecords
+        totalStudents,
+        presentCount,
+        absentCount,
+        lateCount,
+        halfDayCount,
+        attendancePercentage: Math.round(attendancePercentage * 100) / 100
       }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get attendance dashboard
+// @route   GET /api/attendance/dashboard
+// @access  Private
+exports.getAttendanceDashboard = async (req, res, next) => {
+  try {
+    const { date, classId } = req.query;
+    const today = date ? new Date(date) : new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let query = {
+      date: {
+        $gte: today,
+        $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+      }
+    };
+
+    if (classId) {
+      query.class = classId;
+    }
+
+    const attendance = await Attendance.find(query)
+      .populate('student', 'name rollNumber')
+      .populate('class', 'name section')
+      .populate('markedBy', 'name');
+
+    const totalStudents = classId 
+      ? await Student.countDocuments({ class: classId })
+      : await Student.countDocuments();
+
+    const presentCount = attendance.filter(a => a.status === 'present').length;
+    const absentCount = attendance.filter(a => a.status === 'absent').length;
+    const lateCount = attendance.filter(a => a.status === 'late').length;
+    const halfDayCount = attendance.filter(a => a.status === 'half-day').length;
+    const attendancePercentage = totalStudents > 0 ? ((presentCount + lateCount + halfDayCount) / totalStudents) * 100 : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        date: today,
+        totalStudents,
+        presentCount,
+        absentCount,
+        lateCount,
+        halfDayCount,
+        attendancePercentage: Math.round(attendancePercentage * 100) / 100,
+        attendance
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Send attendance notifications
+// @route   POST /api/attendance/notifications
+// @access  Private (Teacher, Admin)
+exports.sendAttendanceNotifications = async (req, res, next) => {
+  try {
+    const { date, classId, type } = req.body;
+
+    const attendanceDate = new Date(date || new Date());
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    let query = {
+      date: {
+        $gte: attendanceDate,
+        $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
+      }
+    };
+
+    if (classId) {
+      query.class = classId;
+    }
+
+    if (type && type !== 'all') {
+      query.status = type;
+    }
+
+    const attendance = await Attendance.find(query)
+      .populate('student', 'name parentPhone')
+      .populate('class', 'name section');
+
+    const notifications = [];
+    let sentCount = 0;
+
+    for (const record of attendance) {
+      if (record.student.parentPhone) {
+        const message = `Dear Parent, ${record.student.name} was ${record.status} on ${attendanceDate.toLocaleDateString()}. Please ensure regular attendance.`;
+        notifications.push({
+          phone: record.student.parentPhone,
+          message
+        });
+        sentCount++;
+      }
+    }
+
+    // Send notifications (disabled for now)
+    // if (notifications.length > 0) {
+    //   // WhatsApp notification logic here
+    // }
+
+    res.status(200).json({
+      success: true,
+      message: `Notifications prepared for ${sentCount} parents`,
+      sentCount,
+      notifications
     });
   } catch (err) {
     next(err);

@@ -537,18 +537,28 @@ exports.updateTeacherStatus = async (req, res) => {
 // Get teacher's own assignments (classes, sections, subjects)
 exports.getMyAssignments = async (req, res) => {
   try {
-    const teacherId = req.user.id; // From auth middleware
+    const userId = req.user._id; // From auth middleware - this is the User document ID
     
     console.log('=== GET TEACHER ASSIGNMENTS REQUEST ===');
-    console.log('Teacher ID:', teacherId);
+    console.log('User ID from token:', userId);
+    console.log('User role:', req.user.role);
 
-    const teacher = await Teacher.findById(teacherId)
+    // Find the Teacher document that references this User
+    const teacher = await Teacher.findOne({ user: userId })
       .select('name email assignedClasses');
 
     if (!teacher) {
+      console.log('No Teacher document found for User ID:', userId);
+      console.log('Available teachers in database:', await Teacher.find().select('user name email'));
+      
       return res.status(404).json({
         success: false,
-        message: 'Teacher not found'
+        message: 'Teacher profile not found. Please contact administrator.',
+        debug: {
+          userId: userId,
+          userRole: req.user.role,
+          userEmail: req.user.email
+        }
       });
     }
 

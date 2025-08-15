@@ -65,14 +65,16 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/school_ma
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/students', require('./routes/students'));
-app.use('/api/teachers', require('./routes/teachers'));
-app.use('/api/admin/teachers', require('./routes/teacherManagement'));
 app.use('/api/classes', require('./routes/classes'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/homework', require('./routes/homework'));
 app.use('/api/tests', require('./routes/tests'));
 app.use('/api/results', require('./routes/results'));
 app.use('/api/notifications', require('./routes/notifications'));
+
+// Teacher routes (moved to avoid conflicts)
+app.use('/api/teachers', require('./routes/teachers'));
+app.use('/api/admin/teachers', require('./routes/teacherManagement'));
 
 
 

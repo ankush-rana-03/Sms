@@ -70,12 +70,19 @@ class StudentService {
   }
 
   // Get all students
-  async getStudents(): Promise<{ success: boolean; data: Student[]; count: number }> {
+  async getStudents(params?: { page?: number; limit?: number; search?: string; grade?: string; section?: string }): Promise<{ success: boolean; data: Student[]; count: number; total: number; page: number; totalPages: number }> {
     try {
       console.log('=== FRONTEND: Fetching students ===');
       console.log('Token:', localStorage.getItem('token'));
       
-      const response = await api.get<{ success: boolean; data: Student[]; count: number }>('/students');
+      const query = new URLSearchParams();
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.search) query.set('search', params.search);
+      if (params?.grade) query.set('grade', params.grade);
+      if (params?.section) query.set('section', params.section);
+
+      const response = await api.get<{ success: boolean; data: Student[]; count: number; total: number; page: number; totalPages: number }>(`/students?${query.toString()}`);
       
       console.log('=== FRONTEND: Students fetched successfully ===');
       console.log('Response:', response);
@@ -148,6 +155,24 @@ class StudentService {
     } catch (error: any) {
       console.error('Error fetching attendance:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch attendance');
+    }
+  }
+
+  async updateStudent(studentId: string, update: Partial<StudentFormData>): Promise<{ success: boolean; data: Student; message: string }> {
+    try {
+      const response = await api.put<{ success: boolean; data: Student; message: string }>(`/students/${studentId}`, update);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update student');
+    }
+  }
+
+  async deleteStudent(studentId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await api.delete<{ success: boolean; message: string }>(`/students/${studentId}`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete student');
     }
   }
 }

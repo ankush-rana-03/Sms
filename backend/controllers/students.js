@@ -120,19 +120,37 @@ exports.createStudent = async (req, res) => {
   }
 };
 
-// Get all students
+// Get all students with search/pagination
 exports.getStudents = async (req, res) => {
   console.log('=== GET STUDENTS REQUEST ===');
   console.log('User:', req.user);
   
   try {
-    const students = await Student.find();
-    
-    console.log('Found students:', students.length);
+    const { page = 1, limit = 20, search = '', grade = '', section = '' } = req.query;
+    const query = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { rollNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (grade) query.grade = grade;
+    if (section) query.section = section;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [students, total] = await Promise.all([
+      Student.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      Student.countDocuments(query)
+    ]);
     
     res.status(200).json({
       success: true,
       count: students.length,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / Number(limit)),
       data: students
     });
   } catch (error) {
@@ -142,6 +160,55 @@ exports.getStudents = async (req, res) => {
       message: 'Error fetching students',
       error: error.message
     });
+  }
+};
+
+// Update student
+exports.updateStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const update = { ...req.body };
+
+    // Prevent email collision
+    if (update.email) {
+      const exists = await Student.findOne({ email: update.email, _id: { $ne: studentId } });
+      if (exists) {
+        return res.status(400).json({ success: false, message: 'Email already in use by another student' });
+      }
+    }
+
+    // Enforce unique roll number within grade + section
+    if (update.rollNumber || update.grade || update.section) {
+      const current = await Student.findById(studentId);
+      const grade = update.grade || current.grade;
+      const section = update.section || current.section;
+      const rollNumber = update.rollNumber || current.rollNumber;
+      const dup = await Student.findOne({ _id: { $ne: studentId }, grade, section, rollNumber });
+      if (dup) {
+        return res.status(400).json({ success: false, message: `Roll number ${rollNumber} already exists for Grade ${grade}-${section}` });
+      }
+    }
+
+    const student = await Student.findByIdAndUpdate(studentId, update, { new: true, runValidators: true });
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    res.status(200).json({ success: true, message: 'Student updated successfully', data: student });
+  } catch (error) {
+    console.error('Error updating student:', error);
+    res.status(500).json({ success: false, message: 'Error updating student', error: error.message });
+  }
+};
+
+// Delete student
+exports.deleteStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const student = await Student.findByIdAndDelete(studentId);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+    res.status(200).json({ success: true, message: 'Student deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    res.status(500).json({ success: false, message: 'Error deleting student', error: error.message });
   }
 };
 

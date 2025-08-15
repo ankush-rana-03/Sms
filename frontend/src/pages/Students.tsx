@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar } from '@mui/material';
+import { Box, Typography, Button, Grid, Card, CardContent, Avatar, Dialog, DialogTitle, DialogContent, Alert, CircularProgress, Snackbar, TextField, MenuItem } from '@mui/material';
 import { Add, Person, Refresh } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import studentService, { Student } from '../services/studentService';
@@ -14,6 +14,9 @@ const Students: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
+  const [search, setSearch] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('');
 
   // Fetch students on component mount
   useEffect(() => {
@@ -24,7 +27,7 @@ const Students: React.FC = () => {
     setError(null);
     try {
       setFetchingStudents(true);
-      const response = await studentService.getStudents();
+      const response = await studentService.getStudents({ search, grade: gradeFilter, section: sectionFilter });
       setStudents(response.data);
       setError(null);
     } catch (error: any) {
@@ -88,6 +91,24 @@ const Students: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Filters */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+        <TextField size="small" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchStudents()} />
+        <TextField size="small" select label="Grade" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} sx={{ minWidth: 140 }}>
+          <MenuItem value="">All Grades</MenuItem>
+          {['1','2','3','4','5','6','7','8','9','10','11','12'].map(g => (
+            <MenuItem key={g} value={g}>Grade {g}</MenuItem>
+          ))}
+        </TextField>
+        <TextField size="small" select label="Section" value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} sx={{ minWidth: 140 }}>
+          <MenuItem value="">All Sections</MenuItem>
+          {['A','B','C','D','E'].map(s => (
+            <MenuItem key={s} value={s}>Section {s}</MenuItem>
+          ))}
+        </TextField>
+        <Button variant="outlined" onClick={fetchStudents}>Apply</Button>
+      </Box>
+
       {/* Success/Error Messages */}
       {success && (
         <Alert severity="success" sx={{ mb: 2 }}>
@@ -132,10 +153,36 @@ const Students: React.FC = () => {
                       </Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-  
-                    </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Button size="small" variant="outlined" onClick={async () => {
+                      // quick demo: toggle section between A/B
+                      const nextSection = student.section === 'A' ? 'B' : 'A';
+                      try {
+                        const res = await studentService.updateStudent(student._id, { section: nextSection });
+                        setStudents(prev => prev.map(s => s._id === student._id ? res.data : s));
+                        setToastMessage('Student updated');
+                        setToastSeverity('success');
+                        setShowToast(true);
+                      } catch (e: any) {
+                        setToastMessage(e.message || 'Update failed');
+                        setToastSeverity('error');
+                        setShowToast(true);
+                      }
+                    }}>Edit</Button>
+                    <Button size="small" color="error" variant="outlined" onClick={async () => {
+                      if (!window.confirm('Delete this student?')) return;
+                      try {
+                        await studentService.deleteStudent(student._id);
+                        setStudents(prev => prev.filter(s => s._id !== student._id));
+                        setToastMessage('Student deleted');
+                        setToastSeverity('success');
+                        setShowToast(true);
+                      } catch (e: any) {
+                        setToastMessage(e.message || 'Delete failed');
+                        setToastSeverity('error');
+                        setShowToast(true);
+                      }
+                    }}>Delete</Button>
                   </Box>
                 </CardContent>
               </Card>

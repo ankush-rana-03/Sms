@@ -24,9 +24,15 @@ import {
   LocationOn,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import TeacherDashboard from './TeacherDashboard';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+
+  // If user is a teacher, render the specialized TeacherDashboard
+  if (user?.role === 'teacher') {
+    return <TeacherDashboard />;
+  }
 
   const getRoleBasedStats = () => {
     switch (user?.role) {

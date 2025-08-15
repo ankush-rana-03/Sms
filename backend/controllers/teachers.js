@@ -533,3 +533,63 @@ exports.updateTeacherStatus = async (req, res) => {
     });
   }
 };
+
+// Get teacher's own assignments (classes, sections, subjects)
+exports.getMyAssignments = async (req, res) => {
+  try {
+    const teacherId = req.user.id; // From auth middleware
+    
+    console.log('=== GET TEACHER ASSIGNMENTS REQUEST ===');
+    console.log('Teacher ID:', teacherId);
+
+    const teacher = await Teacher.findById(teacherId)
+      .select('name email assignedClasses');
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    console.log('Found teacher assignments:', teacher.assignedClasses);
+
+    // Group assignments by class for better organization
+    const groupedAssignments = {};
+    
+    teacher.assignedClasses.forEach(assignment => {
+      const key = `${assignment.grade}-${assignment.section}`;
+      if (!groupedAssignments[key]) {
+        groupedAssignments[key] = {
+          grade: assignment.grade,
+          section: assignment.section,
+          subjects: []
+        };
+      }
+      groupedAssignments[key].subjects.push(assignment.subject);
+    });
+
+    const assignments = Object.values(groupedAssignments);
+
+    res.status(200).json({
+      success: true,
+      message: 'Teacher assignments retrieved successfully',
+      data: {
+        teacher: {
+          name: teacher.name,
+          email: teacher.email
+        },
+        assignments: assignments,
+        totalClasses: assignments.length,
+        totalSubjects: teacher.assignedClasses.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching teacher assignments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching teacher assignments',
+      error: error.message
+    });
+  }
+};

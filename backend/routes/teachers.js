@@ -12,7 +12,8 @@ const {
   deleteTeacher,
   resetTeacherPassword,
   getTeacherStatus,
-  updateTeacherStatus
+  updateTeacherStatus,
+  getMyAssignments
 } = require('../controllers/teachers');
 
 // Teacher attendance routes
@@ -20,6 +21,9 @@ router.get('/students', protect, authorize('teacher', 'admin'), getStudentsByCla
 router.post('/attendance', protect, authorize('teacher', 'admin'), markAttendance);
 router.get('/students/:studentId/attendance', protect, authorize('teacher', 'admin'), getStudentAttendance);
 router.get('/today-attendance', protect, authorize('teacher', 'admin'), getTodayAttendance);
+
+// Teacher dashboard routes
+router.get('/my-assignments', protect, authorize('teacher'), getMyAssignments);
 
 // Teacher management routes (admin only)
 router.get('/management', protect, authorize('admin'), getAllTeachers);

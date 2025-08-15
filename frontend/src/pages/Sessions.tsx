@@ -87,6 +87,7 @@ const Sessions: React.FC = () => {
   const [openFreshStartDialog, setOpenFreshStartDialog] = useState(false);
   const [openAutoCreateClassesDialog, setOpenAutoCreateClassesDialog] = useState(false);
   const [openCopyClassesDialog, setOpenCopyClassesDialog] = useState(false);
+  const [selectedSourceSession, setSelectedSourceSession] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [promotionResults, setPromotionResults] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -226,6 +227,7 @@ const Sessions: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       setOpenCopyClassesDialog(false);
       setSelectedSession(null);
+      setSelectedSourceSession('');
     }
   });
 
@@ -275,6 +277,7 @@ const Sessions: React.FC = () => {
 
   const handleCopyClasses = (session: Session) => {
     setSelectedSession(session);
+    setSelectedSourceSession('');
     setOpenCopyClassesDialog(true);
   };
 
@@ -821,26 +824,43 @@ const Sessions: React.FC = () => {
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Source Session</InputLabel>
             <Select
-              value=""
-              onChange={(e) => {
-                if (e.target.value && selectedSession) {
-                  copyClassesMutation.mutate({
-                    sessionId: selectedSession._id,
-                    sourceSessionId: e.target.value
-                  });
-                }
-              }}
+              value={selectedSourceSession}
+              onChange={(e) => setSelectedSourceSession(e.target.value)}
+              disabled={copyClassesMutation.isPending}
             >
-              {sessions?.map((session) => (
+              <MenuItem value="">
+                <em>Select a session...</em>
+              </MenuItem>
+              {sessions?.filter(session => session._id !== selectedSession?._id).map((session) => (
                 <MenuItem key={session._id} value={session._id}>
                   {session.name} ({session.academicYear})
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
+          {selectedSourceSession && (
+            <Typography sx={{ mt: 2, color: 'text.secondary' }}>
+              This will copy all classes from the selected session. Existing classes in the target session will be skipped.
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCopyClassesDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (selectedSourceSession && selectedSession) {
+                copyClassesMutation.mutate({
+                  sessionId: selectedSession._id,
+                  sourceSessionId: selectedSourceSession
+                });
+              }
+            }}
+            variant="contained"
+            color="primary"
+            disabled={!selectedSourceSession || copyClassesMutation.isPending}
+          >
+            {copyClassesMutation.isPending ? 'Copying...' : 'Copy Classes'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

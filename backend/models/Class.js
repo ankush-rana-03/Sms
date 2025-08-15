@@ -13,6 +13,23 @@ const classSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Session management fields
+  session: {
+    type: String,
+    required: true
+  },
+  isActiveSession: {
+    type: Boolean,
+    default: true
+  },
+  sessionStartDate: {
+    type: Date,
+    default: Date.now
+  },
+  sessionEndDate: {
+    type: Date,
+    default: null
+  },
   classTeacher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Teacher'
@@ -56,7 +73,7 @@ const classSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for name, section, and academic year
-classSchema.index({ name: 1, section: 1, academicYear: 1 }, { unique: true });
+// Compound index for name, section, academic year, and session
+classSchema.index({ name: 1, section: 1, academicYear: 1, session: 1 }, { unique: true });
 
 module.exports = mongoose.model('Class', classSchema);

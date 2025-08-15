@@ -113,6 +113,16 @@ exports.createStudent = async (req, res) => {
     const isAdmin = req.user?.role === 'admin' || req.user?.role === 'principal';
     const pendingApproval = !isAdmin; // teachers require approval
 
+    // Get current session
+    const Session = require('../models/Session');
+    const currentSession = await Session.findOne({ isCurrent: true });
+    if (!currentSession) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active session found. Please create or activate a session first.'
+      });
+    }
+
     // Create student
     const student = await Student.create({
       name: name?.trim(),
@@ -128,6 +138,7 @@ exports.createStudent = async (req, res) => {
       parentName: parentName?.trim(),
       parentPhone: parentPhone?.trim(),
       pendingApproval,
+      currentSession: currentSession.name,
       createdBy: req.user?._id || null
     });
 
@@ -155,7 +166,7 @@ exports.getStudents = async (req, res) => {
   console.log('User:', req.user);
   
   try {
-    const { page = 1, limit = 20, search = '', grade = '', section = '' } = req.query;
+    const { page = 1, limit = 20, search = '', grade = '', section = '', session = '' } = req.query;
     const query = {};
     if (search) {
       query.$or = [
@@ -167,6 +178,18 @@ exports.getStudents = async (req, res) => {
     }
     if (grade) query.grade = grade;
     if (section) query.section = section;
+    
+    // Filter by session
+    if (session) {
+      query.currentSession = session;
+    } else {
+      // If no session specified, get students from current session
+      const Session = require('../models/Session');
+      const currentSession = await Session.findOne({ isCurrent: true });
+      if (currentSession) {
+        query.currentSession = currentSession.name;
+      }
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
     const [students, total] = await Promise.all([

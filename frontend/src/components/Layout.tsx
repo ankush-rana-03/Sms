@@ -30,8 +30,8 @@ import {
   Notifications,
   Logout,
   Settings,
-
   ManageAccounts,
+  CalendarToday,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,12 +43,10 @@ const getMenuItems = (userRole: string) => {
     { text: 'Dashboard', icon: <Dashboard />, path: '/', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
     { text: 'Attendance', icon: <People />, path: '/attendance', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
     { text: 'Students', icon: <School />, path: '/students', roles: ['admin', 'principal', 'teacher'] },
-
     { text: 'Teacher Management', icon: <ManageAccounts />, path: '/teacher-management', roles: ['admin'] },
-
     { text: 'Classes', icon: <Class />, path: '/classes', roles: ['admin', 'principal', 'teacher'] },
+    { text: 'Sessions', icon: <CalendarToday />, path: '/sessions', roles: ['admin', 'principal'] },
     { text: 'Teacher Attendance', icon: <People />, path: '/teacher-attendance', roles: ['teacher', 'admin'] },
-
     { text: 'Homework', icon: <Assignment />, path: '/homework', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
     { text: 'Tests', icon: <Quiz />, path: '/tests', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
     { text: 'Results', icon: <Assessment />, path: '/results', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },

@@ -61,6 +61,32 @@ const studentSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  // Session management fields
+  currentSession: {
+    type: String,
+    default: null
+  },
+  promotionStatus: {
+    type: String,
+    enum: ['pending', 'promoted', 'retained', 'graduated'],
+    default: 'pending'
+  },
+  promotionDate: {
+    type: Date,
+    default: null
+  },
+  promotionNotes: {
+    type: String,
+    default: ''
+  },
+  previousGrade: {
+    type: String,
+    default: null
+  },
+  previousSection: {
+    type: String,
+    default: null
+  },
   attendance: [{
     date: {
       type: String,

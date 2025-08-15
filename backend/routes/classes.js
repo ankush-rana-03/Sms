@@ -7,8 +7,22 @@ const Teacher = require('../models/Teacher');
 // Get all classes
 router.get('/', protect, authorize('admin', 'principal', 'teacher'), async (req, res) => {
   try {
-    const classes = await Class.find({ isActive: true })
-      .select('name section academicYear roomNumber capacity currentStrength classTeacher')
+    const { session } = req.query;
+    
+    let query = { isActive: true };
+    if (session) {
+      query.session = session;
+    } else {
+      // If no session specified, get classes from current session
+      const Session = require('../models/Session');
+      const currentSession = await Session.findOne({ isCurrent: true });
+      if (currentSession) {
+        query.session = currentSession.name;
+      }
+    }
+
+    const classes = await Class.find(query)
+      .select('name section academicYear session roomNumber capacity currentStrength classTeacher isActiveSession')
       .populate('classTeacher', 'name email');
 
     // Transform data to match frontend expectations
@@ -18,9 +32,11 @@ router.get('/', protect, authorize('admin', 'principal', 'teacher'), async (req,
       section: cls.section,
       grade: cls.name.replace('Class ', ''), // Extract grade from name
       academicYear: cls.academicYear,
+      session: cls.session,
       roomNumber: cls.roomNumber,
       capacity: cls.capacity,
       currentStrength: cls.currentStrength,
+      isActiveSession: cls.isActiveSession,
       classTeacher: cls.classTeacher ? { _id: cls.classTeacher._id, name: cls.classTeacher.name, email: cls.classTeacher.email } : null
     }));
 
@@ -51,12 +67,22 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       });
     }
 
-    // Check if class already exists
-    const existingClass = await Class.findOne({ name, section, academicYear });
+    // Get current session
+    const Session = require('../models/Session');
+    const currentSession = await Session.findOne({ isCurrent: true });
+    if (!currentSession) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active session found. Please create or activate a session first.'
+      });
+    }
+
+    // Check if class already exists in current session
+    const existingClass = await Class.findOne({ name, section, academicYear, session: currentSession.name });
     if (existingClass) {
       return res.status(400).json({
         success: false,
-        message: 'Class with this name, section, and academic year already exists'
+        message: 'Class with this name, section, and academic year already exists in the current session'
       });
     }
 
@@ -64,6 +90,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       name,
       section,
       academicYear,
+      session: currentSession.name,
       roomNumber,
       capacity: capacity || 40
     });

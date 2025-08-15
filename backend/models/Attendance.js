@@ -1,14 +1,18 @@
 const mongoose = require('mongoose');
 
 const attendanceSchema = new mongoose.Schema({
-  student: {
+  studentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student',
     required: true
   },
-  class: {
+  classId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Class',
+    required: true
+  },
+  session: {
+    type: String,
     required: true
   },
   date: {
@@ -44,7 +48,7 @@ const attendanceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for student and date
-attendanceSchema.index({ student: 1, date: 1 }, { unique: true });
+// Compound index for student, date, and session
+attendanceSchema.index({ studentId: 1, date: 1, session: 1 }, { unique: true });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

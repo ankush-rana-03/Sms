@@ -10,6 +10,7 @@ import Attendance from './pages/Attendance';
 import Students from './pages/Students';
 import Teachers from './pages/Teachers';
 import Classes from './pages/Classes';
+import Sessions from './pages/Sessions';
 import Homework from './pages/Homework';
 import Tests from './pages/Tests';
 import Results from './pages/Results';
@@ -93,6 +94,11 @@ const App: React.FC = () => {
                 <Route path="classes" element={
                   <RoleBasedRoute allowedRoles={['admin', 'principal', 'teacher']}>
                     <Classes />
+                  </RoleBasedRoute>
+                } />
+                <Route path="sessions" element={
+                  <RoleBasedRoute allowedRoles={['admin', 'principal']}>
+                    <Sessions />
                   </RoleBasedRoute>
                 } />
                 <Route path="homework" element={<Homework />} />

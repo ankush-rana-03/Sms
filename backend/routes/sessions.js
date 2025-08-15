@@ -5,7 +5,7 @@ const Student = require('../models/Student');
 const Class = require('../models/Class');
 const Result = require('../models/Result');
 const Attendance = require('../models/Attendance');
-const TeacherAssignment = require('../models/TeacherAssignment');
+const Teacher = require('../models/Teacher');
 const { protect, authorize } = require('../middleware/auth');
 
 // Get all sessions
@@ -489,9 +489,17 @@ router.delete('/:id/classes', protect, authorize('admin', 'principal'), async (r
     const classIds = classes.map(cls => cls._id);
 
     // Delete all teacher assignments for these classes
-    await TeacherAssignment.deleteMany({ 
-      class: { $in: classIds } 
+    const teachersWithAssignments = await Teacher.find({
+      'assignedClasses.class': { $in: classIds }
     });
+
+    // Remove assignments for these classes from all teachers
+    for (const teacher of teachersWithAssignments) {
+      teacher.assignedClasses = teacher.assignedClasses.filter(
+        assignment => !classIds.includes(assignment.class.toString())
+      );
+      await teacher.save();
+    }
 
     // Delete all classes
     await Class.deleteMany({ session: session.name });

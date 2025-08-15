@@ -207,12 +207,19 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     }
 
     // Check if there are teacher assignments for this class
-    const TeacherAssignment = require('../models/TeacherAssignment');
-    const teacherAssignments = await TeacherAssignment.find({ class: classId });
+    const teachersWithAssignments = await Teacher.find({
+      'assignedClasses.class': classId
+    });
 
-    // Delete teacher assignments for this class
-    if (teacherAssignments.length > 0) {
-      await TeacherAssignment.deleteMany({ class: classId });
+    // Remove assignments for this class from all teachers
+    let deletedAssignments = 0;
+    for (const teacher of teachersWithAssignments) {
+      const originalLength = teacher.assignedClasses.length;
+      teacher.assignedClasses = teacher.assignedClasses.filter(
+        assignment => assignment.class.toString() !== classId
+      );
+      deletedAssignments += originalLength - teacher.assignedClasses.length;
+      await teacher.save();
     }
 
     // Unassign class teacher if assigned
@@ -234,7 +241,7 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
         section: cls.section,
         session: cls.session
       },
-      deletedAssignments: teacherAssignments.length
+      deletedAssignments: deletedAssignments
     });
   } catch (error) {
     console.error('Error deleting class:', error);

@@ -52,6 +52,15 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  pendingApproval: {
+    type: Boolean,
+    default: false
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   attendance: [{
     date: {
       type: String,

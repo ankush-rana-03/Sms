@@ -68,6 +68,30 @@ exports.createStudent = async (req, res) => {
       parentPhone
     } = req.body;
 
+    // Role-based restriction: if teacher, must be class teacher of this grade/section
+    if (req.user?.role === 'teacher') {
+      const Teacher = require('../models/Teacher');
+      const Class = require('../models/Class');
+      const teacher = await Teacher.findOne({ user: req.user._id });
+      if (!teacher) {
+        return res.status(403).json({ success: false, message: 'Teacher profile not found' });
+      }
+      // If teacher is assigned as classTeacherOf a class, verify that class matches grade-section
+      if (!teacher.classTeacherOf) {
+        return res.status(403).json({ success: false, message: 'Only class teachers can add students' });
+      }
+      const cls = await Class.findById(teacher.classTeacherOf);
+      if (!cls) {
+        return res.status(403).json({ success: false, message: 'Assigned class not found for teacher' });
+      }
+      // Our Class model has name and section; we map name -> grade for compatibility
+      const teacherGrade = cls.name;
+      const teacherSection = cls.section;
+      if (String(grade) !== String(teacherGrade) || String(section) !== String(teacherSection)) {
+        return res.status(403).json({ success: false, message: `You can only add students to Class ${teacherGrade}-${teacherSection}` });
+      }
+    }
+
     // Check if student already exists
     const existingStudent = await Student.findOne({ email });
     if (existingStudent) {
@@ -86,6 +110,9 @@ exports.createStudent = async (req, res) => {
       });
     }
 
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'principal';
+    const pendingApproval = !isAdmin; // teachers require approval
+
     // Create student
     const student = await Student.create({
       name: name?.trim(),
@@ -99,14 +126,16 @@ exports.createStudent = async (req, res) => {
       gender,
       bloodGroup,
       parentName: parentName?.trim(),
-      parentPhone: parentPhone?.trim()
+      parentPhone: parentPhone?.trim(),
+      pendingApproval,
+      createdBy: req.user?._id || null
     });
 
     console.log('Student created successfully:', student._id);
     
     res.status(201).json({
       success: true,
-      message: 'Student created successfully',
+      message: pendingApproval ? 'Student submitted for approval' : 'Student created successfully',
       data: student
     });
 
@@ -209,6 +238,24 @@ exports.deleteStudent = async (req, res) => {
   } catch (error) {
     console.error('Error deleting student:', error);
     res.status(500).json({ success: false, message: 'Error deleting student', error: error.message });
+  }
+};
+
+// Approve pending student (admin/principal)
+exports.approveStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const student = await Student.findById(studentId);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+    if (!student.pendingApproval) {
+      return res.status(400).json({ success: false, message: 'Student is already approved' });
+    }
+    student.pendingApproval = false;
+    await student.save();
+    res.status(200).json({ success: true, message: 'Student approved successfully', data: student });
+  } catch (error) {
+    console.error('Error approving student:', error);
+    res.status(500).json({ success: false, message: 'Error approving student', error: error.message });
   }
 };
 

@@ -6,6 +6,7 @@ const {
   getStudents,
   updateStudent,
   deleteStudent,
+  approveStudent,
   getStudentAttendance,
   getAllStudentsTest
 } = require('../controllers/students');
@@ -18,6 +19,7 @@ router.post('/', protect, authorize('admin', 'principal'), createStudent);
 router.get('/', protect, authorize('admin', 'principal', 'teacher'), getStudents);
 router.put('/:studentId', protect, authorize('admin', 'principal'), updateStudent);
 router.delete('/:studentId', protect, authorize('admin', 'principal'), deleteStudent);
+router.put('/:studentId/approve', protect, authorize('admin', 'principal'), approveStudent);
 
 // Attendance routes
 router.get('/:studentId/attendance', protect, authorize('teacher', 'admin'), getStudentAttendance);

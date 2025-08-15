@@ -897,6 +897,174 @@ exports.assignClassesToTeacher = async (req, res) => {
   }
 };
 
+// Update a specific teacher assignment
+exports.updateTeacherAssignment = async (req, res) => {
+  try {
+    const { teacherId, assignmentId } = req.params;
+    const { grade, section, subject } = req.body;
+
+    console.log(`Updating assignment ${assignmentId} for teacher ${teacherId}`);
+    console.log('Update data:', { grade, section, subject });
+
+    if (!grade || !section || !subject) {
+      return res.status(400).json({
+        success: false,
+        message: 'Grade, section, and subject are required'
+      });
+    }
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Find the assignment to update
+    const assignmentIndex = teacher.assignedClasses.findIndex(
+      ac => ac._id.toString() === assignmentId
+    );
+
+    if (assignmentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Check for duplicates (excluding the current assignment being updated)
+    const duplicateExists = teacher.assignedClasses.some((ac, index) => 
+      index !== assignmentIndex && 
+      ac.grade === grade && 
+      ac.section === section && 
+      ac.subject === subject
+    );
+
+    if (duplicateExists) {
+      return res.status(409).json({
+        success: false,
+        message: `Assignment already exists: ${subject} for ${grade}-${section}`
+      });
+    }
+
+    // Update the assignment
+    teacher.assignedClasses[assignmentIndex] = {
+      ...teacher.assignedClasses[assignmentIndex],
+      grade,
+      section,
+      subject
+    };
+
+    // Save the updated teacher
+    const savedTeacher = await teacher.save();
+    console.log('Teacher assignment updated successfully');
+
+    // Fetch the updated teacher with populated data
+    const populatedTeacher = await Teacher.findById(teacherId)
+      .populate('user', 'name email role isActive');
+
+    if (!populatedTeacher) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error fetching updated teacher data'
+      });
+    }
+
+    // Build response
+    const responseData = populatedTeacher.toObject();
+    responseData.assignedClasses = responseData.assignedClasses.map(ac => ({
+      _id: ac._id,
+      grade: ac.grade,
+      section: ac.section,
+      subject: ac.subject
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: 'Assignment updated successfully',
+      data: responseData
+    });
+  } catch (error) {
+    console.error('Error updating teacher assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating teacher assignment',
+      error: error.message
+    });
+  }
+};
+
+// Delete a specific teacher assignment
+exports.deleteTeacherAssignment = async (req, res) => {
+  try {
+    const { teacherId, assignmentId } = req.params;
+
+    console.log(`Deleting assignment ${assignmentId} for teacher ${teacherId}`);
+
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Find and remove the assignment
+    const assignmentIndex = teacher.assignedClasses.findIndex(
+      ac => ac._id.toString() === assignmentId
+    );
+
+    if (assignmentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found'
+      });
+    }
+
+    // Remove the assignment
+    const deletedAssignment = teacher.assignedClasses.splice(assignmentIndex, 1)[0];
+    console.log('Deleted assignment:', deletedAssignment);
+
+    // Save the updated teacher
+    const savedTeacher = await teacher.save();
+    console.log('Teacher assignment deleted successfully');
+
+    // Fetch the updated teacher with populated data
+    const populatedTeacher = await Teacher.findById(teacherId)
+      .populate('user', 'name email role isActive');
+
+    if (!populatedTeacher) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error fetching updated teacher data'
+      });
+    }
+
+    // Build response
+    const responseData = populatedTeacher.toObject();
+    responseData.assignedClasses = responseData.assignedClasses.map(ac => ({
+      _id: ac._id,
+      grade: ac.grade,
+      section: ac.section,
+      subject: ac.subject
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: 'Assignment deleted successfully',
+      data: responseData
+    });
+  } catch (error) {
+    console.error('Error deleting teacher assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting teacher assignment',
+      error: error.message
+    });
+  }
+};
+
 // Get teacher statistics
 exports.getTeacherStatistics = async (req, res) => {
   try {

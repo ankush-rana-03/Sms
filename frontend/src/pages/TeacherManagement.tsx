@@ -43,7 +43,8 @@ import {
   OnlinePrediction,
   Search,
   Refresh,
-
+  Edit as EditIcon,
+  Delete as DeleteIcon,
   Person,
   Warning,
   People,
@@ -61,6 +62,7 @@ interface Teacher {
   designation: 'TGT' | 'PGT' | 'JBT' | 'NTT';
   subjects: string[];
   assignedClasses: Array<{
+    _id: string;
     class: string | { _id: string; name: string; grade: string; section: string };
     section: string;
     subject: string;
@@ -163,6 +165,18 @@ const TeacherManagement: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openLoginLogsDialog, setOpenLoginLogsDialog] = useState(false);
   const [openPasswordResetDialog, setOpenPasswordResetDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [editingAssignment, setEditingAssignment] = useState<{
+    id: string;
+    grade: string;
+    section: string;
+    subject: string;
+  } | null>(null);
+  const [editAssignmentForm, setEditAssignmentForm] = useState({
+    grade: '',
+    section: '',
+    subject: ''
+  });
 
 
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
@@ -196,12 +210,6 @@ const TeacherManagement: React.FC = () => {
     subjectInput: ''
   });
   const subjectInputRef = useRef<HTMLInputElement | null>(null);
-
-  // New state for password reset
-  const [newPassword, setNewPassword] = useState('');
-
-
-
 
   // Add teacherFormData state for create/edit dialog
   const [teacherFormData, setTeacherFormData] = useState({
@@ -371,6 +379,71 @@ const TeacherManagement: React.FC = () => {
     } catch (e: any) {
       console.error('Error saving assigned class & subjects', e);
       showSnackbar(e.response?.data?.message || 'Error saving assignments', 'error');
+    }
+  };
+
+  const handleEditAssignment = (assignment: any) => {
+    setEditingAssignment({
+      id: assignment._id,
+      grade: assignment.grade || '',
+      section: assignment.section || '',
+      subject: assignment.subject || ''
+    });
+    setEditAssignmentForm({
+      grade: assignment.grade || '',
+      section: assignment.section || '',
+      subject: assignment.subject || ''
+    });
+  };
+
+  const handleUpdateAssignment = async () => {
+    if (!editingAssignment || !selectedTeacher) return;
+
+    const { grade, section, subject } = editAssignmentForm;
+    if (!grade || !section || !subject) {
+      showSnackbar('Please fill in all fields', 'error');
+      return;
+    }
+
+    try {
+      const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher._id}/assignments/${editingAssignment.id}`,
+        { grade, section, subject }
+      );
+
+      if (response.success) {
+        showSnackbar('Assignment updated successfully', 'success');
+        setEditingAssignment(null);
+        setEditAssignmentForm({ grade: '', section: '', subject: '' });
+        // Refresh the teacher data
+        fetchTeachers();
+      } else {
+        showSnackbar(response.message || 'Failed to update assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error updating assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error updating assignment', 'error');
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    if (!selectedTeacher || !window.confirm('Are you sure you want to delete this assignment? This action cannot be undone.')) return;
+
+    try {
+      const response = await apiService.delete<{ success: boolean; message: string; data: Teacher }>(
+        `/admin/teachers/${selectedTeacher._id}/assignments/${assignmentId}`
+      );
+
+      if (response.success) {
+        showSnackbar('Assignment deleted successfully', 'success');
+        // Refresh the teacher data
+        fetchTeachers();
+      } else {
+        showSnackbar(response.message || 'Failed to delete assignment', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error deleting assignment:', error);
+      showSnackbar(error.response?.data?.message || 'Error deleting assignment', 'error');
     }
   };
 
@@ -1820,7 +1893,36 @@ const TeacherManagement: React.FC = () => {
                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {selectedTeacher.assignedClasses.map((ac, idx) => (
-                    <Chip key={idx} label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} size="small" />
+                    <Chip 
+                      key={ac._id || idx} 
+                      label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} 
+                      size="small"
+                      onDelete={() => handleDeleteAssignment(ac._id)}
+                      deleteIcon={
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditAssignment(ac);
+                            }}
+                            sx={{ p: 0.5, color: 'primary.main' }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAssignment(ac._id);
+                            }}
+                            sx={{ p: 0.5, color: 'error.main' }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      }
+                    />
                   ))}
                 </Box>
               </Grid>
@@ -1874,6 +1976,48 @@ const TeacherManagement: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenLoginLogsDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Assignment Dialog */}
+      <Dialog open={!!editingAssignment} onClose={() => setEditingAssignment(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Assignment</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Grade"
+                value={editAssignmentForm.grade}
+                onChange={(e) => setEditAssignmentForm(prev => ({ ...prev, grade: e.target.value }))}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Section"
+                value={editAssignmentForm.section}
+                onChange={(e) => setEditAssignmentForm(prev => ({ ...prev, section: e.target.value }))}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Subject"
+                value={editAssignmentForm.subject}
+                onChange={(e) => setEditAssignmentForm(prev => ({ ...prev, subject: e.target.value }))}
+                required
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditingAssignment(null)}>Cancel</Button>
+          <Button onClick={handleUpdateAssignment} variant="contained">
+            Update Assignment
+          </Button>
         </DialogActions>
       </Dialog>
 

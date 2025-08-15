@@ -42,7 +42,18 @@ const Classes: React.FC = () => {
       const res = await apiService.get<{ success: boolean; data: ClassItem[] }>('/classes');
       if (res && (res as any).data) setClasses((res as any).data);
     } catch (e: any) {
-      setSnackbar({ open: true, message: e?.message || 'Failed to fetch classes', severity: 'error' });
+      console.error('Error fetching classes:', e);
+      let errorMessage = 'Failed to fetch classes';
+      
+      if (e?.response?.status === 401) {
+        errorMessage = 'You are not authorized to view classes. Please log in.';
+      } else if (e?.response?.status === 500) {
+        errorMessage = 'Server error occurred while fetching classes. Please try again later.';
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -62,8 +73,19 @@ const Classes: React.FC = () => {
       
       setTeachers(availableTeachers);
       console.log('Available teachers for assignment:', availableTeachers);
-    } catch (e) { 
+    } catch (e: any) { 
       console.error('Error fetching teachers:', e);
+      let errorMessage = 'Failed to fetch teachers';
+      
+      if (e?.response?.status === 401) {
+        errorMessage = 'You are not authorized to view teachers. Please log in as admin.';
+      } else if (e?.response?.status === 500) {
+        errorMessage = 'Server error occurred while fetching teachers.';
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      console.error(errorMessage);
       setTeachers([]);
     }
   };
@@ -93,7 +115,24 @@ const Classes: React.FC = () => {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to assign', severity: 'error' });
       }
     } catch (e: any) {
-      setSnackbar({ open: true, message: e?.response?.data?.message || e?.message || 'Failed to assign', severity: 'error' });
+      console.error('Error assigning class teacher:', e);
+      let errorMessage = 'Failed to assign class teacher';
+      
+      if (e?.response?.data?.message) {
+        errorMessage = e.response.data.message;
+      } else if (e?.response?.status === 400) {
+        errorMessage = 'Invalid teacher data provided.';
+      } else if (e?.response?.status === 404) {
+        errorMessage = 'Class or teacher not found.';
+      } else if (e?.response?.status === 401) {
+        errorMessage = 'You are not authorized to assign class teachers.';
+      } else if (e?.response?.status === 500) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     }
   };
 
@@ -110,7 +149,22 @@ const Classes: React.FC = () => {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to unassign', severity: 'error' });
       }
     } catch (e: any) {
-      setSnackbar({ open: true, message: e?.response?.data?.message || e?.message || 'Failed to unassign', severity: 'error' });
+      console.error('Error unassigning class teacher:', e);
+      let errorMessage = 'Failed to unassign class teacher';
+      
+      if (e?.response?.data?.message) {
+        errorMessage = e.response.data.message;
+      } else if (e?.response?.status === 404) {
+        errorMessage = 'Class not found.';
+      } else if (e?.response?.status === 401) {
+        errorMessage = 'You are not authorized to unassign class teachers.';
+      } else if (e?.response?.status === 500) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     }
   };
 
@@ -133,7 +187,24 @@ const Classes: React.FC = () => {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to create class', severity: 'error' });
       }
     } catch (e: any) {
-      setSnackbar({ open: true, message: e?.response?.data?.message || e?.message || 'Failed to create class', severity: 'error' });
+      console.error('Error creating class:', e);
+      let errorMessage = 'Failed to create class';
+      
+      if (e?.response?.data?.message) {
+        errorMessage = e.response.data.message;
+      } else if (e?.message) {
+        errorMessage = e.message;
+      } else if (e?.response?.status === 400) {
+        errorMessage = 'Invalid data provided. Please check your input.';
+      } else if (e?.response?.status === 409) {
+        errorMessage = 'A class with this name, section, and academic year already exists.';
+      } else if (e?.response?.status === 401) {
+        errorMessage = 'You are not authorized to create classes. Please log in as admin.';
+      } else if (e?.response?.status === 500) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      }
+      
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     }
   };
 

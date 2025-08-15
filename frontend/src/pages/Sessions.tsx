@@ -339,8 +339,26 @@ const Sessions: React.FC = () => {
       )}
 
       {/* Sessions Grid */}
-      <Grid container spacing={3}>
-        {sessions.map((session: Session) => (
+      {sessions.length === 0 ? (
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No sessions found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Create your first session to get started with class management.
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenCreateDialog(true)}
+            disabled={!['admin', 'principal'].includes(user?.role || '')}
+          >
+            Create First Session
+          </Button>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {sessions.map((session: Session) => (
           <Grid item xs={12} md={6} lg={4} key={session._id}>
             <Card>
               <CardContent>
@@ -375,6 +393,36 @@ const Sessions: React.FC = () => {
                 )}
 
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {/* Class Creation Options - Show for all sessions */}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    startIcon={<SchoolIcon />}
+                    onClick={() => handleAutoCreateClasses(session)}
+                    disabled={!['admin', 'principal'].includes(user?.role || '')}
+                    sx={{ mb: 1 }}
+                  >
+                    Auto-Create Classes
+                  </Button>
+                  {!['admin', 'principal'].includes(user?.role || '') && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      Admin/Principal access required for class creation
+                    </Typography>
+                  )}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<TrendingUpIcon />}
+                    onClick={() => handleCopyClasses(session)}
+                    disabled={!['admin', 'principal'].includes(user?.role || '')}
+                    sx={{ mb: 1 }}
+                  >
+                    Copy Classes
+                  </Button>
+
+                  {/* Session Management Options */}
                   {session.status === 'active' && (
                     <>
                       <Button
@@ -403,24 +451,6 @@ const Sessions: React.FC = () => {
                         disabled={!['admin', 'principal'].includes(user?.role || '')}
                       >
                         Fresh Start
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<SchoolIcon />}
-                        onClick={() => handleAutoCreateClasses(session)}
-                        disabled={!['admin', 'principal'].includes(user?.role || '')}
-                      >
-                        Auto-Create Classes
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<TrendingUpIcon />}
-                        onClick={() => handleCopyClasses(session)}
-                        disabled={!['admin', 'principal'].includes(user?.role || '')}
-                      >
-                        Copy Classes
                       </Button>
                     </>
                   )}
@@ -463,7 +493,8 @@ const Sessions: React.FC = () => {
             </Card>
           </Grid>
         ))}
-      </Grid>
+        </Grid>
+      )}
 
       {/* Create Session Dialog */}
       <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} maxWidth="md" fullWidth>

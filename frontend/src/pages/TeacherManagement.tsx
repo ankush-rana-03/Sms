@@ -65,7 +65,7 @@ interface Teacher {
     _id: string;
     section: string;
     subject: string;
-    grade: string;
+    class: string;
   }>;
   qualification: {
     degree: string;
@@ -189,8 +189,8 @@ const TeacherManagement: React.FC = () => {
   const SUGGESTED_SUBJECTS = ['English','Mathematics','Science','Hindi','Social Studies','Computer','EVS','Physics','Chemistry','Biology','Geography','History','Civics','Moral Science','General Knowledge','Art','Music','Physical Education'];
 
   const [openAssignDialog, setOpenAssignDialog] = useState(false);
-  const [assignForm, setAssignForm] = useState<{ grade: string; section: string; subjects: string[]; subjectInput: string }>({
-    grade: '',
+  const [assignForm, setAssignForm] = useState<{ class: string; section: string; subjects: string[]; subjectInput: string }>({
+    class: '',
     section: '',
     subjects: [],
     subjectInput: ''
@@ -204,7 +204,7 @@ const TeacherManagement: React.FC = () => {
   // State for editing assignments
   const [editingAssignment, setEditingAssignment] = useState<{
     id: string;
-    grade: string;
+    class: string;
     section: string;
     subject: string;
   } | null>(null);
@@ -374,7 +374,7 @@ const TeacherManagement: React.FC = () => {
 
   const handleSaveAssignedClassSubjects = async () => {
     if (!selectedTeacher) return;
-    const { grade, section, subjects, subjectInput } = assignForm;
+    const { class: classValue, section, subjects, subjectInput } = assignForm;
 
     // Merge typed input (comma-separated supported) with selected chips, unique + trimmed
     const typed = subjectInput
@@ -383,31 +383,31 @@ const TeacherManagement: React.FC = () => {
       .filter(Boolean);
     const merged = Array.from(new Set([...subjects, ...typed]));
 
-    if (!grade || !section || merged.length === 0) {
+    if (!classValue || !section || merged.length === 0) {
       showSnackbar('Please select class, section, and at least one subject', 'error');
       return;
     }
 
     // Frontend duplicate validation against current assignments
     const existingKeys = new Set(
-      (selectedTeacher.assignedClasses || []).map(ac => `${ac.grade}-${ac.section}-${ac.subject}`)
+      (selectedTeacher.assignedClasses || []).map(ac => `${ac.class}-${ac.section}-${ac.subject}`)
     );
     const newKeys = new Set<string>();
     for (const sub of merged) {
-      const key = `${grade}-${section}-${sub}`;
+      const key = `${classValue}-${section}-${sub}`;
       if (existingKeys.has(key)) {
-        showSnackbar(`Already assigned: ${sub} for ${grade}-${section}`, 'error');
+        showSnackbar(`Already assigned: ${sub} for ${classValue}-${section}`, 'error');
         return;
       }
       if (newKeys.has(key)) {
-        showSnackbar(`Duplicate in request: ${sub} for ${grade}-${section}`, 'error');
+        showSnackbar(`Duplicate in request: ${sub} for ${classValue}-${section}`, 'error');
         return;
       }
       newKeys.add(key);
     }
 
     const payload = {
-      assignedClasses: merged.map(sub => ({ grade, section, subject: sub }))
+      assignedClasses: merged.map(sub => ({ class: classValue, section, subject: sub }))
     };
 
     try {
@@ -421,7 +421,7 @@ const TeacherManagement: React.FC = () => {
         
         // Reset the form for next assignment
         setAssignForm({
-          grade: '',
+          class: '',
           section: '',
           subjects: [],
           subjectInput: ''
@@ -432,7 +432,7 @@ const TeacherManagement: React.FC = () => {
           // Get the newly added assignments from the response
           const newAssignments = res.data.assignedClasses.filter((ac: any) => 
             !selectedTeacher.assignedClasses.some((existing: any) => 
-              existing.grade === ac.grade && 
+              existing.class === ac.class && 
               existing.section === ac.section && 
               existing.subject === ac.subject
             )
@@ -471,7 +471,7 @@ const TeacherManagement: React.FC = () => {
   const handleEditAssignment = (assignment: any) => {
     console.log('Opening edit dialog for assignment:', assignment);
     console.log('Assignment ID:', assignment._id);
-    console.log('Assignment data:', { grade: assignment.grade, section: assignment.section, subject: assignment.subject });
+    console.log('Assignment data:', { class: assignment.class, section: assignment.section, subject: assignment.subject });
     
     // Also log the current state of all assignments for debugging
     if (selectedTeacher) {
@@ -481,7 +481,7 @@ const TeacherManagement: React.FC = () => {
     
     setEditingAssignment({
       id: assignment._id,
-      grade: assignment.grade,
+      class: assignment.class,
       section: assignment.section,
       subject: assignment.subject
     });
@@ -500,7 +500,7 @@ const TeacherManagement: React.FC = () => {
       const response = await apiService.put<{ success: boolean; message: string; data: any }>(
         `/admin/teachers/${selectedTeacher._id}/assign-classes/${editingAssignment.id}`,
         {
-          grade: editingAssignment.grade,
+          class: editingAssignment.class,
           section: editingAssignment.section,
           subject: editingAssignment.subject
         }
@@ -2037,8 +2037,8 @@ const TeacherManagement: React.FC = () => {
                 <InputLabel>Class</InputLabel>
                 <Select
                   label="Class"
-                  value={assignForm.grade}
-                  onChange={(e) => setAssignForm(prev => ({ ...prev, grade: e.target.value as string }))}
+                  value={assignForm.class}
+                  onChange={(e) => setAssignForm(prev => ({ ...prev, class: e.target.value as string }))}
                   disabled={dynamicClasses.length === 0}
                 >
                   {dynamicClasses.length === 0 ? (
@@ -2165,7 +2165,7 @@ const TeacherManagement: React.FC = () => {
                       }}
                     >
                       <Chip 
-                        label={`${ac.grade || ''} ${ac.section || ''} - ${ac.subject}`} 
+                        label={`${ac.class || ''} ${ac.section || ''} - ${ac.subject}`} 
                         size="small" 
                         variant="outlined"
                         sx={{ 
@@ -2242,11 +2242,11 @@ const TeacherManagement: React.FC = () => {
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={6}>
               <FormControl fullWidth>
-                <InputLabel>Grade</InputLabel>
+                <InputLabel>Class</InputLabel>
                 <Select
-                  value={editingAssignment?.grade || ''}
-                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, grade: e.target.value } : null)}
-                  label="Grade"
+                  value={editingAssignment?.class || ''}
+                  onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, class: e.target.value } : null)}
+                  label="Class"
                 >
                   {dynamicClasses.map(cls => (
                     <MenuItem key={cls._id} value={cls.name}>
@@ -2307,7 +2307,7 @@ const TeacherManagement: React.FC = () => {
           <Button 
             variant="contained" 
             onClick={handleSaveEditedAssignment}
-            disabled={!editingAssignment?.grade || !editingAssignment?.section || !editingAssignment?.subject}
+                          disabled={!editingAssignment?.class || !editingAssignment?.section || !editingAssignment?.subject}
             color="primary"
           >
             Update Assignment

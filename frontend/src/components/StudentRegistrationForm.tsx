@@ -20,7 +20,7 @@ const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
   phone: yup.string().required('Phone is required'),
   address: yup.string().required('Address is required'),
-  grade: yup.string().required('Grade is required'),
+  class: yup.string().required('Class is required'),
   section: yup.string().required('Section is required'),
   rollNumber: yup.string().required('Roll number is required'),
   dateOfBirth: yup.string().required('Date of birth is required'),
@@ -35,7 +35,7 @@ interface StudentFormData {
   email: string;
   phone: string;
   address: string;
-  grade: string;
+  class: string;
   section: string;
   rollNumber: string;
   dateOfBirth: string;
@@ -79,7 +79,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         phone: data.phone,
         address: data.address,
         dateOfBirth: data.dateOfBirth,
-        grade: data.grade,
+        class: data.class,
         parentName: data.parentName,
         parentPhone: data.parentPhone,
         section: data.section,
@@ -163,14 +163,14 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
             <TextField
               fullWidth
               select
-              label="Grade"
-              {...register('grade')}
-              error={!!errors.grade}
-              helperText={errors.grade?.message}
+              label="Class"
+              {...register('class')}
+              error={!!errors.class}
+              helperText={errors.class?.message}
             >
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((grade) => (
-                <MenuItem key={grade} value={grade}>
-                  Grade {grade}
+              {['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((classValue) => (
+                <MenuItem key={classValue} value={classValue}>
+                  {classValue === 'Nursery' || classValue === 'LKG' || classValue === 'UKG' ? classValue : `Class ${classValue}`}
                 </MenuItem>
               ))}
             </TextField>

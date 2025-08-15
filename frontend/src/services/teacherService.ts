@@ -5,7 +5,7 @@ export interface Student {
   name: string;
   email: string;
   phone: string;
-  grade: string;
+  class: string;
   section: string;
   rollNumber: string;
   gender: string;
@@ -26,7 +26,7 @@ export interface TodayAttendanceRecord {
   studentId: string;
   name: string;
   email: string;
-  grade: string;
+  class: string;
   section: string;
   rollNumber: string;
   todayStatus: string;
@@ -84,12 +84,12 @@ export interface AssignedClass {
   class: {
     _id: string;
     name: string;
-    grade: string;
+    class: string;
     section: string;
   };
   section: string;
   subject: string;
-  grade: string;
+  class: string;
 }
 
 export interface TeacherFormData {
@@ -124,9 +124,9 @@ export interface TeacherFormData {
 
 class TeacherService {
   // Get students by class and section
-  async getStudentsByClass(grade: string, section?: string): Promise<{ success: boolean; count: number; data: Student[] }> {
+  async getStudentsByClass(classValue: string, section?: string): Promise<{ success: boolean; count: number; data: Student[] }> {
     try {
-      const params = new URLSearchParams({ grade });
+      const params = new URLSearchParams({ class: classValue });
       if (section) params.append('section', section);
 
       const response = await api.get<{ success: boolean; count: number; data: Student[] }>(`/teachers/students?${params.toString()}`);
@@ -167,14 +167,14 @@ class TeacherService {
   }
 
   // Get today's attendance
-  async getTodayAttendance(grade: string, section?: string): Promise<{
+  async getTodayAttendance(classValue: string, section?: string): Promise<{
     success: boolean;
     date: string;
     count: number;
     data: TodayAttendanceRecord[];
   }> {
     try {
-      const params = new URLSearchParams({ grade });
+      const params = new URLSearchParams({ class: classValue });
       if (section) params.append('section', section);
 
       const response = await api.get<{

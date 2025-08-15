@@ -29,7 +29,7 @@ exports.getAllStudentsTest = async (req, res) => {
         phone: student.phone,
         address: student.address,
         dateOfBirth: student.dateOfBirth,
-        grade: student.grade,
+        class: student.class,
         parentName: student.parentName,
         parentPhone: student.parentPhone,
         createdAt: student.createdAt,
@@ -59,7 +59,7 @@ exports.createStudent = async (req, res) => {
       phone,
       address,
       dateOfBirth,
-      grade,
+      class: studentClass,
       section,
       rollNumber,
       gender,
@@ -84,11 +84,11 @@ exports.createStudent = async (req, res) => {
       if (!cls) {
         return res.status(403).json({ success: false, message: 'Assigned class not found for teacher' });
       }
-      // Our Class model has name and section; we map name -> grade for compatibility
-      const teacherGrade = cls.name;
+      // Our Class model has name and section; we map name -> class for compatibility
+      const teacherClass = cls.name;
       const teacherSection = cls.section;
-      if (String(grade) !== String(teacherGrade) || String(section) !== String(teacherSection)) {
-        return res.status(403).json({ success: false, message: `You can only add students to Class ${teacherGrade}-${teacherSection}` });
+      if (String(studentClass) !== String(teacherClass) || String(section) !== String(teacherSection)) {
+        return res.status(403).json({ success: false, message: `You can only add students to Class ${teacherClass}-${teacherSection}` });
       }
     }
 
@@ -101,12 +101,12 @@ exports.createStudent = async (req, res) => {
       });
     }
 
-    // Enforce unique roll number within grade + section
-    const existingRoll = await Student.findOne({ grade, section, rollNumber });
+    // Enforce unique roll number within class + section
+    const existingRoll = await Student.findOne({ class: studentClass, section, rollNumber });
     if (existingRoll) {
       return res.status(400).json({
         success: false,
-        message: `Roll number ${rollNumber} already exists for Grade ${grade}-${section}`
+        message: `Roll number ${rollNumber} already exists for Class ${studentClass}-${section}`
       });
     }
 
@@ -130,7 +130,7 @@ exports.createStudent = async (req, res) => {
       phone: phone?.trim(),
       address: address?.trim(),
       dateOfBirth,
-      grade,
+      class: studentClass,
       section,
       rollNumber: rollNumber?.trim(),
       gender,
@@ -166,7 +166,7 @@ exports.getStudents = async (req, res) => {
   console.log('User:', req.user);
   
   try {
-    const { page = 1, limit = 20, search = '', grade = '', section = '', session = '' } = req.query;
+    const { page = 1, limit = 20, search = '', class: studentClass = '', section = '', session = '' } = req.query;
     const query = {};
     if (search) {
       query.$or = [
@@ -176,7 +176,7 @@ exports.getStudents = async (req, res) => {
         { rollNumber: { $regex: search, $options: 'i' } }
       ];
     }
-    if (grade) query.grade = grade;
+    if (studentClass) query.class = studentClass;
     if (section) query.section = section;
     
     // Filter by session

@@ -15,7 +15,7 @@ const Students: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
   const [search, setSearch] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
 
   // Fetch students on component mount
@@ -27,7 +27,7 @@ const Students: React.FC = () => {
     setError(null);
     try {
       setFetchingStudents(true);
-      const response = await studentService.getStudents({ search, grade: gradeFilter, section: sectionFilter });
+      const response = await studentService.getStudents({ search, class: classFilter, section: sectionFilter });
       setStudents(response.data);
       setError(null);
     } catch (error: any) {
@@ -94,10 +94,10 @@ const Students: React.FC = () => {
       {/* Filters */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <TextField size="small" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchStudents()} />
-        <TextField size="small" select label="Grade" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} sx={{ minWidth: 140 }}>
-          <MenuItem value="">All Grades</MenuItem>
-          {['1','2','3','4','5','6','7','8','9','10','11','12'].map(g => (
-            <MenuItem key={g} value={g}>Grade {g}</MenuItem>
+        <TextField size="small" select label="Class" value={classFilter} onChange={(e) => setClassFilter(e.target.value)} sx={{ minWidth: 140 }}>
+          <MenuItem value="">All Classes</MenuItem>
+          {['Nursery','LKG','UKG','1','2','3','4','5','6','7','8','9','10','11','12'].map(c => (
+            <MenuItem key={c} value={c}>{c === 'Nursery' || c === 'LKG' || c === 'UKG' ? c : `Class ${c}`}</MenuItem>
           ))}
         </TextField>
         <TextField size="small" select label="Section" value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} sx={{ minWidth: 140 }}>
@@ -146,7 +146,7 @@ const Students: React.FC = () => {
                     <Box>
                       <Typography variant="h6">{student.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Grade: {student.grade} | Email: {student.email}
+                        Class: {student.class} | Email: {student.email}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Phone: {student.phone}

@@ -22,7 +22,7 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  grade: {
+  class: {
     type: String,
     required: true
   },
@@ -79,7 +79,7 @@ const studentSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  previousGrade: {
+  previousClass: {
     type: String,
     default: null
   },

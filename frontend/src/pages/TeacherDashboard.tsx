@@ -42,7 +42,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 
 interface TeacherAssignment {
-  grade: string;
+  class: string;
   section: string;
   subjects: string[];
 }
@@ -312,7 +312,7 @@ const TeacherDashboard: React.FC = () => {
                           </Avatar>
                           <Box>
                             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                              Class {assignment.grade}-{assignment.section}
+                              Class {assignment.class}-{assignment.section}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               {assignment.subjects.length} subject{assignment.subjects.length !== 1 ? 's' : ''}

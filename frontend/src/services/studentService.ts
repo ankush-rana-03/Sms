@@ -6,7 +6,7 @@ export interface StudentFormData {
   phone: string;
   address: string;
   dateOfBirth: string;
-  grade: string;
+  class: string;
   section: string;
   rollNumber: string;
   gender: string;
@@ -22,7 +22,7 @@ export interface Student {
   phone: string;
   address: string;
   dateOfBirth: string;
-  grade: string;
+  class: string;
   section: string;
   rollNumber: string;
   gender: string;
@@ -70,7 +70,7 @@ class StudentService {
   }
 
   // Get all students
-  async getStudents(params?: { page?: number; limit?: number; search?: string; grade?: string; section?: string }): Promise<{ success: boolean; data: Student[]; count: number; total: number; page: number; totalPages: number }> {
+  async getStudents(params?: { page?: number; limit?: number; search?: string; class?: string; section?: string }): Promise<{ success: boolean; data: Student[]; count: number; total: number; page: number; totalPages: number }> {
     try {
       console.log('=== FRONTEND: Fetching students ===');
       console.log('Token:', localStorage.getItem('token'));
@@ -79,7 +79,7 @@ class StudentService {
       if (params?.page) query.set('page', String(params.page));
       if (params?.limit) query.set('limit', String(params.limit));
       if (params?.search) query.set('search', params.search);
-      if (params?.grade) query.set('grade', params.grade);
+      if (params?.class) query.set('class', params.class);
       if (params?.section) query.set('section', params.section);
 
       const response = await api.get<{ success: boolean; data: Student[]; count: number; total: number; page: number; totalPages: number }>(`/students?${query.toString()}`);

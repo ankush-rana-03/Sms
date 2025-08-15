@@ -11,17 +11,17 @@ exports.getStudentsByClass = async (req, res) => {
   console.log('Query params:', req.query);
   
   try {
-    const { grade, section } = req.query;
+    const { class: studentClass, section } = req.query;
     
-    if (!grade) {
+    if (!studentClass) {
       return res.status(400).json({
         success: false,
-        message: 'Grade is required'
+        message: 'Class is required'
       });
     }
 
     // Build query
-    const query = { grade };
+    const query = { class: studentClass };
     if (section) {
       query.section = section;
     }
@@ -40,7 +40,7 @@ exports.getStudentsByClass = async (req, res) => {
         name: student.name,
         email: student.email,
         phone: student.phone,
-        grade: student.grade,
+        class: student.class,
         section: student.section,
         rollNumber: student.rollNumber,
         gender: student.gender,
@@ -178,7 +178,7 @@ exports.getStudentAttendance = async (req, res) => {
           id: student._id,
           name: student.name,
           email: student.email,
-          grade: student.grade,
+          class: student.class,
           section: student.section,
           rollNumber: student.rollNumber
         },
@@ -202,18 +202,18 @@ exports.getTodayAttendance = async (req, res) => {
   console.log('Query params:', req.query);
   
   try {
-    const { grade, section } = req.query;
+    const { class: studentClass, section } = req.query;
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     
-    if (!grade) {
+    if (!studentClass) {
       return res.status(400).json({
         success: false,
-        message: 'Grade is required'
+        message: 'Class is required'
       });
     }
 
     // Build query
-    const query = { grade };
+    const query = { class: studentClass };
     if (section) {
       query.section = section;
     }
@@ -226,7 +226,7 @@ exports.getTodayAttendance = async (req, res) => {
         studentId: student._id,
         name: student.name,
         email: student.email,
-        grade: student.grade,
+        class: student.class,
         section: student.section,
         rollNumber: student.rollNumber,
         todayStatus: todayRecord ? todayRecord.status : 'not_marked',

@@ -42,7 +42,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const TeacherAttendance: React.FC = () => {
   const { user } = useAuth();
-  const [selectedGrade, setSelectedGrade] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -58,7 +58,7 @@ const TeacherAttendance: React.FC = () => {
   const [editStatus, setEditStatus] = useState<'present' | 'absent' | 'late' | 'half-day'>('present');
   const [editRemarks, setEditRemarks] = useState('');
 
-  const grades = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const classes = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const sections = ['A', 'B', 'C', 'D', 'E'];
 
 
@@ -96,12 +96,12 @@ const TeacherAttendance: React.FC = () => {
   };
 
   const fetchStudents = useCallback(async () => {
-    if (!selectedGrade) return;
+    if (!selectedClass) return;
 
     setLoading(true);
     setError(null);
     try {
-      const result = await teacherService.getStudentsByClass(selectedGrade, selectedSection);
+      const result = await teacherService.getStudentsByClass(selectedClass, selectedSection);
       setStudents(result.data);
       console.log('Students fetched:', result.count);
     } catch (error: any) {
@@ -110,15 +110,15 @@ const TeacherAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedGrade, selectedSection]);
+  }, [selectedClass, selectedSection]);
 
   const fetchTodayAttendance = useCallback(async () => {
-    if (!selectedGrade) return;
+    if (!selectedClass) return;
 
     setLoading(true);
     setError(null);
     try {
-      const result = await teacherService.getTodayAttendance(selectedGrade, selectedSection);
+      const result = await teacherService.getTodayAttendance(selectedClass, selectedSection);
       setTodayAttendance(result.data);
       console.log('Today attendance fetched:', result.count);
     } catch (error: any) {
@@ -127,10 +127,10 @@ const TeacherAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedGrade, selectedSection]);
+  }, [selectedClass, selectedSection]);
 
   const fetchAttendanceHistory = useCallback(async () => {
-    if (!selectedGrade || !selectedDate) return;
+    if (!selectedClass || !selectedDate) return;
 
     setLoading(true);
     try {
@@ -158,10 +158,10 @@ const TeacherAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedGrade, selectedDate, students, user?.name]);
+  }, [selectedClass, selectedDate, students, user?.name]);
 
   useEffect(() => {
-    if (selectedGrade) {
+    if (selectedClass) {
       fetchStudents();
       if (viewMode === 'mark') {
         fetchTodayAttendance();
@@ -169,7 +169,7 @@ const TeacherAttendance: React.FC = () => {
         fetchAttendanceHistory();
       }
     }
-  }, [selectedGrade, selectedSection, selectedDate, viewMode, fetchStudents, fetchTodayAttendance, fetchAttendanceHistory]);
+  }, [selectedClass, selectedSection, selectedDate, viewMode, fetchStudents, fetchTodayAttendance, fetchAttendanceHistory]);
 
   const handleMarkAttendance = async (studentId: string, status: 'present' | 'absent' | 'late') => {
     if (!canMarkAttendance(selectedDate)) {
@@ -198,7 +198,7 @@ const TeacherAttendance: React.FC = () => {
   };
 
   const handleBulkSaveAttendance = async () => {
-    if (!selectedGrade || students.length === 0) {
+    if (!selectedClass || students.length === 0) {
       setError('Please select a class and ensure students are loaded');
       return;
     }
@@ -215,7 +215,7 @@ const TeacherAttendance: React.FC = () => {
     try {
       // In real app, call the API
       // await attendanceService.bulkMarkAttendance({
-      //   classId: selectedGrade,
+      //   classId: selectedClass,
       //   date: selectedDate,
       //   attendanceData: students.map(student => ({
       //     studentId: student.id,
@@ -343,17 +343,17 @@ const TeacherAttendance: React.FC = () => {
         <Grid container spacing={2}>
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
-              <InputLabel>Grade</InputLabel>
+                              <InputLabel>Class</InputLabel>
               <Select
-                value={selectedGrade}
-                onChange={(e) => setSelectedGrade(e.target.value)}
-                label="Grade"
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                label="Class"
               >
-                {grades.map((grade) => (
-                  <MenuItem key={grade} value={grade}>
-                    Grade {grade}
-                  </MenuItem>
-                ))}
+                                  {classes.map((cls) => (
+                    <MenuItem key={cls} value={cls}>
+                      {cls}
+                    </MenuItem>
+                  ))}
               </Select>
             </FormControl>
           </Grid>
@@ -399,7 +399,7 @@ const TeacherAttendance: React.FC = () => {
                   fetchAttendanceHistory();
                 }
               }}
-              disabled={!selectedGrade || loading}
+              disabled={!selectedClass || loading}
               startIcon={<Refresh />}
               fullWidth
             >
@@ -421,7 +421,7 @@ const TeacherAttendance: React.FC = () => {
       </Paper>
 
       {/* Students List */}
-      {selectedGrade && (
+      {selectedClass && (
         <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">
@@ -451,7 +451,7 @@ const TeacherAttendance: React.FC = () => {
                   <TableRow>
                     <TableCell>Name</TableCell>
                     <TableCell>Roll No</TableCell>
-                    <TableCell>Grade/Section</TableCell>
+                    <TableCell>Class/Section</TableCell>
                     <TableCell>Parent Phone</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Actions</TableCell>
@@ -478,7 +478,7 @@ const TeacherAttendance: React.FC = () => {
                         </TableCell>
                         <TableCell>{student.rollNumber}</TableCell>
                         <TableCell>
-                          Grade {student.grade} - Section {student.section}
+                          Class {student.class} - Section {student.section}
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -560,7 +560,7 @@ const TeacherAttendance: React.FC = () => {
             </TableContainer>
           ) : (
             <Alert severity="info">
-              No students found for Grade {selectedGrade} {selectedSection && `Section ${selectedSection}`}
+              No students found for Class {selectedClass} {selectedSection && `Section ${selectedSection}`}
             </Alert>
           )}
         </Paper>

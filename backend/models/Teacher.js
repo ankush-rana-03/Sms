@@ -41,7 +41,7 @@ const teacherSchema = new mongoose.Schema({
     },
     section: String,
     subject: String,
-    grade: String,
+    className: String,
     time: String,  // Add time field
     day: String    // Add day field
   }],

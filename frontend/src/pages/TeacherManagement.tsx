@@ -211,8 +211,13 @@ const TeacherManagement: React.FC = () => {
   } | null>(null);
   const [openEditAssignmentDialog, setOpenEditAssignmentDialog] = useState(false);
 
-
-
+  // Dynamic classes and sections from Classes API (commented hardcoded values for later use)
+  const [dynamicClasses, setDynamicClasses] = useState<Array<{ name: string; section: string; _id: string }>>([]);
+  const [dynamicSections, setDynamicSections] = useState<string[]>([]);
+  
+  // TODO: Replace hardcoded arrays with dynamic data from Classes API
+  // In the future, these will be completely removed and replaced with dynamic data
+  // These are currently used as fallback when the Classes API is not available
 
   // Add teacherFormData state for create/edit dialog
   const [teacherFormData, setTeacherFormData] = useState({
@@ -245,6 +250,7 @@ const TeacherManagement: React.FC = () => {
     if (user) {
       fetchTeachers();
       fetchStatistics();
+      fetchDynamicClassesAndSections(); // Fetch dynamic classes and sections
     }
   }, [user, page, searchTerm, designationFilter, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -277,6 +283,27 @@ const TeacherManagement: React.FC = () => {
       setStatistics(data.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
+    }
+  };
+
+  // Fetch dynamic classes and sections from Classes API
+  const fetchDynamicClassesAndSections = async () => {
+    try {
+      const response = await apiService.get<{ success: boolean; data: Array<{ _id: string; name: string; section: string }> }>('/classes');
+      if (response.success && (response as any).data) {
+        const classesData = (response as any).data;
+        setDynamicClasses(classesData);
+        
+        // Extract unique sections from classes
+        const uniqueSections = Array.from(new Set(classesData.map((cls: any) => cls.section))).sort() as string[];
+        setDynamicSections(uniqueSections);
+        
+        console.log('Dynamic classes fetched:', classesData);
+        console.log('Dynamic sections extracted:', uniqueSections);
+      }
+    } catch (error) {
+      console.error('Error fetching dynamic classes and sections:', error);
+      // Fallback to hardcoded values if API fails
     }
   };
 
@@ -2015,9 +2042,18 @@ const TeacherManagement: React.FC = () => {
                   value={assignForm.grade}
                   onChange={(e) => setAssignForm(prev => ({ ...prev, grade: e.target.value as string }))}
                 >
-                  {GRADES_FOR_ASSIGNMENT.map(g => (
-                    <MenuItem key={g} value={g}>{g}</MenuItem>
-                  ))}
+                  {/* Use dynamic classes if available, otherwise fallback to hardcoded grades */}
+                  {dynamicClasses.length > 0 ? (
+                    dynamicClasses.map(cls => (
+                      <MenuItem key={cls._id} value={cls.name}>
+                        {cls.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    GRADES_FOR_ASSIGNMENT.map(g => (
+                      <MenuItem key={g} value={g}>{g}</MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -2029,9 +2065,16 @@ const TeacherManagement: React.FC = () => {
                   value={assignForm.section}
                   onChange={(e) => setAssignForm(prev => ({ ...prev, section: e.target.value as string }))}
                 >
-                  {SECTIONS_FOR_ASSIGNMENT.map(s => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
+                  {/* Use dynamic sections if available, otherwise fallback to hardcoded sections */}
+                  {dynamicSections.length > 0 ? (
+                    dynamicSections.map(s => (
+                      <MenuItem key={s} value={s}>{s}</MenuItem>
+                    ))
+                  ) : (
+                    SECTIONS_FOR_ASSIGNMENT.map(s => (
+                      <MenuItem key={s} value={s}>{s}</MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -2211,9 +2254,18 @@ const TeacherManagement: React.FC = () => {
                   onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, grade: e.target.value } : null)}
                   label="Grade"
                 >
-                  {GRADES_FOR_ASSIGNMENT.map(g => (
-                    <MenuItem key={g} value={g}>{g}</MenuItem>
-                  ))}
+                  {/* Use dynamic classes if available, otherwise fallback to hardcoded grades */}
+                  {dynamicClasses.length > 0 ? (
+                    dynamicClasses.map(cls => (
+                      <MenuItem key={cls._id} value={cls.name}>
+                        {cls.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    GRADES_FOR_ASSIGNMENT.map(g => (
+                      <MenuItem key={g} value={g}>{g}</MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -2225,9 +2277,16 @@ const TeacherManagement: React.FC = () => {
                   onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, section: e.target.value } : null)}
                   label="Section"
                 >
-                  {SECTIONS_FOR_ASSIGNMENT.map(s => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
+                  {/* Use dynamic sections if available, otherwise fallback to hardcoded sections */}
+                  {dynamicSections.length > 0 ? (
+                    dynamicSections.map(s => (
+                      <MenuItem key={s} value={s}>{s}</MenuItem>
+                    ))
+                  ) : (
+                    SECTIONS_FOR_ASSIGNMENT.map(s => (
+                      <MenuItem key={s} value={s}>{s}</MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Grid>

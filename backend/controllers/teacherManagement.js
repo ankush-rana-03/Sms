@@ -222,25 +222,23 @@ exports.createTeacher = async (req, res) => {
       throw createError;
     }
 
+    // Get minimal populated data for response
     const populatedTeacher = await Teacher.findById(teacher._id)
-      .populate('user', 'name email role isActive')
-      .populate('assignedClasses.class', 'name grade section');
+      .populate('user', 'name email role isActive');
 
-    // Send welcome email to the teacher
-    try {
-      await emailService.sendTeacherWelcomeEmail({
-        name: populatedTeacher.name,
-        email: populatedTeacher.email,
-        designation: populatedTeacher.designation,
-        teacherId: populatedTeacher.teacherId,
-        joiningDate: populatedTeacher.joiningDate
-      }, password);
-      
+    // Send welcome email asynchronously (non-blocking)
+    emailService.sendTeacherWelcomeEmail({
+      name: populatedTeacher.name,
+      email: populatedTeacher.email,
+      designation: populatedTeacher.designation,
+      teacherId: populatedTeacher.teacherId,
+      joiningDate: populatedTeacher.joiningDate
+    }, password).then(() => {
       console.log('Welcome email sent successfully to:', populatedTeacher.email);
-    } catch (emailError) {
+    }).catch((emailError) => {
       console.error('Failed to send welcome email:', emailError);
       // Don't fail the teacher creation if email fails
-    }
+    });
 
     res.status(201).json({
       success: true,
@@ -297,9 +295,7 @@ exports.updateTeacher = async (req, res) => {
       teacherId,
       updateData,
       { new: true, runValidators: true }
-    ).populate('user', 'name email role isActive')
-     .populate('assignedClasses.class', 'name grade section')
-     .populate('classTeacherOf', 'name grade section');
+    ).populate('user', 'name email role isActive');
 
     if (!teacher) {
       return res.status(404).json({

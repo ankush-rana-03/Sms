@@ -167,6 +167,8 @@ const TeacherManagement: React.FC = () => {
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [statistics, setStatistics] = useState<TeacherStatistics | null>(null);
   const [loading, setLoading] = useState(false);
+  const [creatingTeacher, setCreatingTeacher] = useState(false);
+  const [updatingTeacher, setUpdatingTeacher] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [designationFilter, setDesignationFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -292,6 +294,7 @@ const TeacherManagement: React.FC = () => {
 
   const handleCreateTeacher = async () => {
     try {
+      setCreatingTeacher(true);
       const teacherData = {
         ...teacherFormData,
       };
@@ -302,15 +305,30 @@ const TeacherManagement: React.FC = () => {
         showSnackbar(`Teacher created successfully. Temporary password: ${response.data.temporaryPassword}`, 'success');
         setOpenDialog(false);
         resetForm();
-        fetchTeachers();
-        // Refresh statistics to update the count
-        fetchStatistics();
+        
+        // Update local state immediately instead of refetching
+        setTeachers(prev => [response.data.teacher, ...prev]);
+        
+        // Update statistics locally instead of refetching
+        if (statistics) {
+          setStatistics(prev => prev ? {
+            ...prev,
+            totalTeachers: prev.totalTeachers + 1,
+            designationStats: prev.designationStats.map(stat => 
+              stat._id === response.data.teacher.designation 
+                ? { ...stat, count: stat.count + 1 }
+                : stat
+            )
+          } : null);
+        }
       } else {
         showSnackbar(response.message || 'Error creating teacher', 'error');
       }
     } catch (error: any) {
       console.error('Error creating teacher:', error);
       showSnackbar(error.response?.data?.message || 'Error creating teacher', 'error');
+    } finally {
+      setCreatingTeacher(false);
     }
   };
 
@@ -570,6 +588,7 @@ const TeacherManagement: React.FC = () => {
     if (!selectedTeacher) return;
 
     try {
+      setUpdatingTeacher(true);
       const teacherData = {
         ...teacherFormData,
       };
@@ -583,16 +602,33 @@ const TeacherManagement: React.FC = () => {
         showSnackbar('Teacher updated successfully', 'success');
         setOpenDialog(false);
         resetForm();
+        
         // Update the specific teacher in the UI instead of refetching all
         setTeachers(prev => prev.map(t => t._id === selectedTeacher._id ? response.data : t));
-        // Refresh statistics to update designation counts and other stats
-        fetchStatistics();
+        
+        // Update statistics locally if designation changed
+        if (statistics && selectedTeacher.designation !== teacherData.designation) {
+          setStatistics(prev => prev ? {
+            ...prev,
+            designationStats: prev.designationStats.map(stat => {
+              if (stat._id === selectedTeacher.designation) {
+                return { ...stat, count: Math.max(0, stat.count - 1) };
+              }
+              if (stat._id === teacherData.designation) {
+                return { ...stat, count: stat.count + 1 };
+              }
+              return stat;
+            })
+          } : null);
+        }
       } else {
         showSnackbar(response.message || 'Error updating teacher', 'error');
       }
     } catch (error: any) {
       console.error('Error updating teacher:', error);
       showSnackbar(error.response?.data?.message || 'Error updating teacher', 'error');
+    } finally {
+      setUpdatingTeacher(false);
     }
   };
 
@@ -603,10 +639,23 @@ const TeacherManagement: React.FC = () => {
       const response = await apiService.delete<{ success: boolean; message: string }>(`/admin/teachers/${teacherId}`);
       if (response.success) {
         showSnackbar('Teacher deleted successfully', 'success');
+        
         // Remove from UI
+        const deletedTeacher = teachers.find(t => t._id === teacherId);
         setTeachers(prev => prev.filter(t => t._id !== teacherId));
-        // Refresh statistics to update the count
-        fetchStatistics();
+        
+        // Update statistics locally instead of refetching
+        if (statistics && deletedTeacher) {
+          setStatistics(prev => prev ? {
+            ...prev,
+            totalTeachers: Math.max(0, prev.totalTeachers - 1),
+            designationStats: prev.designationStats.map(stat => 
+              stat._id === deletedTeacher.designation 
+                ? { ...stat, count: Math.max(0, stat.count - 1) }
+                : stat
+            )
+          } : null);
+        }
       } else {
         showSnackbar(response.message || 'Error deleting teacher', 'error');
       }
@@ -1934,8 +1983,17 @@ const TeacherManagement: React.FC = () => {
             onClick={dialogMode === 'create' ? handleCreateTeacher : handleUpdateTeacher}
             variant="contained"
             color="primary"
+            disabled={dialogMode === 'create' ? creatingTeacher : updatingTeacher}
+            startIcon={
+              (dialogMode === 'create' ? creatingTeacher : updatingTeacher) ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : undefined
+            }
           >
-            {dialogMode === 'create' ? 'Create' : 'Update'}
+            {dialogMode === 'create' 
+              ? (creatingTeacher ? 'Creating...' : 'Create')
+              : (updatingTeacher ? 'Updating...' : 'Update')
+            }
           </Button>
         </DialogActions>
       </Dialog>

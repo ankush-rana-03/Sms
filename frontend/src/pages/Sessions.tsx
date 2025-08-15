@@ -85,6 +85,8 @@ const Sessions: React.FC = () => {
   const [openPromotionDialog, setOpenPromotionDialog] = useState(false);
   const [openArchiveDialog, setOpenArchiveDialog] = useState(false);
   const [openFreshStartDialog, setOpenFreshStartDialog] = useState(false);
+  const [openAutoCreateClassesDialog, setOpenAutoCreateClassesDialog] = useState(false);
+  const [openCopyClassesDialog, setOpenCopyClassesDialog] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [promotionResults, setPromotionResults] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -201,6 +203,32 @@ const Sessions: React.FC = () => {
     }
   });
 
+  // Auto-create classes mutation
+  const autoCreateClassesMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const response = await api.post<any>(`/sessions/${sessionId}/auto-create-classes`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      setOpenAutoCreateClassesDialog(false);
+      setSelectedSession(null);
+    }
+  });
+
+  // Copy classes mutation
+  const copyClassesMutation = useMutation({
+    mutationFn: async ({ sessionId, sourceSessionId }: { sessionId: string; sourceSessionId: string }) => {
+      const response = await api.post<any>(`/sessions/${sessionId}/copy-classes-from/${sourceSessionId}`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      setOpenCopyClassesDialog(false);
+      setSelectedSession(null);
+    }
+  });
+
   const handleCreateSession = () => {
     const sessionData = {
       name: formData.name,
@@ -238,6 +266,16 @@ const Sessions: React.FC = () => {
   const handleFreshStart = (session: Session) => {
     setSelectedSession(session);
     setOpenFreshStartDialog(true);
+  };
+
+  const handleAutoCreateClasses = (session: Session) => {
+    setSelectedSession(session);
+    setOpenAutoCreateClassesDialog(true);
+  };
+
+  const handleCopyClasses = (session: Session) => {
+    setSelectedSession(session);
+    setOpenCopyClassesDialog(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -365,6 +403,24 @@ const Sessions: React.FC = () => {
                         disabled={!['admin', 'principal'].includes(user?.role || '')}
                       >
                         Fresh Start
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<SchoolIcon />}
+                        onClick={() => handleAutoCreateClasses(session)}
+                        disabled={!['admin', 'principal'].includes(user?.role || '')}
+                      >
+                        Auto-Create Classes
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<TrendingUpIcon />}
+                        onClick={() => handleCopyClasses(session)}
+                        disabled={!['admin', 'principal'].includes(user?.role || '')}
+                      >
+                        Copy Classes
                       </Button>
                     </>
                   )}
@@ -683,6 +739,77 @@ const Sessions: React.FC = () => {
           >
             {freshStartMutation.isPending ? 'Processing...' : 'Proceed'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Auto-Create Classes Dialog */}
+      <Dialog open={openAutoCreateClassesDialog} onClose={() => setOpenAutoCreateClassesDialog(false)}>
+        <DialogTitle>Auto-Create Classes</DialogTitle>
+        <DialogContent>
+          <Typography>
+            This will automatically create classes for session "{selectedSession?.name}" using a standard template:
+          </Typography>
+          <List>
+            <ListItem>
+              <ListItemText primary="• Nursery, LKG, UKG: 3 sections each (A, B, C)" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• Classes 1-12: 2 sections each (A, B)" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• Default capacity: 25 for pre-primary, 30 for primary/secondary" />
+            </ListItem>
+          </List>
+          <Typography sx={{ mt: 2 }}>
+            Are you sure you want to proceed?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAutoCreateClassesDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() => autoCreateClassesMutation.mutate(selectedSession!._id)}
+            variant="contained"
+            color="primary"
+            disabled={autoCreateClassesMutation.isPending}
+          >
+            {autoCreateClassesMutation.isPending ? 'Creating...' : 'Create Classes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Copy Classes Dialog */}
+      <Dialog open={openCopyClassesDialog} onClose={() => setOpenCopyClassesDialog(false)}>
+        <DialogTitle>Copy Classes from Previous Session</DialogTitle>
+        <DialogContent>
+          <Typography>
+            This will copy all classes from a previous session to "{selectedSession?.name}".
+          </Typography>
+          <Typography sx={{ mt: 2 }}>
+            Select the source session to copy from:
+          </Typography>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Source Session</InputLabel>
+            <Select
+              value=""
+              onChange={(e) => {
+                if (e.target.value && selectedSession) {
+                  copyClassesMutation.mutate({
+                    sessionId: selectedSession._id,
+                    sourceSessionId: e.target.value
+                  });
+                }
+              }}
+            >
+              {sessions?.map((session) => (
+                <MenuItem key={session._id} value={session._id}>
+                  {session.name} ({session.academicYear})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCopyClassesDialog(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </Box>

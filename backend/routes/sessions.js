@@ -290,6 +290,144 @@ router.post('/:id/fresh-start', protect, authorize('admin', 'principal'), async 
   }
 });
 
+// Auto-create classes for new session from template
+router.post('/:id/auto-create-classes', protect, authorize('admin', 'principal'), async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    const { classTemplate } = req.body;
+    
+    // Default class template if not provided
+    const defaultTemplate = [
+      { name: 'nursery', sections: ['A', 'B', 'C'], capacity: 25 },
+      { name: 'lkg', sections: ['A', 'B', 'C'], capacity: 25 },
+      { name: 'ukg', sections: ['A', 'B', 'C'], capacity: 25 },
+      { name: '1', sections: ['A', 'B'], capacity: 30 },
+      { name: '2', sections: ['A', 'B'], capacity: 30 },
+      { name: '3', sections: ['A', 'B'], capacity: 30 },
+      { name: '4', sections: ['A', 'B'], capacity: 30 },
+      { name: '5', sections: ['A', 'B'], capacity: 30 },
+      { name: '6', sections: ['A', 'B'], capacity: 30 },
+      { name: '7', sections: ['A', 'B'], capacity: 30 },
+      { name: '8', sections: ['A', 'B'], capacity: 30 },
+      { name: '9', sections: ['A', 'B'], capacity: 30 },
+      { name: '10', sections: ['A', 'B'], capacity: 30 },
+      { name: '11', sections: ['A', 'B'], capacity: 30 },
+      { name: '12', sections: ['A', 'B'], capacity: 30 }
+    ];
+
+    const template = classTemplate || defaultTemplate;
+    const createdClasses = [];
+
+    for (const classConfig of template) {
+      for (const section of classConfig.sections) {
+        // Check if class already exists
+        const existingClass = await Class.findOne({
+          name: classConfig.name,
+          section: section,
+          session: session.name
+        });
+
+        if (!existingClass) {
+          const newClass = await Class.create({
+            name: classConfig.name,
+            section: section,
+            academicYear: session.academicYear,
+            session: session.name,
+            capacity: classConfig.capacity || 30,
+            roomNumber: `${classConfig.name.toUpperCase()}${section}`,
+            isActiveSession: true
+          });
+          createdClasses.push(newClass);
+        }
+      }
+    }
+
+    res.json({
+      message: 'Classes auto-created successfully',
+      session: session.name,
+      createdClasses: createdClasses.length,
+      classes: createdClasses
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error auto-creating classes', error: error.message });
+  }
+});
+
+// Copy classes from previous session
+router.post('/:id/copy-classes-from/:sourceSessionId', protect, authorize('admin', 'principal'), async (req, res) => {
+  try {
+    const targetSession = await Session.findById(req.params.id);
+    const sourceSession = await Session.findById(req.params.sourceSessionId);
+    
+    if (!targetSession) {
+      return res.status(404).json({ message: 'Target session not found' });
+    }
+    
+    if (!sourceSession) {
+      return res.status(404).json({ message: 'Source session not found' });
+    }
+
+    // Get classes from source session
+    const sourceClasses = await Class.find({ session: sourceSession.name });
+    
+    if (sourceClasses.length === 0) {
+      return res.status(400).json({ 
+        message: `No classes found in source session: ${sourceSession.name}` 
+      });
+    }
+
+    const copiedClasses = [];
+    const skippedClasses = [];
+
+    for (const sourceClass of sourceClasses) {
+      // Check if class already exists in target session
+      const existingClass = await Class.findOne({
+        name: sourceClass.name,
+        section: sourceClass.section,
+        session: targetSession.name
+      });
+
+      if (existingClass) {
+        skippedClasses.push({
+          name: sourceClass.name,
+          section: sourceClass.section,
+          reason: 'Already exists'
+        });
+        continue;
+      }
+
+      // Create new class in target session
+      const newClass = await Class.create({
+        name: sourceClass.name,
+        section: sourceClass.section,
+        academicYear: targetSession.academicYear,
+        session: targetSession.name,
+        capacity: sourceClass.capacity,
+        roomNumber: sourceClass.roomNumber,
+        isActiveSession: true
+      });
+
+      copiedClasses.push(newClass);
+    }
+
+    res.json({
+      message: 'Classes copied successfully',
+      targetSession: targetSession.name,
+      sourceSession: sourceSession.name,
+      copiedClasses: copiedClasses.length,
+      skippedClasses: skippedClasses.length,
+      classes: copiedClasses,
+      skipped: skippedClasses
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error copying classes', error: error.message });
+  }
+});
+
 // Get session statistics
 router.get('/:id/statistics', protect, async (req, res) => {
   try {

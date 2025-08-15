@@ -1918,10 +1918,17 @@ const TeacherManagement: React.FC = () => {
             </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button 
+            variant="outlined" 
+            onClick={() => setOpenDialog(false)}
+            sx={{ mr: 'auto' }}
+          >
+            Cancel
+          </Button>
           <Button
             onClick={dialogMode === 'create' ? handleCreateTeacher : handleUpdateTeacher}
             variant="contained"
+            color="primary"
           >
             {dialogMode === 'create' ? 'Create' : 'Update'}
           </Button>
@@ -2036,14 +2043,19 @@ const TeacherManagement: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAssignDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveAssignedClassSubjects}>Add Assignment</Button>
           <Button 
             variant="outlined" 
             onClick={() => setOpenAssignDialog(false)}
+            sx={{ mr: 'auto' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveAssignedClassSubjects}
             color="primary"
           >
-            Done
+            Add Assignment
           </Button>
         </DialogActions>
       </Dialog>
@@ -2108,11 +2120,18 @@ const TeacherManagement: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Cancel</Button>
+          <Button 
+            variant="outlined" 
+            onClick={handleCloseEditDialog}
+            sx={{ mr: 'auto' }}
+          >
+            Cancel
+          </Button>
           <Button 
             variant="contained" 
             onClick={handleSaveEditedAssignment}
             disabled={!editingAssignment?.grade || !editingAssignment?.section || !editingAssignment?.subject}
+            color="primary"
           >
             Update Assignment
           </Button>
@@ -2159,7 +2178,13 @@ const TeacherManagement: React.FC = () => {
           </TableContainer>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenLoginLogsDialog(false)}>Close</Button>
+          <Button 
+            variant="outlined" 
+            onClick={() => setOpenLoginLogsDialog(false)}
+            sx={{ ml: 'auto' }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -2181,8 +2206,18 @@ const TeacherManagement: React.FC = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenPasswordResetDialog(false)}>Cancel</Button>
-          <Button onClick={handleResetPassword} variant="contained" color="warning">
+          <Button 
+            variant="outlined" 
+            onClick={() => setOpenPasswordResetDialog(false)}
+            sx={{ mr: 'auto' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleResetPassword} 
+            variant="contained" 
+            color="warning"
+          >
             Reset Password
           </Button>
         </DialogActions>

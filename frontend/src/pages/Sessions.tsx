@@ -87,6 +87,7 @@ const Sessions: React.FC = () => {
   const [openFreshStartDialog, setOpenFreshStartDialog] = useState(false);
   const [openAutoCreateClassesDialog, setOpenAutoCreateClassesDialog] = useState(false);
   const [openCopyClassesDialog, setOpenCopyClassesDialog] = useState(false);
+  const [openDeleteClassesDialog, setOpenDeleteClassesDialog] = useState(false);
   const [selectedSourceSession, setSelectedSourceSession] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [promotionResults, setPromotionResults] = useState<any[]>([]);
@@ -231,6 +232,19 @@ const Sessions: React.FC = () => {
     }
   });
 
+  // Delete classes mutation
+  const deleteClassesMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const response = await api.delete<any>(`/sessions/${sessionId}/classes`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      setOpenDeleteClassesDialog(false);
+      setSelectedSession(null);
+    }
+  });
+
   const handleCreateSession = () => {
     const sessionData = {
       name: formData.name,
@@ -279,6 +293,11 @@ const Sessions: React.FC = () => {
     setSelectedSession(session);
     setSelectedSourceSession('');
     setOpenCopyClassesDialog(true);
+  };
+
+  const handleDeleteClasses = (session: Session) => {
+    setSelectedSession(session);
+    setOpenDeleteClassesDialog(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -423,6 +442,17 @@ const Sessions: React.FC = () => {
                     sx={{ mb: 1 }}
                   >
                     Copy Classes
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={() => handleDeleteClasses(session)}
+                    disabled={!['admin', 'principal'].includes(user?.role || '')}
+                    sx={{ mb: 1 }}
+                  >
+                    Delete Classes
                   </Button>
 
                   {/* Session Management Options */}
@@ -860,6 +890,47 @@ const Sessions: React.FC = () => {
             disabled={!selectedSourceSession || copyClassesMutation.isPending}
           >
             {copyClassesMutation.isPending ? 'Copying...' : 'Copy Classes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Classes Dialog */}
+      <Dialog open={openDeleteClassesDialog} onClose={() => setOpenDeleteClassesDialog(false)}>
+        <DialogTitle>Delete All Classes</DialogTitle>
+        <DialogContent>
+          <Typography>
+            This will permanently delete ALL classes from session "{selectedSession?.name}".
+          </Typography>
+          <Typography sx={{ mt: 2, color: 'error.main', fontWeight: 'bold' }}>
+            ⚠️ WARNING: This action cannot be undone!
+          </Typography>
+          <List sx={{ mt: 2 }}>
+            <ListItem>
+              <ListItemText primary="• All classes will be permanently deleted" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• All teacher assignments for these classes will be removed" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• Students in these classes will need to be reassigned" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• This action cannot be reversed" />
+            </ListItem>
+          </List>
+          <Typography sx={{ mt: 2 }}>
+            Are you absolutely sure you want to proceed?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteClassesDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() => deleteClassesMutation.mutate(selectedSession!._id)}
+            variant="contained"
+            color="error"
+            disabled={deleteClassesMutation.isPending}
+          >
+            {deleteClassesMutation.isPending ? 'Deleting...' : 'Delete All Classes'}
           </Button>
         </DialogActions>
       </Dialog>

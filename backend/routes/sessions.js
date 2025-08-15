@@ -5,6 +5,7 @@ const Student = require('../models/Student');
 const Class = require('../models/Class');
 const Result = require('../models/Result');
 const Attendance = require('../models/Attendance');
+const TeacherAssignment = require('../models/TeacherAssignment');
 const { protect, authorize } = require('../middleware/auth');
 
 // Get all sessions
@@ -464,6 +465,45 @@ router.get('/:id/statistics', protect, async (req, res) => {
     res.json(statistics);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching session statistics', error: error.message });
+  }
+});
+
+// Delete all classes from a session
+router.delete('/:id/classes', protect, authorize('admin', 'principal'), async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // Get all classes for this session
+    const classes = await Class.find({ session: session.name });
+    
+    if (classes.length === 0) {
+      return res.status(400).json({ 
+        message: `No classes found in session: ${session.name}` 
+      });
+    }
+
+    // Get class IDs for cleanup
+    const classIds = classes.map(cls => cls._id);
+
+    // Delete all teacher assignments for these classes
+    await TeacherAssignment.deleteMany({ 
+      class: { $in: classIds } 
+    });
+
+    // Delete all classes
+    await Class.deleteMany({ session: session.name });
+
+    res.json({
+      message: 'All classes deleted successfully',
+      session: session.name,
+      deletedClasses: classes.length,
+      deletedAssignments: classIds.length // This will be the count of classes that had assignments
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting classes', error: error.message });
   }
 });
 

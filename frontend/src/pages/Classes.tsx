@@ -22,6 +22,7 @@ const Classes: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [openAssign, setOpenAssign] = useState(false);
   const [openAddClass, setOpenAddClass] = useState(false);
+  const [openDeleteClass, setOpenDeleteClass] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [teachers, setTeachers] = useState<TeacherLite[]>([]);
   const [teacherId, setTeacherId] = useState('');
@@ -229,6 +230,41 @@ const Classes: React.FC = () => {
     }
   };
 
+  const handleDeleteClass = async () => {
+    if (!selectedClass) return;
+    
+    try {
+      const res = await apiService.delete<{ success: boolean; message: string }>(`/classes/${selectedClass._id}`);
+      if ((res as any).success) {
+        setClasses(prev => prev.filter(c => c._id !== selectedClass._id));
+        setSnackbar({ open: true, message: 'Class deleted successfully', severity: 'success' });
+        setOpenDeleteClass(false);
+        setSelectedClass(null);
+      } else {
+        setSnackbar({ open: true, message: (res as any).message || 'Failed to delete class', severity: 'error' });
+      }
+    } catch (e: any) {
+      console.error('Error deleting class:', e);
+      let errorMessage = 'Failed to delete class';
+      
+      if (e?.response?.data?.message) {
+        errorMessage = e.response.data.message;
+      } else if (e?.response?.status === 404) {
+        errorMessage = 'Class not found.';
+      } else if (e?.response?.status === 401) {
+        errorMessage = 'You are not authorized to delete classes.';
+      } else if (e?.response?.status === 400) {
+        errorMessage = 'Cannot delete class with enrolled students.';
+      } else if (e?.response?.status === 500) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -282,7 +318,7 @@ const Classes: React.FC = () => {
                     </Box>
                   </Box>
 
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     <Button variant="outlined" onClick={() => handleOpenAssign(cls)}>
                       {cls.classTeacher ? 'Reassign Class Teacher' : 'Assign Class Teacher'}
                     </Button>
@@ -291,6 +327,16 @@ const Classes: React.FC = () => {
                         Unassign
                       </Button>
                     )}
+                    <Button 
+                      variant="outlined" 
+                      color="error" 
+                      onClick={() => {
+                        setSelectedClass(cls);
+                        setOpenDeleteClass(true);
+                      }}
+                    >
+                      Delete Class
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>
@@ -410,6 +456,51 @@ const Classes: React.FC = () => {
           </Button>
           <Button variant="contained" onClick={handleAssign} disabled={!teacherId}>
             Assign
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Class Dialog */}
+      <Dialog open={openDeleteClass} onClose={() => setOpenDeleteClass(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Delete Class</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this class?
+          </Typography>
+          <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
+            {selectedClass?.name === 'nursery' ? 'Nursery' : 
+             selectedClass?.name === 'lkg' ? 'LKG' : 
+             selectedClass?.name === 'ukg' ? 'UKG' : 
+             `Class ${selectedClass?.name}`} - Section {selectedClass?.section}
+          </Typography>
+          <Typography sx={{ mt: 2, color: 'error.main', fontWeight: 'bold' }}>
+            ⚠️ WARNING: This action cannot be undone!
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              This will permanently delete:
+            </Typography>
+            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+              <li>The class and all its settings</li>
+              <li>Class teacher assignment (if any)</li>
+              <li>All teacher assignments for this class</li>
+              <li>Students will need to be reassigned to other classes</li>
+            </ul>
+          </Box>
+          <Typography sx={{ mt: 2 }}>
+            Are you absolutely sure you want to proceed?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="outlined" onClick={() => setOpenDeleteClass(false)} sx={{ mr: 'auto' }}>
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            color="error" 
+            onClick={handleDeleteClass}
+          >
+            Delete Class
           </Button>
         </DialogActions>
       </Dialog>

@@ -264,4 +264,74 @@ router.get('/available-for-registration', protect, async (req, res) => {
   }
 });
 
+// Delete individual class
+router.delete('/:classId', protect, authorize('admin', 'principal'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    
+    // Find the class
+    const cls = await Class.findById(classId);
+    if (!cls) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Class not found' 
+      });
+    }
+
+    // Check if there are students enrolled in this class
+    const Student = require('../models/Student');
+    const enrolledStudents = await Student.find({ 
+      grade: cls.name, 
+      section: cls.section,
+      currentSession: cls.session,
+      deletedAt: null // Only check active students
+    });
+
+    if (enrolledStudents.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete class. There are ${enrolledStudents.length} student(s) enrolled in this class. Please reassign or remove students first.`
+      });
+    }
+
+    // Check if there are teacher assignments for this class
+    const TeacherAssignment = require('../models/TeacherAssignment');
+    const teacherAssignments = await TeacherAssignment.find({ class: classId });
+
+    // Delete teacher assignments for this class
+    if (teacherAssignments.length > 0) {
+      await TeacherAssignment.deleteMany({ class: classId });
+    }
+
+    // Unassign class teacher if assigned
+    if (cls.classTeacher) {
+      await Teacher.findByIdAndUpdate(cls.classTeacher, { 
+        isClassTeacher: false, 
+        classTeacherOf: null 
+      });
+    }
+
+    // Delete the class
+    await Class.findByIdAndDelete(classId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Class deleted successfully',
+      deletedClass: {
+        name: cls.name,
+        section: cls.section,
+        session: cls.session
+      },
+      deletedAssignments: teacherAssignments.length
+    });
+  } catch (error) {
+    console.error('Error deleting class:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error deleting class', 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

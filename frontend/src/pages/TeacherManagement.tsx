@@ -526,13 +526,18 @@ const TeacherManagement: React.FC = () => {
       if (response.success) {
         showSnackbar('Assignment deleted successfully', 'success');
         
+        console.log('Deleting assignment with ID:', assignmentId);
+        console.log('Current selectedTeacher assignments before deletion:', selectedTeacher?.assignedClasses);
+        
         // Update the local state immediately without refreshing
         if (selectedTeacher) {
           setSelectedTeacher(prev => {
             if (!prev) return prev;
+            const updatedAssignments = prev.assignedClasses.filter(ac => ac._id !== assignmentId);
+            console.log('Updated assignments after deletion:', updatedAssignments);
             return {
               ...prev,
-              assignedClasses: prev.assignedClasses.filter(ac => ac._id !== assignmentId)
+              assignedClasses: updatedAssignments
             };
           });
           
@@ -2013,9 +2018,11 @@ const TeacherManagement: React.FC = () => {
               <Grid item xs={12}>
                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Current Assignments</Typography>
                 <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                  {selectedTeacher.assignedClasses.map((ac, idx) => (
+                  {selectedTeacher.assignedClasses.map((ac, idx) => {
+                    console.log('Rendering assignment:', ac);
+                    return (
                     <Box 
-                      key={idx} 
+                      key={`${ac._id}-${idx}`} 
                       sx={{ 
                         display: 'flex', 
                         alignItems: 'center',
@@ -2026,10 +2033,19 @@ const TeacherManagement: React.FC = () => {
                         padding: '4px 8px',
                         gap: 0.5,
                         transition: 'all 0.2s ease-in-out',
+                        cursor: 'default',
                         '&:hover': {
                           borderColor: 'primary.main',
                           boxShadow: 1,
                           transform: 'translateY(-1px)'
+                        },
+                        '&:focus': {
+                          outline: 'none',
+                          borderColor: 'primary.main'
+                        },
+                        '&:active': {
+                          transform: 'translateY(0px)',
+                          boxShadow: 0
                         }
                       }}
                     >
@@ -2077,12 +2093,13 @@ const TeacherManagement: React.FC = () => {
                         >
                           <Delete fontSize="small" />
                         </IconButton>
+                                              </Box>
                       </Box>
-                    </Box>
-                  ))}
-                </Box>
-              </Grid>
-            )}
+                    );
+                  })}
+                  </Box>
+                </Grid>
+              )}
           </Grid>
         </DialogContent>
         <DialogActions>

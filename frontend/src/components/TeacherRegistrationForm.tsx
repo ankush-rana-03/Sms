@@ -20,7 +20,6 @@ import {
   FamilyRestroom,
   LocationOn,
   Phone,
-  AttachMoney,
 } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -294,7 +293,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({
                   placeholder="0"
                   required
                   InputProps={{
-                    startAdornment: <AttachMoney sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
+                    startAdornment: <Typography sx={{ mr: 1, color: 'action.disabled' }} fontSize="small">₹</Typography>,
                   }}
                 />
               </Grid>

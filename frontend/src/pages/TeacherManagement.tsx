@@ -1925,7 +1925,7 @@ const TeacherManagement: React.FC = () => {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {dialogMode === 'create' ? 'Add New Teacher' : 'Edit Teacher'}
+              {dialogMode === 'create' ? 'Register New Teacher' : 'Edit Teacher'}
             </Typography>
             <Button
               size="small"

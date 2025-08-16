@@ -207,37 +207,35 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     }
 
     // Check if there are teacher assignments for this class
-    // Try multiple query approaches to ensure we find all assignments
+    // The assignments might be stored with class ID, grade+section, or both
     console.log(`\n🔍 Looking for teacher assignments to class: ${classId}`);
     console.log(`Class details: ${cls.name} Section ${cls.section} (${cls.session})`);
     
-    // Approach 1: Direct query
+    // Approach 1: Direct query by class ID (if assignments have class field)
     let teachersWithAssignments = await Teacher.find({
       'assignedClasses.class': classId
     });
     
-    console.log(`Approach 1 (direct query): Found ${teachersWithAssignments.length} teachers`);
+    console.log(`Approach 1 (class ID query): Found ${teachersWithAssignments.length} teachers`);
 
-    // Approach 2: If no results, try with string comparison
-    if (teachersWithAssignments.length === 0) {
-      console.log('No teachers found with direct query, trying string comparison...');
-      teachersWithAssignments = await Teacher.find({
-        'assignedClasses.class': classId.toString()
-      });
-      console.log(`Approach 2 (string query): Found ${teachersWithAssignments.length} teachers`);
-    }
-
-    // Approach 3: If still no results, get all teachers and filter manually
-    if (teachersWithAssignments.length === 0) {
-      console.log('No teachers found with string query, trying manual filter...');
-      const allTeachers = await Teacher.find({});
-      teachersWithAssignments = allTeachers.filter(teacher => 
-        teacher.assignedClasses && teacher.assignedClasses.some(assignment => 
-          assignment.class && (assignment.class.toString() === classId || assignment.class.toString() === classId.toString())
-        )
-      );
-      console.log(`Approach 3 (manual filter): Found ${teachersWithAssignments.length} teachers`);
-    }
+    // Approach 2: Query by grade + section (this is how assignments are actually stored)
+    const teachersByGradeSection = await Teacher.find({
+      'assignedClasses.grade': cls.name,
+      'assignedClasses.section': cls.section
+    });
+    
+    console.log(`Approach 2 (grade+section query): Found ${teachersByGradeSection.length} teachers`);
+    
+    // Merge both results and remove duplicates
+    const allTeachersWithAssignments = [...teachersWithAssignments];
+    teachersByGradeSection.forEach(teacher => {
+      if (!allTeachersWithAssignments.find(t => t._id.toString() === teacher._id.toString())) {
+        allTeachersWithAssignments.push(teacher);
+      }
+    });
+    
+    teachersWithAssignments = allTeachersWithAssignments;
+    console.log(`Total unique teachers with assignments: ${teachersWithAssignments.length}`);
 
     // Log what we found
     if (teachersWithAssignments.length > 0) {
@@ -257,13 +255,10 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       console.log('❌ No teachers found with assignments to this class');
     }
 
-    // Remove assignments for this class from all teachers using multiple approaches
+    // Remove assignments for this class from all teachers
     console.log(`\n🗑️  Removing teacher assignments for class ${classId} from database...`);
     
     let totalModified = 0;
-    
-    // Approach 1: Try to find and remove assignments using the class ID
-    console.log('🔍 Approach 1: Searching for teachers with assignments to this class...');
     
     // Log the actual assignment data to see what's stored
     if (teachersWithAssignments.length > 0) {
@@ -272,66 +267,67 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
         console.log(`\nTeacher: ${teacher.name}`);
         teacher.assignedClasses.forEach((assignment, index) => {
           console.log(`  Assignment ${index}:`, {
+            _id: assignment._id,
             class: assignment.class,
             classType: typeof assignment.class,
-            classId: assignment.class?._id || assignment.class,
-            classIdType: typeof (assignment.class?._id || assignment.class),
-            subject: assignment.subject,
-            section: assignment.section
+            grade: assignment.grade,
+            section: assignment.section,
+            subject: assignment.subject
           });
         });
       });
     }
     
-    // Approach 2: Use $pull with exact match
-    console.log('\n🗑️  Approach 2: Using $pull with exact ObjectId match...');
+    // Approach 1: Remove assignments by class ID (if they exist)
+    console.log('\n🗑️  Approach 1: Removing assignments by class ID...');
     const updateResult1 = await Teacher.updateMany(
       { 'assignedClasses.class': classId },
       { $pull: { assignedClasses: { class: classId } } }
     );
-    console.log(`Update result 1:`, updateResult1);
+    console.log(`Update result 1 (class ID):`, updateResult1);
     totalModified += updateResult1.modifiedCount || 0;
     
-    // Approach 3: Use $pull with string match
-    console.log('\n🗑️  Approach 3: Using $pull with string match...');
+    // Approach 2: Remove assignments by grade + section (this is the main approach)
+    console.log('\n🗑️  Approach 2: Removing assignments by grade + section...');
     const updateResult2 = await Teacher.updateMany(
-      { 'assignedClasses.class': classId.toString() },
-      { $pull: { assignedClasses: { class: classId.toString() } } }
+      { 
+        'assignedClasses.grade': cls.name,
+        'assignedClasses.section': cls.section
+      },
+      { 
+        $pull: { 
+          assignedClasses: { 
+            grade: cls.name,
+            section: cls.section
+          } 
+        } 
+      }
     );
-    console.log(`Update result 2:`, updateResult2);
+    console.log(`Update result 2 (grade+section):`, updateResult2);
     totalModified += updateResult2.modifiedCount || 0;
     
-    // Approach 4: Use $pull with $in operator to catch any variations
-    console.log('\n🗑️  Approach 4: Using $pull with $in operator...');
-    const updateResult3 = await Teacher.updateMany(
-      {},
-      { $pull: { assignedClasses: { class: { $in: [classId, classId.toString()] } } } }
-    );
-    console.log(`Update result 3:`, updateResult3);
-    totalModified += updateResult3.modifiedCount || 0;
-    
-    // Approach 5: Manual removal as last resort
-    console.log('\n🗑️  Approach 5: Manual removal as last resort...');
-    const allTeachers = await Teacher.find({});
+    // Approach 3: Manual removal as verification and fallback
+    console.log('\n🗑️  Approach 3: Manual removal verification...');
     let manualRemovals = 0;
     
-    for (const teacher of allTeachers) {
+    for (const teacher of teachersWithAssignments) {
       if (teacher.assignedClasses && teacher.assignedClasses.length > 0) {
         const originalLength = teacher.assignedClasses.length;
         
-        // Remove assignments that match this class (any format)
+        // Remove assignments that match this class by grade+section or class ID
         teacher.assignedClasses = teacher.assignedClasses.filter(assignment => {
-          const assignmentClassId = assignment.class?._id || assignment.class;
-          const assignmentClassIdString = assignmentClassId?.toString();
-          const targetClassIdString = classId.toString();
+          const matchesClassId = assignment.class && assignment.class.toString() === classId.toString();
+          const matchesGradeSection = assignment.grade === cls.name && assignment.section === cls.section;
           
-          const shouldRemove = assignmentClassIdString === targetClassIdString;
+          const shouldRemove = matchesClassId || matchesGradeSection;
           
           if (shouldRemove) {
             console.log(`  Removing assignment for teacher ${teacher.name}:`, {
-              class: assignmentClassId,
+              grade: assignment.grade,
+              section: assignment.section,
               subject: assignment.subject,
-              section: assignment.section
+              class: assignment.class,
+              reason: matchesClassId ? 'class ID match' : 'grade+section match'
             });
           }
           
@@ -353,15 +349,18 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     deletedAssignments = totalModified;
     
     console.log(`\n📊 Total assignments removed: ${totalModified}`);
-    console.log(`  - Database updates: ${(updateResult1.modifiedCount || 0) + (updateResult2.modifiedCount || 0) + (updateResult3.modifiedCount || 0)}`);
+    console.log(`  - Database updates: ${(updateResult1.modifiedCount || 0) + (updateResult2.modifiedCount || 0)}`);
     console.log(`  - Manual removals: ${manualRemovals}`);
     
-    // Final verification
+    // Final verification - check both class ID and grade+section
     console.log('\n🔍 Final verification: Checking for remaining assignments...');
     const remainingAssignments = await Teacher.find({
       $or: [
         { 'assignedClasses.class': classId },
-        { 'assignedClasses.class': classId.toString() }
+        { 
+          'assignedClasses.grade': cls.name,
+          'assignedClasses.section': cls.section
+        }
       ]
     });
     
@@ -370,7 +369,7 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       remainingAssignments.forEach(teacher => {
         console.log(`  - ${teacher.name}: ${teacher.assignedClasses.length} assignments`);
         teacher.assignedClasses.forEach(assignment => {
-          console.log(`    * Class: ${assignment.class} (${typeof assignment.class})`);
+          console.log(`    * Grade: ${assignment.grade}, Section: ${assignment.section}, Subject: ${assignment.subject}, Class: ${assignment.class}`);
         });
       });
     } else {

@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Grid,
-  Paper,
   Chip,
   IconButton,
   Dialog,
@@ -27,20 +26,10 @@ import {
   TableHead,
   TableRow,
   Snackbar,
-  Tabs,
-  Tab,
-  Divider,
   Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
   Checkbox,
   FormControlLabel,
   Switch,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
 } from '@mui/material';
 import {
   CheckCircle,
@@ -50,16 +39,17 @@ import {
   Person,
   Save,
   Edit,
-  Visibility,
-  ExpandMore,
-  TrendingUp,
-  Dashboard,
   CalendarToday,
   School,
-  Notifications,
   Download,
   FilterList,
-  Refresh
+  Refresh,
+  TrendingUp,
+  Assignment,
+  CheckBox,
+  CancelOutlined,
+  ScheduleOutlined,
+  AccessTime,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
@@ -104,69 +94,31 @@ interface AttendanceRecord {
   verifiedAt?: string;
 }
 
-interface AttendanceStatistics {
-  totalStudents: number;
-  presentCount: number;
-  absentCount: number;
-  lateCount: number;
-  halfDayCount: number;
-  attendancePercentage: number;
-}
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`attendance-tabpanel-${index}`}
-      aria-labelledby={`attendance-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
 const StudentAttendance: React.FC = () => {
   const { user } = useAuth();
-  const [tabValue, setTabValue] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
-  const [statistics, setStatistics] = useState<AttendanceStatistics | null>(null);
   const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [attendanceData, setAttendanceData] = useState<{ [key: string]: 'present' | 'absent' | 'late' | 'half-day' }>({});
+  const [remarks, setRemarks] = useState<{ [key: string]: string }>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [editForm, setEditForm] = useState({
+    status: 'present' as 'present' | 'absent' | 'late' | 'half-day',
+    remarks: '',
+  });
+  const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'info'
+    severity: 'success' as 'success' | 'error',
   });
-
-  // Bulk operations
-  const [bulkMode, setBulkMode] = useState(false);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [bulkStatus, setBulkStatus] = useState<'present' | 'absent' | 'late' | 'half-day'>('present');
-  const [bulkRemarks, setBulkRemarks] = useState('');
-
-  // Edit dialog
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingAttendance, setEditingAttendance] = useState<AttendanceRecord | null>(null);
-  const [editStatus, setEditStatus] = useState<'present' | 'absent' | 'late' | 'half-day'>('present');
-  const [editRemarks, setEditRemarks] = useState('');
-
-  // View mode
-  const [viewMode, setViewMode] = useState<'mark' | 'view'>('mark');
 
   useEffect(() => {
     fetchAvailableClasses();
@@ -175,150 +127,162 @@ const StudentAttendance: React.FC = () => {
   useEffect(() => {
     if (selectedClass && selectedSection) {
       fetchStudents();
-      if (viewMode === 'view') {
-        fetchAttendanceByDate();
-      }
     }
-  }, [selectedClass, selectedSection, selectedDate, viewMode]);
+  }, [selectedClass, selectedSection]);
+
+  useEffect(() => {
+    if (selectedClass && selectedSection && selectedDate) {
+      fetchAttendanceByDate();
+    }
+  }, [selectedClass, selectedSection, selectedDate]);
 
   const fetchAvailableClasses = async () => {
     try {
-      const response = await classService.getAvailableClassesForRegistration();
+      setLoadingClasses(true);
+      const response = await classService.getClasses();
       if (response.success) {
-        setAvailableClasses(response.data.classes);
+        setAvailableClasses(response.data);
       }
-    } catch (error: any) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch classes',
+        severity: 'error',
+      });
+    } finally {
+      setLoadingClasses(false);
     }
   };
 
   const fetchStudents = async () => {
     try {
-      setLoading(true);
-      const response = await apiService.get<{ success: boolean; data: Student[] }>(`/students?grade=${selectedClass}&section=${selectedSection}`);
-      if (response.success) {
-        setStudents(response.data);
+      setLoadingStudents(true);
+      const response = await apiService.get(`/students?grade=${selectedClass}&section=${selectedSection}`);
+      if (response && (response as any).data) {
+        setStudents((response as any).data);
+        // Initialize attendance data for new students
+        const newAttendanceData: { [key: string]: 'present' | 'absent' | 'late' | 'half-day' } = {};
+        (response as any).data.forEach((student: Student) => {
+          if (!attendanceData[student._id]) {
+            newAttendanceData[student._id] = 'present';
+          }
+        });
+        setAttendanceData(prev => ({ ...prev, ...newAttendanceData }));
       }
-    } catch (error: any) {
-      setSnackbar({ open: true, message: 'Failed to fetch students', severity: 'error' });
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch students',
+        severity: 'error',
+      });
     } finally {
-      setLoading(false);
+      setLoadingStudents(false);
     }
   };
 
   const fetchAttendanceByDate = async () => {
     try {
-      setLoading(true);
-      const response = await apiService.get<{ success: boolean; data: AttendanceRecord[] }>(`/attendance/date/${selectedDate}?classId=${selectedClass}`);
-      if (response.success) {
-        setAttendanceData(response.data);
-        calculateStatistics(response.data);
+      setLoadingAttendance(true);
+      const response = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      if (response && response.data) {
+        setAttendanceRecords(response.data);
+        // Update attendance data with existing records
+        const existingData: { [key: string]: 'present' | 'absent' | 'late' | 'half-day' } = {};
+        const existingRemarks: { [key: string]: string } = {};
+        response.data.forEach((record: AttendanceRecord) => {
+          existingData[record.student._id] = record.status;
+          if (record.remarks) {
+            existingRemarks[record.student._id] = record.remarks;
+          }
+        });
+        setAttendanceData(prev => ({ ...prev, ...existingData }));
+        setRemarks(prev => ({ ...prev, ...existingRemarks }));
       }
-    } catch (error: any) {
-      setSnackbar({ open: true, message: 'Failed to fetch attendance', severity: 'error' });
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch attendance records',
+        severity: 'error',
+      });
     } finally {
-      setLoading(false);
+      setLoadingAttendance(false);
     }
   };
 
-  const calculateStatistics = (data: AttendanceRecord[]) => {
-    const totalStudents = students.length;
-    const presentCount = data.filter(record => record.status === 'present').length;
-    const absentCount = data.filter(record => record.status === 'absent').length;
-    const lateCount = data.filter(record => record.status === 'late').length;
-    const halfDayCount = data.filter(record => record.status === 'half-day').length;
-    const attendancePercentage = totalStudents > 0 ? ((presentCount + lateCount + halfDayCount) / totalStudents) * 100 : 0;
-
-    setStatistics({
-      totalStudents,
-      presentCount,
-      absentCount,
-      lateCount,
-      halfDayCount,
-      attendancePercentage
-    });
+  const handleAttendanceChange = (studentId: string, status: 'present' | 'absent' | 'late' | 'half-day') => {
+    setAttendanceData(prev => ({ ...prev, [studentId]: status }));
   };
 
-  const handleBulkAttendance = async () => {
-    if (selectedStudents.length === 0) {
-      setSnackbar({ open: true, message: 'Please select students', severity: 'error' });
-      return;
-    }
+  const handleRemarksChange = (studentId: string, remark: string) => {
+    setRemarks(prev => ({ ...prev, [studentId]: remark }));
+  };
 
+  const handleSubmitAttendance = async () => {
     try {
-      setSaving(true);
-      const attendanceData = selectedStudents.map(studentId => ({
-        studentId,
-        status: bulkStatus,
+      const attendancePayload = students.map(student => ({
+        studentId: student._id,
         date: selectedDate,
-        remarks: bulkRemarks
+        status: attendanceData[student._id] || 'present',
+        remarks: remarks[student._id] || '',
       }));
 
-      const response = await apiService.post<{ success: boolean; message: string; data: any }>('/attendance/bulk', attendanceData);
-      if (response.success) {
-        setSnackbar({ open: true, message: 'Bulk attendance marked successfully!', severity: 'success' });
-        setSelectedStudents([]);
-        setBulkRemarks('');
+      const response = await attendanceService.markBulkAttendance(attendancePayload);
+      if (response && response.success) {
+        setSnackbar({
+          open: true,
+          message: 'Attendance marked successfully!',
+          severity: 'success',
+        });
         fetchAttendanceByDate();
       }
     } catch (error: any) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    } finally {
-      setSaving(false);
+      console.error('Error marking attendance:', error);
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to mark attendance',
+        severity: 'error',
+      });
     }
   };
 
-  const handleIndividualAttendance = async (studentId: string, status: 'present' | 'absent' | 'late' | 'half-day', remarks?: string) => {
-    try {
-      const response = await apiService.post<{ success: boolean; data: any; message: string }>('/attendance/mark', {
-        studentId,
-        status,
-        date: selectedDate,
-        remarks
-      });
-      if (response.success) {
-        setSnackbar({ open: true, message: 'Attendance marked successfully!', severity: 'success' });
-        fetchAttendanceByDate();
-      }
-    } catch (error: any) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    }
+  const handleEditAttendance = (record: AttendanceRecord) => {
+    setEditingRecord(record);
+    setEditForm({
+      status: record.status,
+      remarks: record.remarks || '',
+    });
+    setEditDialogOpen(true);
   };
 
-  const handleEditAttendance = async () => {
-    if (!editingAttendance) return;
+  const handleUpdateAttendance = async () => {
+    if (!editingRecord) return;
 
     try {
-      setSaving(true);
-      const response = await apiService.put<{ success: boolean; data: any; message: string }>(`/attendance/${editingAttendance._id}`, {
-        status: editStatus,
-        remarks: editRemarks
+      const response = await attendanceService.updateAttendance(editingRecord._id, {
+        status: editForm.status,
+        remarks: editForm.remarks,
       });
-      if (response.success) {
-        setSnackbar({ open: true, message: 'Attendance updated successfully!', severity: 'success' });
+
+      if (response && response.success) {
+        setSnackbar({
+          open: true,
+          message: 'Attendance updated successfully!',
+          severity: 'success',
+        });
         setEditDialogOpen(false);
+        setEditingRecord(null);
         fetchAttendanceByDate();
       }
     } catch (error: any) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleStudentSelection = (studentId: string) => {
-    setSelectedStudents(prev => 
-      prev.includes(studentId) 
-        ? prev.filter(id => id !== studentId)
-        : [...prev, studentId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedStudents.length === students.length) {
-      setSelectedStudents([]);
-    } else {
-      setSelectedStudents(students.map(student => student._id));
+      console.error('Error updating attendance:', error);
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to update attendance',
+        severity: 'error',
+      });
     }
   };
 
@@ -337,18 +301,19 @@ const StudentAttendance: React.FC = () => {
       case 'present': return <CheckCircle />;
       case 'absent': return <Cancel />;
       case 'late': return <Schedule />;
-      case 'half-day': return <Person />;
+      case 'half-day': return <AccessTime />;
       default: return <Person />;
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'present': return 'Present';
+      case 'absent': return 'Absent';
+      case 'late': return 'Late';
+      case 'half-day': return 'Half Day';
+      default: return 'Unknown';
+    }
   };
 
   const getSectionsForClass = (className: string) => {
@@ -356,396 +321,613 @@ const StudentAttendance: React.FC = () => {
     return classData ? classData.sections : [];
   };
 
-  const getStudentAttendance = (studentId: string) => {
-    return attendanceData.find(record => record.student._id === studentId);
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <School />
-        Student Attendance
-      </Typography>
+      {/* Enhanced Header */}
+      <Box sx={{ mb: 4, textAlign: 'center' }}>
+        <Typography 
+          variant="h3" 
+          gutterBottom 
+          sx={{ 
+            fontWeight: 700,
+            background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            mb: 2
+          }}
+        >
+          Student Attendance 📚
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ opacity: 0.8 }}>
+          Mark and manage student attendance for your classes
+        </Typography>
+      </Box>
 
-      {/* Class and Date Selection */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Class</InputLabel>
-                <Select
-                  value={selectedClass}
-                  onChange={(e) => {
-                    setSelectedClass(e.target.value);
-                    setSelectedSection('');
-                  }}
-                  label="Class"
-                >
-                  {availableClasses.map((cls) => (
-                    <MenuItem key={cls.name} value={cls.name}>
-                      {cls.displayName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Section</InputLabel>
-                <Select
-                  value={selectedSection}
-                  onChange={(e) => setSelectedSection(e.target.value)}
-                  label="Section"
-                  disabled={!selectedClass}
-                >
-                  {selectedClass && getSectionsForClass(selectedClass).map((section) => (
-                    <MenuItem key={section} value={section}>
-                      Section {section}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant={viewMode === 'mark' ? 'contained' : 'outlined'}
-                  onClick={() => setViewMode('mark')}
-                  startIcon={<Edit />}
-                >
-                  Mark
-                </Button>
-                <Button
-                  variant={viewMode === 'view' ? 'contained' : 'outlined'}
-                  onClick={() => setViewMode('view')}
-                  startIcon={<Visibility />}
-                >
-                  View
-                </Button>
-              </Box>
-            </Grid>
+      {/* Enhanced Filters */}
+      <Card sx={{ mb: 3, p: 3, background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Select Class</InputLabel>
+              <Select
+                value={selectedClass}
+                onChange={(e) => {
+                  setSelectedClass(e.target.value);
+                  setSelectedSection('');
+                }}
+                disabled={loadingClasses}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    bgcolor: 'white'
+                  }
+                }}
+              >
+                <MenuItem value="">Select a class</MenuItem>
+                {availableClasses.map(cls => (
+                  <MenuItem key={cls.name} value={cls.name}>
+                    {cls.displayName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
-        </CardContent>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Select Section</InputLabel>
+              <Select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                disabled={!selectedClass || loadingClasses}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    bgcolor: 'white'
+                  }
+                }}
+              >
+                <MenuItem value="">Select a section</MenuItem>
+                {selectedClass && getSectionsForClass(selectedClass).map(section => (
+                  <MenuItem key={section} value={section}>
+                    Section {section}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Select Date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'white'
+                }
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={fetchAttendanceByDate}
+              disabled={!selectedClass || !selectedSection || !selectedDate}
+              startIcon={<Refresh />}
+              sx={{ 
+                borderRadius: 2,
+                py: 1.5,
+                fontWeight: 600,
+                textTransform: 'none'
+              }}
+            >
+              Load Attendance
+            </Button>
+          </Grid>
+        </Grid>
       </Card>
 
+      {/* Attendance Summary Cards */}
       {selectedClass && selectedSection && (
-        <>
-          {/* Statistics */}
-          {statistics && (
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-              <Grid item xs={12} md={2}>
-                <Card>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" color="primary.main">
-                      {statistics.totalStudents}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Total Students
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <Card>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" color="success.main">
-                      {statistics.presentCount}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Present
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <Card>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" color="error.main">
-                      {statistics.absentCount}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Absent
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <Card>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" color="warning.main">
-                      {statistics.lateCount}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Late
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <Card>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" color="info.main">
-                      {statistics.halfDayCount}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Half Day
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={2}>
-                <Card>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" color="primary.main">
-                      {statistics.attendancePercentage.toFixed(1)}%
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Attendance Rate
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          )}
-
-          {/* Bulk Operations */}
-          {viewMode === 'mark' && (
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={bulkMode}
-                        onChange={(e) => setBulkMode(e.target.checked)}
-                      />
-                    }
-                    label="Bulk Mode"
-                  />
-                  {bulkMode && (
-                    <>
-                      <FormControl size="small">
-                        <InputLabel>Status</InputLabel>
-                        <Select
-                          value={bulkStatus}
-                          onChange={(e) => setBulkStatus(e.target.value as any)}
-                          label="Status"
-                        >
-                          <MenuItem value="present">Present</MenuItem>
-                          <MenuItem value="absent">Absent</MenuItem>
-                          <MenuItem value="late">Late</MenuItem>
-                          <MenuItem value="half-day">Half Day</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        size="small"
-                        label="Remarks"
-                        value={bulkRemarks}
-                        onChange={(e) => setBulkRemarks(e.target.value)}
-                        placeholder="Optional remarks"
-                      />
-                      <Button
-                        variant="contained"
-                        onClick={handleBulkAttendance}
-                        disabled={selectedStudents.length === 0 || saving}
-                        startIcon={saving ? <CircularProgress size={20} /> : <Save />}
-                      >
-                        {saving ? 'Saving...' : `Mark ${selectedStudents.length} Students`}
-                      </Button>
-                    </>
-                  )}
-                </Box>
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
+              }
+            }}>
+              <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                <People sx={{ fontSize: 40, mb: 2, opacity: 0.8 }} />
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                  {students.length}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Total Students
+                </Typography>
               </CardContent>
             </Card>
-          )}
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+              color: 'white',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
+              }
+            }}>
+              <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                <CheckCircle sx={{ fontSize: 40, mb: 2, opacity: 0.8 }} />
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                  {Object.values(attendanceData).filter(status => status === 'present').length}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Present Today
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+              color: 'text.primary',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
+              }
+            }}>
+              <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                <Schedule sx={{ fontSize: 40, mb: 2, opacity: 0.8 }} />
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                  {Object.values(attendanceData).filter(status => status === 'late').length}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Late Today
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+              color: 'text.primary',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
+              }
+            }}>
+              <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                <Cancel sx={{ fontSize: 40, mb: 2, opacity: 0.8 }} />
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                  {Object.values(attendanceData).filter(status => status === 'absent').length}
+                </Typography>
+                <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                  Absent Today
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
 
-          {/* Students Table */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {viewMode === 'mark' ? 'Mark Attendance' : 'Attendance Records'} - {selectedClass} Section {selectedSection}
-              </Typography>
+      {/* Loading States */}
+      {loadingStudents ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress size={60} sx={{ mb: 2 }} />
+          <Typography variant="h6" color="text.secondary">
+            Loading students...
+          </Typography>
+        </Box>
+      ) : loadingAttendance ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress size={60} sx={{ mb: 2 }} />
+          <Typography variant="h6" color="text.secondary">
+            Loading attendance records...
+          </Typography>
+        </Box>
+      ) : students.length === 0 ? (
+        <Box sx={{ textAlign: 'center', mt: 4, py: 8 }}>
+          <Avatar sx={{ width: 80, height: 80, mx: 'auto', mb: 3, bgcolor: 'primary.main' }}>
+            <School sx={{ fontSize: 40 }} />
+          </Avatar>
+          <Typography variant="h5" color="text.secondary" gutterBottom>
+            No students found
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Please select a class and section to view students
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          {/* Enhanced Attendance Table */}
+          <Card sx={{ mb: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', borderRadius: 3 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                  Attendance for {selectedDate}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleSubmitAttendance}
+                  startIcon={<Save />}
+                  disabled={students.length === 0}
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    py: 1.5,
+                    fontWeight: 600,
+                    textTransform: 'none'
+                  }}
+                >
+                  Save Attendance
+                </Button>
+              </Box>
+              
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow>
-                      {bulkMode && viewMode === 'mark' && (
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            checked={selectedStudents.length === students.length}
-                            indeterminate={selectedStudents.length > 0 && selectedStudents.length < students.length}
-                            onChange={handleSelectAll}
-                          />
-                        </TableCell>
-                      )}
-                      <TableCell>Student</TableCell>
-                      <TableCell>Roll Number</TableCell>
-                      <TableCell>Parent Phone</TableCell>
-                      {viewMode === 'mark' ? (
-                        <TableCell>Mark Attendance</TableCell>
-                      ) : (
-                        <TableCell>Status</TableCell>
-                      )}
-                      <TableCell>Remarks</TableCell>
-                      {viewMode === 'view' && (
-                        <TableCell>Actions</TableCell>
-                      )}
+                    <TableRow sx={{ bgcolor: 'primary.main' }}>
+                      <TableCell sx={{ color: 'white', fontWeight: 600 }}>Student</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 600 }}>Roll No</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 600 }}>Status</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 600 }}>Remarks</TableCell>
+                      <TableCell sx={{ color: 'white', fontWeight: 600 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {students.map((student) => {
-                      const attendance = getStudentAttendance(student._id);
-                      return (
-                        <TableRow key={student._id}>
-                          {bulkMode && viewMode === 'mark' && (
-                            <TableCell padding="checkbox">
-                              <Checkbox
-                                checked={selectedStudents.includes(student._id)}
-                                onChange={() => handleStudentSelection(student._id)}
-                              />
-                            </TableCell>
-                          )}
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Avatar sx={{ width: 32, height: 32 }}>
-                                {student.name.charAt(0)}
-                              </Avatar>
-                              {student.name}
+                    {students.map((student) => (
+                      <TableRow key={student._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+                              <Person />
+                            </Avatar>
+                            <Box>
+                              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                {student.name}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {student.grade === 'nursery' ? 'Nursery' : 
+                                 student.grade === 'lkg' ? 'LKG' : 
+                                 student.grade === 'ukg' ? 'UKG' : 
+                                 `Class ${student.grade}`} - Section {student.section}
+                              </Typography>
                             </Box>
-                          </TableCell>
-                          <TableCell>{student.rollNumber}</TableCell>
-                          <TableCell>{student.parentPhone}</TableCell>
-                          {viewMode === 'mark' ? (
-                            <TableCell>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                {['present', 'absent', 'late', 'half-day'].map((status) => (
-                                  <Chip
-                                    key={status}
-                                    label={status}
-                                    color={getStatusColor(status) as any}
-                                    variant={attendance?.status === status ? 'filled' : 'outlined'}
-                                    onClick={() => handleIndividualAttendance(student._id, status as any)}
-                                    sx={{ cursor: 'pointer' }}
-                                  />
-                                ))}
-                              </Box>
-                            </TableCell>
-                          ) : (
-                            <TableCell>
-                              {attendance ? (
-                                <Chip
-                                  icon={getStatusIcon(attendance.status)}
-                                  label={attendance.status}
-                                  color={getStatusColor(attendance.status) as any}
-                                  size="small"
-                                />
-                              ) : (
-                                <Chip label="Not Marked" color="default" size="small" />
-                              )}
-                            </TableCell>
-                          )}
-                          <TableCell>
-                            {attendance?.remarks || '-'}
-                          </TableCell>
-                          {viewMode === 'view' && (
-                            <TableCell>
-                              {attendance && (
-                                <IconButton
-                                  size="small"
-                                  onClick={() => {
-                                    setEditingAttendance(attendance);
-                                    setEditStatus(attendance.status);
-                                    setEditRemarks(attendance.remarks || '');
-                                    setEditDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit />
-                                </IconButton>
-                              )}
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })}
+                          </Box>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                            {student.rollNumber}
+                          </Typography>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <FormControl size="small" sx={{ minWidth: 120 }}>
+                            <Select
+                              value={attendanceData[student._id] || 'present'}
+                              onChange={(e) => handleAttendanceChange(student._id, e.target.value as any)}
+                              sx={{ borderRadius: 2 }}
+                            >
+                              <MenuItem value="present">
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <CheckCircle color="success" fontSize="small" />
+                                  Present
+                                </Box>
+                              </MenuItem>
+                              <MenuItem value="absent">
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Cancel color="error" fontSize="small" />
+                                  Absent
+                                </Box>
+                              </MenuItem>
+                              <MenuItem value="late">
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Schedule color="warning" fontSize="small" />
+                                  Late
+                                </Box>
+                              </MenuItem>
+                              <MenuItem value="half-day">
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <AccessTime color="info" fontSize="small" />
+                                  Half Day
+                                </Box>
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            placeholder="Add remarks..."
+                            value={remarks[student._id] || ''}
+                            onChange={(e) => handleRemarksChange(student._id, e.target.value)}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: 2,
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        
+                        <TableCell>
+                          <IconButton
+                            color="primary"
+                            onClick={() => handleEditAttendance({
+                              _id: 'temp',
+                              student: {
+                                _id: student._id,
+                                name: student.name,
+                                rollNumber: student.rollNumber,
+                                parentPhone: student.parentPhone,
+                              },
+                              class: {
+                                _id: selectedClass,
+                                name: selectedClass,
+                                section: selectedSection,
+                              },
+                              date: selectedDate,
+                              status: attendanceData[student._id] || 'present',
+                              markedBy: { _id: user?.id || '', name: user?.name || '' },
+                              remarks: remarks[student._id] || '',
+                              isVerified: false,
+                            } as AttendanceRecord)}
+                            sx={{ borderRadius: 2 }}
+                          >
+                            <Edit />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </TableContainer>
             </CardContent>
           </Card>
+
+          {/* Enhanced Attendance Records Table */}
+          {attendanceRecords.length > 0 && (
+            <Card sx={{ boxShadow: '0 4px 20px rgba(0,0,0,0.08)', borderRadius: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main', mb: 3 }}>
+                  Recent Attendance Records
+                </Typography>
+                
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'primary.main' }}>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Student</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Date</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Status</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Remarks</TableCell>
+                        <TableCell sx={{ color: 'white', fontWeight: 600 }}>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {attendanceRecords.slice(0, 10).map((record) => (
+                        <TableRow key={record._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+                                <Person />
+                              </Avatar>
+                              <Box>
+                                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                  {record.student.name}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  Roll: {record.student.rollNumber}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography variant="body2">
+                              {new Date(record.date).toLocaleDateString()}
+                            </Typography>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Chip
+                              icon={getStatusIcon(record.status)}
+                              label={getStatusLabel(record.status)}
+                              color={getStatusColor(record.status) as any}
+                              size="small"
+                              sx={{ fontWeight: 600 }}
+                            />
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {record.remarks || 'No remarks'}
+                            </Typography>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleEditAttendance(record)}
+                              sx={{ borderRadius: 2 }}
+                            >
+                              <Edit />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
-      {/* Edit Attendance Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Attendance</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+      {/* Enhanced Edit Dialog */}
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => setEditDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          pb: 1, 
+          background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+          color: 'white',
+          borderRadius: '12px 12px 0 0'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Edit Attendance
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setEditDialogOpen(false)}
+              sx={{ 
+                minWidth: 'auto', 
+                p: 0.5,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)'
+                }
+              }}
+            >
+              ✕
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+            Update attendance status and remarks for {editingRecord?.student.name}
+          </Typography>
+          
+          <Grid container spacing={2}>
             <Grid item xs={12}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
                 <Select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as any)}
-                  label="Status"
+                  value={editForm.status}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value as any }))}
+                  sx={{ borderRadius: 2 }}
                 >
-                  <MenuItem value="present">Present</MenuItem>
-                  <MenuItem value="absent">Absent</MenuItem>
-                  <MenuItem value="late">Late</MenuItem>
-                  <MenuItem value="half-day">Half Day</MenuItem>
+                  <MenuItem value="present">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CheckCircle color="success" fontSize="small" />
+                      Present
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="absent">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Cancel color="error" fontSize="small" />
+                      Absent
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="late">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Schedule color="warning" fontSize="small" />
+                      Late
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="half-day">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AccessTime color="info" fontSize="small" />
+                      Half Day
+                    </Box>
+                  </MenuItem>
                 </Select>
               </FormControl>
             </Grid>
+            
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Remarks"
-                value={editRemarks}
-                onChange={(e) => setEditRemarks(e.target.value)}
+                value={editForm.remarks}
+                onChange={(e) => setEditForm(prev => ({ ...prev, remarks: e.target.value }))}
                 multiline
                 rows={3}
+                size="small"
+                placeholder="Add any additional remarks..."
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleEditAttendance}
-            variant="contained"
-            disabled={saving}
+        <DialogActions sx={{ p: 2, justifyContent: 'center' }}>
+          <Button 
+            variant="outlined" 
+            onClick={() => setEditDialogOpen(false)}
+            sx={{ mr: 2 }}
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUpdateAttendance}
+            variant="contained"
+            size="large"
+            sx={{
+              px: 4,
+              py: 1.5,
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              borderRadius: 2,
+              boxShadow: 2,
+              '&:hover': {
+                boxShadow: 4,
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            Update Attendance
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        <Alert 
+          onClose={handleCloseSnackbar} 
           severity={snackbar.severity}
           sx={{ width: '100%' }}
         >

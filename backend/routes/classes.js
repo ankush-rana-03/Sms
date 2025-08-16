@@ -207,27 +207,71 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     }
 
     // Check if there are teacher assignments for this class
-    const teachersWithAssignments = await Teacher.find({
+    // Try multiple query approaches to ensure we find all assignments
+    console.log(`\n🔍 Looking for teacher assignments to class: ${classId}`);
+    console.log(`Class details: ${cls.name} Section ${cls.section} (${cls.session})`);
+    
+    // Approach 1: Direct query
+    let teachersWithAssignments = await Teacher.find({
       'assignedClasses.class': classId
     });
+    
+    console.log(`Approach 1 (direct query): Found ${teachersWithAssignments.length} teachers`);
 
-    console.log(`Found ${teachersWithAssignments.length} teachers with assignments to class ${classId}`);
+    // Approach 2: If no results, try with string comparison
+    if (teachersWithAssignments.length === 0) {
+      console.log('No teachers found with direct query, trying string comparison...');
+      teachersWithAssignments = await Teacher.find({
+        'assignedClasses.class': classId.toString()
+      });
+      console.log(`Approach 2 (string query): Found ${teachersWithAssignments.length} teachers`);
+    }
+
+    // Approach 3: If still no results, get all teachers and filter manually
+    if (teachersWithAssignments.length === 0) {
+      console.log('No teachers found with string query, trying manual filter...');
+      const allTeachers = await Teacher.find({});
+      teachersWithAssignments = allTeachers.filter(teacher => 
+        teacher.assignedClasses && teacher.assignedClasses.some(assignment => 
+          assignment.class && (assignment.class.toString() === classId || assignment.class.toString() === classId.toString())
+        )
+      );
+      console.log(`Approach 3 (manual filter): Found ${teachersWithAssignments.length} teachers`);
+    }
+
+    // Log what we found
+    if (teachersWithAssignments.length > 0) {
+      console.log('\n📋 Teachers with assignments found:');
+      teachersWithAssignments.forEach(teacher => {
+        console.log(`  - ${teacher.name} (${teacher.email})`);
+        const relevantAssignments = teacher.assignedClasses.filter(assignment => 
+          assignment.class && (assignment.class.toString() === classId || assignment.class.toString() === classId.toString())
+        );
+        console.log(`    Relevant assignments: ${relevantAssignments.length}`);
+        relevantAssignments.forEach(assignment => {
+          console.log(`      * Class: ${assignment.class} (${typeof assignment.class})`);
+          console.log(`        Subject: ${assignment.subject}, Section: ${assignment.section}`);
+        });
+      });
+    } else {
+      console.log('❌ No teachers found with assignments to this class');
+    }
 
     // Remove assignments for this class from all teachers
     let deletedAssignments = 0;
     for (const teacher of teachersWithAssignments) {
-      console.log(`Processing teacher: ${teacher.name} (ID: ${teacher._id})`);
+      console.log(`\n🔄 Processing teacher: ${teacher.name} (ID: ${teacher._id})`);
       console.log(`Original assignments count: ${teacher.assignedClasses.length}`);
       
       const originalLength = teacher.assignedClasses.length;
       
       // Filter out all assignments to this class (in case there are duplicates)
-      const assignmentsToRemove = teacher.assignedClasses.filter(
-        assignment => assignment.class.toString() === classId
+      const assignmentsToRemove = teacher.assignedClasses.filter(assignment => 
+        assignment.class && (assignment.class.toString() === classId || assignment.class.toString() === classId.toString())
       );
       
-      teacher.assignedClasses = teacher.assignedClasses.filter(
-        assignment => assignment.class.toString() !== classId
+      teacher.assignedClasses = teacher.assignedClasses.filter(assignment => 
+        !assignment.class || (assignment.class.toString() !== classId && assignment.class.toString() !== classId.toString())
       );
       
       const newLength = teacher.assignedClasses.length;
@@ -239,7 +283,9 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       
       if (removedCount > 0) {
         await teacher.save();
-        console.log(`Teacher ${teacher.name} saved successfully with ${removedCount} assignments removed`);
+        console.log(`✅ Teacher ${teacher.name} saved successfully with ${removedCount} assignments removed`);
+      } else {
+        console.log(`⚠️  No assignments removed for teacher ${teacher.name}`);
       }
     }
 
@@ -253,7 +299,38 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     });
 
     if (studentsInClass.length > 0) {
-      console.log(`Warning: Found ${studentsInClass.length} students still enrolled in this class`);
+      console.log(`⚠️  Warning: Found ${studentsInClass.length} students still enrolled in this class`);
+    }
+
+    // Additional safety check: Let's also check if there are any teachers with assignments that might not have been caught
+    console.log('\n🔍 Additional safety check: Checking all teachers for any missed assignments...');
+    const allTeachers = await Teacher.find({});
+    let missedAssignments = 0;
+    
+    for (const teacher of allTeachers) {
+      if (teacher.assignedClasses && teacher.assignedClasses.length > 0) {
+        const relevantAssignments = teacher.assignedClasses.filter(assignment => 
+          assignment.class && (assignment.class.toString() === classId || assignment.class.toString() === classId.toString())
+        );
+        
+        if (relevantAssignments.length > 0) {
+          console.log(`⚠️  Found ${relevantAssignments.length} missed assignments for teacher ${teacher.name}`);
+          missedAssignments += relevantAssignments.length;
+          
+          // Remove these missed assignments
+          teacher.assignedClasses = teacher.assignedClasses.filter(assignment => 
+            !assignment.class || (assignment.class.toString() !== classId && assignment.class.toString() !== classId.toString())
+          );
+          
+          await teacher.save();
+          console.log(`✅ Cleaned up missed assignments for teacher ${teacher.name}`);
+        }
+      }
+    }
+    
+    if (missedAssignments > 0) {
+      console.log(`🔧 Cleaned up ${missedAssignments} additional missed assignments`);
+      deletedAssignments += missedAssignments;
     }
 
     // Check for any other potential references (Homework, Tests, Results, etc.)

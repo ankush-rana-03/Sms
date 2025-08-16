@@ -211,15 +211,80 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       'assignedClasses.class': classId
     });
 
+    console.log(`Found ${teachersWithAssignments.length} teachers with assignments to class ${classId}`);
+
     // Remove assignments for this class from all teachers
     let deletedAssignments = 0;
     for (const teacher of teachersWithAssignments) {
+      console.log(`Processing teacher: ${teacher.name} (ID: ${teacher._id})`);
+      console.log(`Original assignments count: ${teacher.assignedClasses.length}`);
+      
       const originalLength = teacher.assignedClasses.length;
+      
+      // Filter out all assignments to this class (in case there are duplicates)
+      const assignmentsToRemove = teacher.assignedClasses.filter(
+        assignment => assignment.class.toString() === classId
+      );
+      
       teacher.assignedClasses = teacher.assignedClasses.filter(
         assignment => assignment.class.toString() !== classId
       );
-      deletedAssignments += originalLength - teacher.assignedClasses.length;
-      await teacher.save();
+      
+      const newLength = teacher.assignedClasses.length;
+      const removedCount = originalLength - newLength;
+      deletedAssignments += removedCount;
+      
+      console.log(`Found ${assignmentsToRemove.length} assignments to remove for class ${classId}`);
+      console.log(`After filtering: ${newLength} assignments remaining, ${removedCount} removed`);
+      
+      if (removedCount > 0) {
+        await teacher.save();
+        console.log(`Teacher ${teacher.name} saved successfully with ${removedCount} assignments removed`);
+      }
+    }
+
+    // Also check for any other potential references to this class
+    // Check if this class is referenced in any other models
+    const studentsInClass = await Student.find({ 
+      grade: cls.name, 
+      section: cls.section,
+      currentSession: cls.session,
+      deletedAt: null 
+    });
+
+    if (studentsInClass.length > 0) {
+      console.log(`Warning: Found ${studentsInClass.length} students still enrolled in this class`);
+    }
+
+    // Check for any other potential references (Homework, Tests, Results, etc.)
+    try {
+      const Homework = require('../models/Homework');
+      const homeworkInClass = await Homework.find({ 
+        class: classId 
+      });
+
+      if (homeworkInClass.length > 0) {
+        console.log(`Warning: Found ${homeworkInClass.length} homework assignments for this class`);
+        // Optionally delete homework assignments for this class
+        // await Homework.deleteMany({ class: classId });
+      }
+    } catch (error) {
+      console.log('Homework model not found, skipping homework cleanup');
+    }
+
+    try {
+      const Test = require('../models/Test');
+      const testsInClass = await Test.find({ 
+        class: classId 
+      });
+
+      if (testsInClass.length > 0) {
+        console.log(`Warning: Found ${testsInClass.length} tests for this class`);
+        // Optionally delete tests for this class
+        // await Test.deleteMany({ class: classId });
+      }
+    } catch (error) {
+      console.log('Test model not found, skipping test cleanup');
     }
 
     // Unassign class teacher if assigned
@@ -233,6 +298,10 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     // Delete the class
     await Class.findByIdAndDelete(classId);
 
+    console.log(`✅ Class "${cls.name} Section ${cls.section}" deleted successfully`);
+    console.log(`✅ Cleaned up ${deletedAssignments} teacher assignments`);
+    console.log(`✅ Cleaned up class teacher assignment`);
+
     res.status(200).json({
       success: true,
       message: 'Class deleted successfully',
@@ -241,7 +310,16 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
         section: cls.section,
         session: cls.session
       },
-      deletedAssignments: deletedAssignments
+      deletedAssignments: deletedAssignments,
+      cleanupSummary: {
+        teacherAssignmentsRemoved: deletedAssignments,
+        classTeacherUnassigned: !!cls.classTeacher,
+        studentsEnrolled: studentsInClass.length,
+        warnings: [
+          studentsInClass.length > 0 ? `${studentsInClass.length} students still enrolled` : null,
+          deletedAssignments > 0 ? `${deletedAssignments} teacher assignments removed` : null
+        ].filter(Boolean)
+      }
     });
   } catch (error) {
     console.error('Error deleting class:', error);

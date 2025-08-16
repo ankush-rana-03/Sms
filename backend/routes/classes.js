@@ -261,6 +261,7 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     console.log(`\n🗑️  Removing teacher assignments for class ${classId} from database...`);
     
     let totalModified = 0;
+    let deletedAssignments = 0;
     
     // Approach 1: Try to find and remove assignments using the class ID
     console.log('🔍 Approach 1: Searching for teachers with assignments to this class...');
@@ -394,6 +395,8 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
     console.log('✅ Using direct database updates for reliable assignment removal');
 
     // Check for any other potential references (Homework, Tests, Results, etc.)
+    console.log('\n🗑️  Cleaning up related data for this class...');
+    
     try {
       const Homework = require('../models/Homework');
       const homeworkInClass = await Homework.find({ 
@@ -401,9 +404,9 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       });
 
       if (homeworkInClass.length > 0) {
-        console.log(`Warning: Found ${homeworkInClass.length} homework assignments for this class`);
-        // Optionally delete homework assignments for this class
-        // await Homework.deleteMany({ class: classId });
+        console.log(`Found ${homeworkInClass.length} homework assignments for this class - deleting...`);
+        await Homework.deleteMany({ class: classId });
+        console.log(`✅ Deleted ${homeworkInClass.length} homework assignments`);
       }
     } catch (error) {
       console.log('Homework model not found, skipping homework cleanup');
@@ -416,12 +419,42 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       });
 
       if (testsInClass.length > 0) {
-        console.log(`Warning: Found ${testsInClass.length} tests for this class`);
-        // Optionally delete tests for this class
-        // await Test.deleteMany({ class: classId });
+        console.log(`Found ${testsInClass.length} tests for this class - deleting...`);
+        await Test.deleteMany({ class: classId });
+        console.log(`✅ Deleted ${testsInClass.length} tests`);
       }
     } catch (error) {
       console.log('Test model not found, skipping test cleanup');
+    }
+
+    try {
+      const Result = require('../models/Result');
+      const resultsInClass = await Result.find({ 
+        classId: classId 
+      });
+
+      if (resultsInClass.length > 0) {
+        console.log(`Found ${resultsInClass.length} results for this class - deleting...`);
+        await Result.deleteMany({ classId: classId });
+        console.log(`✅ Deleted ${resultsInClass.length} results`);
+      }
+    } catch (error) {
+      console.log('Result model not found, skipping result cleanup');
+    }
+
+    try {
+      const Attendance = require('../models/Attendance');
+      const attendanceInClass = await Attendance.find({ 
+        classId: classId 
+      });
+
+      if (attendanceInClass.length > 0) {
+        console.log(`Found ${attendanceInClass.length} attendance records for this class - deleting...`);
+        await Attendance.deleteMany({ classId: classId });
+        console.log(`✅ Deleted ${attendanceInClass.length} attendance records`);
+      }
+    } catch (error) {
+      console.log('Attendance model not found, skipping attendance cleanup');
     }
 
     // Unassign class teacher if assigned

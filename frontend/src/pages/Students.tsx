@@ -568,17 +568,33 @@ const Students: React.FC = () => {
         PaperProps={{
           sx: {
             maxHeight: '90vh',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
           }
         }}
       >
-        <DialogTitle sx={{ pb: 1 }}>
+        <DialogTitle sx={{ 
+          pb: 1, 
+          background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+          color: 'white',
+          borderRadius: '12px 12px 0 0'
+        }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6">Register New Student</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Register New Student
+            </Typography>
             <Button
               size="small"
               onClick={() => setOpenRegistration(false)}
-              sx={{ minWidth: 'auto', p: 0.5 }}
+              sx={{ 
+                minWidth: 'auto', 
+                p: 0.5,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)'
+                }
+              }}
             >
               ✕
             </Button>

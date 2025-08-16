@@ -49,11 +49,13 @@ interface StudentFormData {
 interface StudentRegistrationFormProps {
   onSubmit: (data: StudentFormData) => void;
   loading?: boolean;
+  inDialog?: boolean;
 }
 
 const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   onSubmit,
-  loading = false
+  loading = false,
+  inDialog = false,
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -148,20 +150,26 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   };
 
   if (loadingClasses) {
-    return (
+    const loadingContent = (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+        <CircularProgress />
+      </Box>
+    );
+    
+    return inDialog ? loadingContent : (
       <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
-          <CircularProgress />
-        </Box>
+        {loadingContent}
       </Paper>
     );
   }
 
-  return (
-    <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
-      <Typography variant="h5" gutterBottom>
-        Student Registration
-      </Typography>
+  const formContent = (
+    <>
+      {!inDialog && (
+        <Typography variant="h5" gutterBottom>
+          Student Registration
+        </Typography>
+      )}
       
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -335,6 +343,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
           </Button>
         </Box>
       </Box>
+    </>
+  );
+
+  return inDialog ? formContent : (
+    <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
+      {formContent}
     </Paper>
   );
 };

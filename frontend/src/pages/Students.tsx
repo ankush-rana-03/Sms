@@ -569,6 +569,7 @@ const Students: React.FC = () => {
           <StudentRegistrationForm
             onSubmit={handleRegisterStudent}
             loading={fetchingStudents}
+            inDialog={true}
           />
         </DialogContent>
         <DialogActions>

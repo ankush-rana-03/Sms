@@ -240,6 +240,9 @@ const Classes: React.FC = () => {
         setSnackbar({ open: true, message: 'Class deleted successfully', severity: 'success' });
         setOpenDeleteClass(false);
         setSelectedClass(null);
+        
+        // Refresh the teacher list to update teacher assignments after class deletion
+        await fetchTeachers();
       } else {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to delete class', severity: 'error' });
       }

@@ -563,19 +563,35 @@ const Students: React.FC = () => {
         onClose={() => setOpenRegistration(false)}
         maxWidth="md"
         fullWidth
+        disableEscapeKeyDown={false}
+        disableBackdropClick={false}
+        PaperProps={{
+          sx: {
+            maxHeight: '90vh',
+            overflow: 'hidden'
+          }
+        }}
       >
-        <DialogTitle>Register New Student</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Register New Student</Typography>
+            <Button
+              size="small"
+              onClick={() => setOpenRegistration(false)}
+              sx={{ minWidth: 'auto', p: 0.5 }}
+            >
+              ✕
+            </Button>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, overflow: 'auto' }}>
           <StudentRegistrationForm
             onSubmit={handleRegisterStudent}
             loading={fetchingStudents}
+            showTitle={false}
+            onSuccess={() => setOpenRegistration(false)}
           />
         </DialogContent>
-        <DialogActions>
-          <Button variant="outlined" onClick={() => setOpenRegistration(false)} sx={{ mr: 'auto' }}>
-            Cancel
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* Edit Student Dialog */}

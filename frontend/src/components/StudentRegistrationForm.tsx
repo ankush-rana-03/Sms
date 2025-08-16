@@ -49,11 +49,15 @@ interface StudentFormData {
 interface StudentRegistrationFormProps {
   onSubmit: (data: StudentFormData) => void;
   loading?: boolean;
+  showTitle?: boolean;
+  onSuccess?: () => void;
 }
 
 const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   onSubmit,
-  loading = false
+  loading = false,
+  showTitle = true,
+  onSuccess
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,11 +66,13 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   const [availableSections, setAvailableSections] = useState<string[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const [formKey, setFormKey] = useState(0); // For form reset
 
   const {
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = useForm<StudentFormData>({
     resolver: yupResolver(schema),
@@ -133,6 +139,15 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
       await onSubmit(studentData);
       
       setSuccess('Student registered successfully!');
+      
+      // Reset the form
+      reset();
+      setFormKey(prev => prev + 1);
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error: any) {
       console.error('Error registering student:', error);
       setError(error.message || 'Failed to register student');
@@ -149,19 +164,19 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
 
   if (loadingClasses) {
     return (
-      <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
-          <CircularProgress />
-        </Box>
-      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   return (
-    <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
-      <Typography variant="h5" gutterBottom>
-        Student Registration
-      </Typography>
+    <Box>
+      {showTitle && (
+        <Typography variant="h5" gutterBottom>
+          Student Registration
+        </Typography>
+      )}
       
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -181,15 +196,21 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         </Alert>
       )}
 
-      <Box component="form" onSubmit={handleSubmit(onFormSubmit)}>
-        <Grid container spacing={3}>
+      <Box component="form" onSubmit={handleSubmit(onFormSubmit)} sx={{ mt: 2 }} key={formKey}>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
+          Please fill in all required fields to register the student.
+        </Typography>
+        <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
               label="Full Name"
               {...register('name')}
               error={!!errors.name}
-              helperText={errors.name?.message}
+              helperText={errors.name?.message || "Enter the student's full name"}
+              size="small"
+              placeholder="e.g., John Doe"
+              required
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -199,7 +220,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               type="email"
               {...register('email')}
               error={!!errors.email}
-              helperText={errors.email?.message}
+              helperText={errors.email?.message || "Enter a valid email address"}
+              size="small"
+              placeholder="student@example.com"
+              required
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -208,7 +232,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               label="Phone"
               {...register('phone')}
               error={!!errors.phone}
-              helperText={errors.phone?.message}
+              helperText={errors.phone?.message || "Enter contact phone number"}
+              size="small"
+              placeholder="+1234567890"
+              required
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -217,7 +244,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               label="Address"
               {...register('address')}
               error={!!errors.address}
-              helperText={errors.address?.message}
+              helperText={errors.address?.message || "Enter complete address"}
+              size="small"
+              placeholder="Street, City, State, ZIP"
+              required
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -229,6 +259,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               error={!!errors.grade}
               helperText={errors.grade?.message}
               disabled={availableClasses.length === 0}
+              size="small"
+              required
             >
               {availableClasses.map((cls) => (
                 <MenuItem key={cls.name} value={cls.name}>
@@ -246,6 +278,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               error={!!errors.section}
               helperText={errors.section?.message}
               disabled={!selectedClass || availableClasses.length === 0}
+              size="small"
+              required
             >
               {selectedClass && getSectionsForClass(selectedClass).map((section) => (
                 <MenuItem key={section} value={section}>
@@ -260,7 +294,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               label="Roll Number"
               {...register('rollNumber')}
               error={!!errors.rollNumber}
-              helperText={errors.rollNumber?.message}
+              helperText={errors.rollNumber?.message || "Enter unique roll number"}
+              size="small"
+              placeholder="001, 002, etc."
+              required
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -272,6 +309,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               {...register('dateOfBirth')}
               error={!!errors.dateOfBirth}
               helperText={errors.dateOfBirth?.message}
+              size="small"
+              required
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -282,6 +321,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               {...register('gender')}
               error={!!errors.gender}
               helperText={errors.gender?.message}
+              size="small"
+              required
             >
               <MenuItem value="male">Male</MenuItem>
               <MenuItem value="female">Female</MenuItem>
@@ -296,6 +337,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               {...register('bloodGroup')}
               error={!!errors.bloodGroup}
               helperText={errors.bloodGroup?.message}
+              size="small"
+              required
             >
               {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((group) => (
                 <MenuItem key={group} value={group}>
@@ -310,7 +353,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               label="Parent Name"
               {...register('parentName')}
               error={!!errors.parentName}
-              helperText={errors.parentName?.message}
+              helperText={errors.parentName?.message || "Enter parent/guardian name"}
+              size="small"
+              placeholder="e.g., Jane Doe"
+              required
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -319,23 +365,27 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
               label="Parent Phone"
               {...register('parentPhone')}
               error={!!errors.parentPhone}
-              helperText={errors.parentPhone?.message}
+              helperText={errors.parentPhone?.message || "Enter parent/guardian phone"}
+              size="small"
+              placeholder="+1234567890"
+              required
             />
           </Grid>
         </Grid>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
           <Button
             type="submit"
             variant="contained"
             disabled={loading || isSubmitting || availableClasses.length === 0}
             startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+            size="large"
           >
             {isSubmitting ? 'Creating Student...' : 'Register Student'}
           </Button>
         </Box>
       </Box>
-    </Paper>
+    </Box>
   );
 };
 

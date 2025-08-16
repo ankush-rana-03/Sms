@@ -444,7 +444,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({
               transition: 'all 0.2s ease-in-out'
             }}
           >
-            {isSubmitting ? 'Saving...' : (isEdit ? 'Update Teacher' : 'Register Teacher')}
+            {isSubmitting ? 'Saving...' : (isEdit ? 'Update Teacher' : 'Register New Teacher')}
           </Button>
         </Box>
       </Box>

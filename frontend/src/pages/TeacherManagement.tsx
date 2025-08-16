@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiService } from '../services/api';
 import classService, { ClassWithSections } from '../services/classService';
 import { useAuth } from '../contexts/AuthContext';
+import TeacherRegistrationForm from '../components/TeacherRegistrationForm';
 
 import {
   Box,
@@ -67,6 +68,7 @@ interface Teacher {
   name: string;
   email: string;
   phone: string;
+  address?: string;
   designation: 'TGT' | 'PGT' | 'JBT' | 'NTT';
   subjects: string[];
   assignedClasses: Array<{
@@ -230,6 +232,7 @@ const TeacherManagement: React.FC = () => {
     name: '',
     email: '',
     phone: '',
+    address: '',
     designation: 'TGT' as 'TGT' | 'PGT' | 'JBT' | 'NTT',
     qualification: {
       degree: '',
@@ -323,11 +326,28 @@ const TeacherManagement: React.FC = () => {
     }
   };
 
-  const handleCreateTeacher = async () => {
+  const handleCreateTeacher = async (formData: any) => {
     try {
       setCreatingTeacher(true);
       const teacherData = {
-        ...teacherFormData,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        designation: formData.designation,
+        experience: { years: formData.experience, previousSchools: [] },
+        joiningDate: formData.joiningDate,
+        salary: formData.salary,
+        qualification: {
+          degree: formData.degree,
+          institution: formData.institution,
+          yearOfCompletion: formData.yearOfCompletion,
+        },
+        emergencyContact: {
+          name: formData.emergencyContactName,
+          phone: formData.emergencyContactPhone,
+          relationship: formData.emergencyContactRelationship,
+        },
       };
 
       const response = await apiService.post<CreateTeacherResponse>('/admin/teachers', teacherData);
@@ -645,13 +665,30 @@ const TeacherManagement: React.FC = () => {
     setEditingAssignment(null);
   };
 
-  const handleUpdateTeacher = async () => {
+  const handleUpdateTeacher = async (formData: any) => {
     if (!selectedTeacher) return;
 
     try {
       setUpdatingTeacher(true);
       const teacherData = {
-        ...teacherFormData,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        designation: formData.designation,
+        experience: { years: formData.experience, previousSchools: [] },
+        joiningDate: formData.joiningDate,
+        salary: formData.salary,
+        qualification: {
+          degree: formData.degree,
+          institution: formData.institution,
+          yearOfCompletion: formData.yearOfCompletion,
+        },
+        emergencyContact: {
+          name: formData.emergencyContactName,
+          phone: formData.emergencyContactPhone,
+          relationship: formData.emergencyContactRelationship,
+        },
       };
 
       const response = await apiService.put<{ success: boolean; message: string; data: Teacher }>(
@@ -766,6 +803,7 @@ const TeacherManagement: React.FC = () => {
       name: teacher.name,
       email: teacher.email,
       phone: teacher.phone,
+      address: teacher.address || '',
       designation: teacher.designation,
       qualification: teacher.qualification || { degree: '', institution: '', yearOfCompletion: new Date().getFullYear() },
       experience: teacher.experience || { years: 0, previousSchools: [] },
@@ -783,6 +821,7 @@ const TeacherManagement: React.FC = () => {
       name: '',
       email: '',
       phone: '',
+      address: '',
       designation: 'TGT',
       qualification: { degree: '', institution: '', yearOfCompletion: new Date().getFullYear() },
       experience: { years: 0, previousSchools: [] },
@@ -821,6 +860,7 @@ const TeacherManagement: React.FC = () => {
       name: '',
       email: '',
       phone: '',
+      address: '',
       designation: 'TGT',
       qualification: { degree: '', institution: '', yearOfCompletion: new Date().getFullYear() },
       experience: { years: 0, previousSchools: [] },
@@ -1904,304 +1944,41 @@ const TeacherManagement: React.FC = () => {
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 3, overflow: 'auto' }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
-            Please fill in all required fields to {dialogMode === 'create' ? 'register' : 'update'} the teacher
-          </Typography>
+          <TeacherRegistrationForm
+            onSubmit={dialogMode === 'create' ? handleCreateTeacher : handleUpdateTeacher}
+            loading={dialogMode === 'create' ? creatingTeacher : updatingTeacher}
+            showTitle={false}
+            onSuccess={() => setOpenDialog(false)}
+            initialData={dialogMode === 'edit' ? {
+              name: teacherFormData.name,
+              email: teacherFormData.email,
+              phone: teacherFormData.phone,
+              address: teacherFormData.address || '',
+              designation: teacherFormData.designation,
+              experience: teacherFormData.experience.years,
+              joiningDate: teacherFormData.joiningDate ? teacherFormData.joiningDate.split('T')[0] : '',
+              salary: teacherFormData.salary,
+              degree: teacherFormData.qualification.degree,
+              institution: teacherFormData.qualification.institution,
+              yearOfCompletion: teacherFormData.qualification.yearOfCompletion,
+              emergencyContactName: teacherFormData.emergencyContact.name,
+              emergencyContactPhone: teacherFormData.emergencyContact.phone,
+              emergencyContactRelationship: teacherFormData.emergencyContact.relationship,
+            } : undefined}
+            isEdit={dialogMode === 'edit'}
+          />
           
-          {/* Personal Information Section */}
-          <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
-            <CardContent sx={{ pb: '16px !important' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Person sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  Personal Information
-                </Typography>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    value={teacherFormData.name}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, name: e.target.value })}
-                    required
-                    size="small"
-                    placeholder="Enter teacher's full name"
-                    InputProps={{
-                      startAdornment: <Person sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    value={teacherFormData.email}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, email: e.target.value })}
-                    required
-                    size="small"
-                    placeholder="teacher@example.com"
-                    InputProps={{
-                      startAdornment: <ContactMail sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone"
-                    value={teacherFormData.phone}
-                    onChange={(e) => setTeacherFormData({ ...teacherFormData, phone: e.target.value })}
-                    required
-                    size="small"
-                    placeholder="+1234567890"
-                    InputProps={{
-                      startAdornment: <Phone sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Designation</InputLabel>
-                    <Select
-                      value={teacherFormData.designation}
-                      onChange={(e) => setTeacherFormData({ ...teacherFormData, designation: e.target.value as any })}
-                      label="Designation"
-                      required
-                    >
-                      <MenuItem value="TGT">TGT</MenuItem>
-                      <MenuItem value="PGT">PGT</MenuItem>
-                      <MenuItem value="JBT">JBT</MenuItem>
-                      <MenuItem value="NTT">NTT</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
 
-          {/* Professional Information Section */}
-          <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
-            <CardContent sx={{ pb: '16px !important' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <School sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  Professional Information
-                </Typography>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Experience (Years)"
-                    type="number"
-                    value={teacherFormData.experience.years}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      experience: { ...teacherFormData.experience, years: Number(e.target.value) }
-                    })}
-                    size="small"
-                    placeholder="0"
-                    InputProps={{
-                      startAdornment: <Work sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Joining Date"
-                    type="date"
-                    value={teacherFormData.joiningDate ? teacherFormData.joiningDate.split('T')[0] : ''}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      joiningDate: e.target.value ? new Date(e.target.value).toISOString() : ''
-                    })}
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
-                    InputProps={{
-                      startAdornment: <CalendarToday sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Salary"
-                    type="number"
-                    value={teacherFormData.salary}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      salary: Number(e.target.value)
-                    })}
-                    size="small"
-                    placeholder="0"
-                    InputProps={{
-                      startAdornment: <AttachMoney sx={{ mr:1, color: 'action.disabled' }} fontSize="small" />,
-                    }}
-                  />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
 
-          {/* Qualification Section */}
-          <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
-            <CardContent sx={{ pb: '16px !important' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <School sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  Educational Qualification
-                </Typography>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Degree"
-                    value={teacherFormData.qualification.degree}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      qualification: { ...teacherFormData.qualification, degree: e.target.value }
-                    })}
-                    size="small"
-                    placeholder="e.g., B.Ed, M.Ed"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Institution"
-                    value={teacherFormData.qualification.institution}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      qualification: { ...teacherFormData.qualification, institution: e.target.value }
-                    })}
-                    size="small"
-                    placeholder="University/College name"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Year of Completion"
-                    type="number"
-                    value={teacherFormData.qualification.yearOfCompletion}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      qualification: { ...teacherFormData.qualification, yearOfCompletion: Number(e.target.value) }
-                    })}
-                    size="small"
-                    placeholder="2020"
-                  />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
 
-          {/* Emergency Contact Section */}
-          <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
-            <CardContent sx={{ pb: '16px !important' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <LocalHospital sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  Emergency Contact
-                </Typography>
-              </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Emergency Contact Name"
-                    value={teacherFormData.emergencyContact.name}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      emergencyContact: { ...teacherFormData.emergencyContact, name: e.target.value }
-                    })}
-                    size="small"
-                    placeholder="Contact person name"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Emergency Contact Phone"
-                    value={teacherFormData.emergencyContact.phone}
-                    onChange={(e) => setTeacherFormData({
-                      ...teacherFormData,
-                      emergencyContact: { ...teacherFormData.emergencyContact, phone: e.target.value }
-                    })}
-                    size="small"
-                    placeholder="+1234567890"
-                    InputProps={{
-                      startAdornment: <Phone sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Emergency Contact Relationship</InputLabel>
-                    <Select
-                      value={teacherFormData.emergencyContact.relationship}
-                      onChange={(e) => setTeacherFormData({
-                        ...teacherFormData,
-                        emergencyContact: { ...teacherFormData.emergencyContact, relationship: e.target.value as string }
-                      })}
-                      label="Relationship"
-                    >
-                      <MenuItem value="Father">Father</MenuItem>
-                      <MenuItem value="Mother">Mother</MenuItem>
-                      <MenuItem value="Guardian">Guardian</MenuItem>
-                      <MenuItem value="Other">Other</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+
+
+
+
 
 
         </DialogContent>
-        <DialogActions sx={{ p: 2, justifyContent: 'center' }}>
-          <Button 
-            variant="outlined" 
-            onClick={() => setOpenDialog(false)}
-            sx={{ mr: 2 }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={dialogMode === 'create' ? handleCreateTeacher : handleUpdateTeacher}
-            variant="contained"
-            color="primary"
-            disabled={dialogMode === 'create' ? creatingTeacher : updatingTeacher}
-            startIcon={
-              (dialogMode === 'create' ? creatingTeacher : updatingTeacher) ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : undefined
-            }
-            size="large"
-            sx={{
-              px: 4,
-              py: 1.5,
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              borderRadius: 2,
-              boxShadow: 2,
-              '&:hover': {
-                boxShadow: 4,
-                transform: 'translateY(-1px)',
-              },
-              transition: 'all 0.2s ease-in-out'
-            }}
-          >
-            {dialogMode === 'create' 
-              ? (creatingTeacher ? 'Creating...' : 'Create Teacher')
-              : (updatingTeacher ? 'Updating...' : 'Update Teacher')
-            }
-          </Button>
-        </DialogActions>
+
       </Dialog>
 
       {/* Assigned Class & Subject Dialog */}

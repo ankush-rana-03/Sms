@@ -8,11 +8,8 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Divider,
   Card,
   CardContent,
-  IconButton,
-  Tooltip,
 } from '@mui/material';
 import {
   Person,
@@ -77,7 +74,6 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
-  const [availableSections, setAvailableSections] = useState<string[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [formKey, setFormKey] = useState(0); // For form reset
@@ -102,7 +98,6 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         const response = await classService.getAvailableClassesForRegistration();
         if (response.success) {
           setAvailableClasses(response.data.classes);
-          setAvailableSections(response.data.sections);
         }
       } catch (error: any) {
         console.error('Error fetching classes:', error);

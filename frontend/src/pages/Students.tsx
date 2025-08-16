@@ -564,7 +564,6 @@ const Students: React.FC = () => {
         maxWidth="md"
         fullWidth
         disableEscapeKeyDown={false}
-        disableBackdropClick={false}
         PaperProps={{
           sx: {
             maxHeight: '90vh',

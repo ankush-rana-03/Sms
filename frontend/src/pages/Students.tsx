@@ -314,51 +314,131 @@ const Students: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={tabValue} onChange={handleTabChange} aria-label="student tabs">
-          <Tab label="Active Students" />
-          <Tab label="Deleted Students" />
+      {/* Enhanced Tabs */}
+      <Box sx={{ 
+        borderBottom: 1, 
+        borderColor: 'divider', 
+        mb: 3,
+        background: 'white',
+        borderRadius: 2,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        p: 1
+      }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange} 
+          aria-label="student tabs"
+          sx={{
+            '& .MuiTab-root': {
+              minHeight: 48,
+              fontSize: '1rem',
+              fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: 2,
+              mx: 0.5,
+              '&.Mui-selected': {
+                background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                color: 'white',
+                boxShadow: 2,
+              }
+            }
+          }}
+        >
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Person />
+                Active Students ({students.length})
+              </Box>
+            } 
+          />
+          <Tab 
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Delete />
+                Deleted Students ({deletedStudents.length})
+              </Box>
+            } 
+          />
         </Tabs>
       </Box>
 
       {/* Active Students Tab */}
       <TabPanel value={tabValue} index={0}>
-        {/* Filters */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-          <TextField size="small" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchStudents()} />
-          <TextField 
-            size="small" 
-            select 
-            label="Class" 
-            value={gradeFilter} 
-            onChange={(e) => setGradeFilter(e.target.value)} 
-            sx={{ minWidth: 140 }}
-            disabled={loadingClasses}
-          >
-            <MenuItem value="">All Classes</MenuItem>
-            {availableClasses.map(cls => (
-              <MenuItem key={cls.name} value={cls.name}>
-                {cls.displayName}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField 
-            size="small" 
-            select 
-            label="Section" 
-            value={sectionFilter} 
-            onChange={(e) => setSectionFilter(e.target.value)} 
-            sx={{ minWidth: 140 }}
-            disabled={!gradeFilter || loadingClasses}
-          >
-            <MenuItem value="">All Sections</MenuItem>
-            {gradeFilter && getSectionsForClass(gradeFilter).map(s => (
-              <MenuItem key={s} value={s}>Section {s}</MenuItem>
-            ))}
-          </TextField>
-          <Button variant="outlined" onClick={fetchStudents}>Apply</Button>
-        </Box>
+        {/* Enhanced Filters */}
+        <Card sx={{ mb: 3, p: 2, background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField 
+              size="small" 
+              label="Search Students" 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && fetchStudents()}
+              placeholder="Search by name, email, or phone"
+              sx={{ 
+                minWidth: 250,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'white'
+                }
+              }}
+            />
+            <TextField 
+              size="small" 
+              select 
+              label="Class" 
+              value={gradeFilter} 
+              onChange={(e) => setGradeFilter(e.target.value)} 
+              sx={{ 
+                minWidth: 140,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'white'
+                }
+              }}
+              disabled={loadingClasses}
+            >
+              <MenuItem value="">All Classes</MenuItem>
+              {availableClasses.map(cls => (
+                <MenuItem key={cls.name} value={cls.name}>
+                  {cls.displayName}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField 
+              size="small" 
+              select 
+              label="Section" 
+              value={sectionFilter} 
+              onChange={(e) => setSectionFilter(e.target.value)} 
+              sx={{ 
+                minWidth: 140,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'white'
+                }
+              }}
+              disabled={!gradeFilter || loadingClasses}
+            >
+              <MenuItem value="">All Sections</MenuItem>
+              {gradeFilter && getSectionsForClass(gradeFilter).map(s => (
+                <MenuItem key={s} value={s}>Section {s}</MenuItem>
+              ))}
+            </TextField>
+            <Button 
+              variant="contained" 
+              onClick={fetchStudents}
+              sx={{ 
+                borderRadius: 2,
+                px: 3,
+                fontWeight: 600,
+                textTransform: 'none'
+              }}
+            >
+              Apply Filters
+            </Button>
+          </Box>
+        </Card>
 
         {/* Success/Error Messages */}
         {success && (
@@ -373,49 +453,141 @@ const Students: React.FC = () => {
           </Alert>
         )}
 
-        {/* Loading State */}
+        {/* Enhanced Loading State */}
         {fetchingStudents ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <CircularProgress />
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, flexDirection: 'column', alignItems: 'center' }}>
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              Loading students...
+            </Typography>
           </Box>
         ) : students.length === 0 ? (
-          <Box sx={{ textAlign: 'center', mt: 4 }}>
-            <Typography variant="h6" color="text.secondary">
-              No active students found. Add your first student!
+          <Box sx={{ textAlign: 'center', mt: 4, py: 8 }}>
+            <Avatar sx={{ width: 80, height: 80, mx: 'auto', mb: 3, bgcolor: 'primary.main' }}>
+              <Person sx={{ fontSize: 40 }} />
+            </Avatar>
+            <Typography variant="h5" color="text.secondary" gutterBottom>
+              No active students found
             </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Add your first student to get started with student management
+            </Typography>
+            <Button 
+              variant="contained" 
+              size="large"
+              startIcon={<Add />}
+              onClick={() => setOpenRegistration(true)}
+              sx={{ 
+                borderRadius: 2,
+                px: 4,
+                py: 1.5,
+                fontWeight: 600
+              }}
+            >
+              Add First Student
+            </Button>
           </Box>
         ) : (
           <Grid container spacing={3}>
             {students.map((student) => (
               <Grid item xs={12} sm={6} md={4} key={student._id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Avatar sx={{ mr: 2 }}>
+                <Card 
+                  sx={{ 
+                    height: '100%',
+                    transition: 'all 0.3s ease-in-out',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
+                    }
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    {/* Header with gradient background */}
+                    <Box sx={{ 
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      p: 2,
+                      borderRadius: 2,
+                      mb: 3,
+                      textAlign: 'center'
+                    }}>
+                      <Avatar sx={{ 
+                        mr: 2, 
+                        bgcolor: 'rgba(255,255,255,0.2)', 
+                        color: 'white',
+                        width: 48,
+                        height: 48,
+                        mx: 'auto',
+                        mb: 1
+                      }}>
                         <Person />
                       </Avatar>
-                      <Box>
-                        <Typography variant="h6">{student.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Class: {student.grade === 'nursery' ? 'Nursery' : 
-                                  student.grade === 'lkg' ? 'LKG' : 
-                                  student.grade === 'ukg' ? 'UKG' : 
-                                  `Class ${student.grade}`} | Email: {student.email}
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {student.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        {student.grade === 'nursery' ? 'Nursery' : 
+                         student.grade === 'lkg' ? 'LKG' : 
+                         student.grade === 'ukg' ? 'UKG' : 
+                         `Class ${student.grade}`} - Section {student.section}
+                      </Typography>
+                    </Box>
+
+                    {/* Student Details */}
+                    <Box sx={{ mb: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80, fontWeight: 600 }}>
+                          Email:
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Phone: {student.phone}
+                        <Typography variant="body2" sx={{ ml: 1 }}>
+                          {student.email}
                         </Typography>
                       </Box>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                      {Boolean((student as any).pendingApproval) && (
-                        <Chip label="Pending Approval" color="warning" size="small" />
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80, fontWeight: 600 }}>
+                          Phone:
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 1 }}>
+                          {student.phone}
+                        </Typography>
+                      </Box>
+                      {student.rollNumber && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80, fontWeight: 600 }}>
+                            Roll No:
+                          </Typography>
+                          <Typography variant="body2" sx={{ ml: 1 }}>
+                            {student.rollNumber}
+                          </Typography>
+                        </Box>
                       )}
+                    </Box>
+
+                    {/* Status and Actions */}
+                    <Box sx={{ mb: 2 }}>
+                      {Boolean((student as any).pendingApproval) && (
+                        <Chip 
+                          label="Pending Approval" 
+                          color="warning" 
+                          size="small" 
+                          sx={{ mb: 2, width: '100%', fontWeight: 600 }}
+                        />
+                      )}
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                       <Button 
                         size="small" 
-                        variant="outlined" 
+                        variant="contained" 
                         startIcon={<Edit />}
                         onClick={() => handleEditStudent(student)}
+                        sx={{ 
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          flex: 1
+                        }}
                       >
                         Edit
                       </Button>
@@ -425,23 +597,42 @@ const Students: React.FC = () => {
                         color="error"
                         startIcon={<Delete />}
                         onClick={() => handleDeleteStudent(student)}
+                        sx={{ 
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          flex: 1
+                        }}
                       >
                         Delete
                       </Button>
                       {Boolean((student as any).pendingApproval) && (
-                        <Button size="small" color="success" variant="contained" onClick={async () => {
-                          try {
-                            const res = await studentService.approveStudent(student._id);
-                            setStudents(prev => prev.map(s => s._id === student._id ? res.data : s));
-                            setToastMessage('Student approved');
-                            setToastSeverity('success');
-                            setShowToast(true);
-                          } catch (e: any) {
-                            setToastMessage(e.message || 'Approval failed');
-                            setToastSeverity('error');
-                            setShowToast(true);
-                          }
-                        }}>Approve</Button>
+                        <Button 
+                          size="small" 
+                          color="success" 
+                          variant="contained" 
+                          onClick={async () => {
+                            try {
+                              const res = await studentService.approveStudent(student._id);
+                              setStudents(prev => prev.map(s => s._id === student._id ? res.data : s));
+                              setToastMessage('Student approved');
+                              setToastSeverity('success');
+                              setShowToast(true);
+                            } catch (e: any) {
+                              setToastMessage(e.message || 'Approval failed');
+                              setToastSeverity('error');
+                              setShowToast(true);
+                            }
+                          }}
+                          sx={{ 
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            width: '100%',
+                            mt: 1
+                          }}
+                        >
+                          Approve
+                        </Button>
                       )}
                     </Box>
                   </CardContent>
@@ -454,88 +645,196 @@ const Students: React.FC = () => {
 
       {/* Deleted Students Tab */}
       <TabPanel value={tabValue} index={1}>
-        {/* Filters for deleted students */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-          <TextField size="small" label="Search" value={deletedSearch} onChange={(e) => setDeletedSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchDeletedStudents()} />
-          <TextField 
-            size="small" 
-            select 
-            label="Class" 
-            value={deletedGradeFilter} 
-            onChange={(e) => setDeletedGradeFilter(e.target.value)} 
-            sx={{ minWidth: 140 }}
-            disabled={loadingClasses}
-          >
-            <MenuItem value="">All Classes</MenuItem>
-            {availableClasses.map(cls => (
-              <MenuItem key={cls.name} value={cls.name}>
-                {cls.displayName}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField 
-            size="small" 
-            select 
-            label="Section" 
-            value={deletedSectionFilter} 
-            onChange={(e) => setDeletedSectionFilter(e.target.value)} 
-            sx={{ minWidth: 140 }}
-            disabled={!deletedGradeFilter || loadingClasses}
-          >
-            <MenuItem value="">All Sections</MenuItem>
-            {deletedGradeFilter && getSectionsForClass(deletedGradeFilter).map(s => (
-              <MenuItem key={s} value={s}>Section {s}</MenuItem>
-            ))}
-          </TextField>
-          <Button variant="outlined" onClick={fetchDeletedStudents}>Apply</Button>
-        </Box>
+        {/* Enhanced Filters for deleted students */}
+        <Card sx={{ mb: 3, p: 2, background: 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)' }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField 
+              size="small" 
+              label="Search Deleted Students" 
+              value={deletedSearch} 
+              onChange={(e) => setDeletedSearch(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && fetchDeletedStudents()}
+              placeholder="Search by name, email, or phone"
+              sx={{ 
+                minWidth: 250,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'white'
+                }
+              }}
+            />
+            <TextField 
+              size="small" 
+              select 
+              label="Class" 
+              value={deletedGradeFilter} 
+              onChange={(e) => setDeletedGradeFilter(e.target.value)} 
+              sx={{ 
+                minWidth: 140,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'white'
+                }
+              }}
+              disabled={loadingClasses}
+            >
+              <MenuItem value="">All Classes</MenuItem>
+              {availableClasses.map(cls => (
+                <MenuItem key={cls.name} value={cls.name}>
+                  {cls.displayName}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField 
+              size="small" 
+              select 
+              label="Section" 
+              value={deletedSectionFilter} 
+              onChange={(e) => setDeletedSectionFilter(e.target.value)} 
+              sx={{ 
+                minWidth: 140,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  bgcolor: 'white'
+                }
+              }}
+              disabled={!deletedGradeFilter || loadingClasses}
+            >
+              <MenuItem value="">All Sections</MenuItem>
+              {deletedGradeFilter && getSectionsForClass(deletedGradeFilter).map(s => (
+                <MenuItem key={s} value={s}>Section {s}</MenuItem>
+              ))}
+            </TextField>
+            <Button 
+              variant="contained" 
+              onClick={fetchDeletedStudents}
+              sx={{ 
+                borderRadius: 2,
+                px: 3,
+                fontWeight: 600,
+                textTransform: 'none'
+              }}
+            >
+              Apply Filters
+            </Button>
+          </Box>
+        </Card>
 
-        {/* Loading State for deleted students */}
+        {/* Enhanced Loading State for deleted students */}
         {fetchingDeletedStudents ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <CircularProgress />
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, flexDirection: 'column', alignItems: 'center' }}>
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              Loading deleted students...
+            </Typography>
           </Box>
         ) : deletedStudents.length === 0 ? (
-          <Box sx={{ textAlign: 'center', mt: 4 }}>
-            <Typography variant="h6" color="text.secondary">
-              No deleted students found.
+          <Box sx={{ textAlign: 'center', mt: 4, py: 8 }}>
+            <Avatar sx={{ width: 80, height: 80, mx: 'auto', mb: 3, bgcolor: 'error.main' }}>
+              <Delete sx={{ fontSize: 40 }} />
+            </Avatar>
+            <Typography variant="h5" color="text.secondary" gutterBottom>
+              No deleted students found
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              All students are currently active
             </Typography>
           </Box>
         ) : (
           <Grid container spacing={3}>
             {deletedStudents.map((student) => (
               <Grid item xs={12} sm={6} md={4} key={student._id}>
-                <Card sx={{ opacity: 0.7 }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Avatar sx={{ mr: 2 }}>
+                <Card 
+                  sx={{ 
+                    height: '100%',
+                    opacity: 0.8,
+                    transition: 'all 0.3s ease-in-out',
+                    cursor: 'pointer',
+                    border: '2px dashed',
+                    borderColor: 'error.light',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                      opacity: 1
+                    }
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    {/* Header with error gradient background */}
+                    <Box sx={{ 
+                      background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)',
+                      color: 'white',
+                      p: 2,
+                      borderRadius: 2,
+                      mb: 3,
+                      textAlign: 'center'
+                    }}>
+                      <Avatar sx={{ 
+                        mr: 2, 
+                        bgcolor: 'rgba(255,255,255,0.2)', 
+                        color: 'white',
+                        width: 48,
+                        height: 48,
+                        mx: 'auto',
+                        mb: 1
+                      }}>
                         <Person />
                       </Avatar>
-                      <Box>
-                        <Typography variant="h6">{student.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Class: {student.grade === 'nursery' ? 'Nursery' : 
-                                  student.grade === 'lkg' ? 'LKG' : 
-                                  student.grade === 'ukg' ? 'UKG' : 
-                                  `Class ${student.grade}`} | Email: {student.email}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Deleted: {new Date(student.deletedAt).toLocaleDateString()}
-                        </Typography>
-                        {student.deletionReason && (
-                          <Typography variant="body2" color="text.secondary">
-                            Reason: {student.deletionReason}
-                          </Typography>
-                        )}
-                      </Box>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {student.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        {student.grade === 'nursery' ? 'Nursery' : 
+                         student.grade === 'lkg' ? 'LKG' : 
+                         student.grade === 'ukg' ? 'UKG' : 
+                         `Class ${student.grade}`} - Section {student.section}
+                      </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+
+                    {/* Student Details */}
+                    <Box sx={{ mb: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80, fontWeight: 600 }}>
+                          Email:
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 1 }}>
+                          {student.email}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80, fontWeight: 600 }}>
+                          Deleted:
+                        </Typography>
+                        <Typography variant="body2" sx={{ ml: 1 }}>
+                          {new Date(student.deletedAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                      {student.deletionReason && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80, fontWeight: 600 }}>
+                            Reason:
+                          </Typography>
+                          <Typography variant="body2" sx={{ ml: 1 }}>
+                            {student.deletionReason}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+
+                    {/* Action Buttons */}
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                       <Button 
                         size="small" 
-                        variant="outlined" 
+                        variant="contained" 
                         color="success"
                         startIcon={<Restore />}
                         onClick={() => handleRestoreStudent(student)}
+                        sx={{ 
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          flex: 1
+                        }}
                       >
                         Restore
                       </Button>
@@ -545,6 +844,11 @@ const Students: React.FC = () => {
                         color="error"
                         startIcon={<Delete />}
                         onClick={() => handlePermanentlyDeleteStudent(student)}
+                        sx={{ 
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          flex: 1
+                        }}
                       >
                         Permanent Delete
                       </Button>

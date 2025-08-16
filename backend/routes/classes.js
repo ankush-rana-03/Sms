@@ -257,36 +257,44 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       console.log('❌ No teachers found with assignments to this class');
     }
 
-    // Remove assignments for this class from all teachers
-    let deletedAssignments = 0;
-    for (const teacher of teachersWithAssignments) {
-      console.log(`\n🔄 Processing teacher: ${teacher.name} (ID: ${teacher._id})`);
-      console.log(`Original assignments count: ${teacher.assignedClasses.length}`);
-      
-      const originalLength = teacher.assignedClasses.length;
-      
-      // Filter out all assignments to this class (in case there are duplicates)
-      const assignmentsToRemove = teacher.assignedClasses.filter(assignment => 
-        assignment.class && (assignment.class.toString() === classId || assignment.class.toString() === classId.toString())
-      );
-      
-      teacher.assignedClasses = teacher.assignedClasses.filter(assignment => 
-        !assignment.class || (assignment.class.toString() !== classId && assignment.class.toString() !== classId.toString())
-      );
-      
-      const newLength = teacher.assignedClasses.length;
-      const removedCount = originalLength - newLength;
-      deletedAssignments += removedCount;
-      
-      console.log(`Found ${assignmentsToRemove.length} assignments to remove for class ${classId}`);
-      console.log(`After filtering: ${newLength} assignments remaining, ${removedCount} removed`);
-      
-      if (removedCount > 0) {
-        await teacher.save();
-        console.log(`✅ Teacher ${teacher.name} saved successfully with ${removedCount} assignments removed`);
-      } else {
-        console.log(`⚠️  No assignments removed for teacher ${teacher.name}`);
-      }
+    // Remove assignments for this class from all teachers using direct database updates
+    console.log(`\n🗑️  Removing teacher assignments for class ${classId} from database...`);
+    
+    // Use MongoDB's $pull operator to directly remove assignments from the database
+    const updateResult = await Teacher.updateMany(
+      { 'assignedClasses.class': classId },
+      { $pull: { assignedClasses: { class: classId } } }
+    );
+    
+    console.log(`Database update result:`, updateResult);
+    
+    // Also try with string comparison as backup
+    const updateResultString = await Teacher.updateMany(
+      { 'assignedClasses.class': classId.toString() },
+      { $pull: { assignedClasses: { class: classId.toString() } } }
+    );
+    
+    console.log(`Database update result (string):`, updateResultString);
+    
+    // Get the total count of assignments removed
+    const totalModified = (updateResult.modifiedCount || 0) + (updateResultString.modifiedCount || 0);
+    deletedAssignments = totalModified;
+    
+    console.log(`✅ Removed assignments from ${totalModified} teachers using direct database updates`);
+    
+    // Verify the cleanup by checking if any assignments remain
+    const remainingAssignments = await Teacher.find({
+      'assignedClasses.class': { $in: [classId, classId.toString()] }
+    });
+    
+    if (remainingAssignments.length > 0) {
+      console.log(`⚠️  Warning: ${remainingAssignments.length} teachers still have assignments to this class`);
+      console.log('Teachers with remaining assignments:');
+      remainingAssignments.forEach(teacher => {
+        console.log(`  - ${teacher.name}: ${teacher.assignedClasses.length} assignments`);
+      });
+    } else {
+      console.log(`✅ All teacher assignments to class ${classId} have been successfully removed`);
     }
 
     // Also check for any other potential references to this class
@@ -302,36 +310,8 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       console.log(`⚠️  Warning: Found ${studentsInClass.length} students still enrolled in this class`);
     }
 
-    // Additional safety check: Let's also check if there are any teachers with assignments that might not have been caught
-    console.log('\n🔍 Additional safety check: Checking all teachers for any missed assignments...');
-    const allTeachers = await Teacher.find({});
-    let missedAssignments = 0;
-    
-    for (const teacher of allTeachers) {
-      if (teacher.assignedClasses && teacher.assignedClasses.length > 0) {
-        const relevantAssignments = teacher.assignedClasses.filter(assignment => 
-          assignment.class && (assignment.class.toString() === classId || assignment.class.toString() === classId.toString())
-        );
-        
-        if (relevantAssignments.length > 0) {
-          console.log(`⚠️  Found ${relevantAssignments.length} missed assignments for teacher ${teacher.name}`);
-          missedAssignments += relevantAssignments.length;
-          
-          // Remove these missed assignments
-          teacher.assignedClasses = teacher.assignedClasses.filter(assignment => 
-            !assignment.class || (assignment.class.toString() !== classId && assignment.class.toString() !== classId.toString())
-          );
-          
-          await teacher.save();
-          console.log(`✅ Cleaned up missed assignments for teacher ${teacher.name}`);
-        }
-      }
-    }
-    
-    if (missedAssignments > 0) {
-      console.log(`🔧 Cleaned up ${missedAssignments} additional missed assignments`);
-      deletedAssignments += missedAssignments;
-    }
+    // Direct database updates are more reliable than manual filtering
+    console.log('✅ Using direct database updates for reliable assignment removal');
 
     // Check for any other potential references (Homework, Tests, Results, etc.)
     try {

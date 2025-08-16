@@ -257,41 +257,121 @@ router.delete('/:classId', protect, authorize('admin', 'principal'), async (req,
       console.log('❌ No teachers found with assignments to this class');
     }
 
-    // Remove assignments for this class from all teachers using direct database updates
+    // Remove assignments for this class from all teachers using multiple approaches
     console.log(`\n🗑️  Removing teacher assignments for class ${classId} from database...`);
     
-    // Use MongoDB's $pull operator to directly remove assignments from the database
-    const updateResult = await Teacher.updateMany(
+    let totalModified = 0;
+    
+    // Approach 1: Try to find and remove assignments using the class ID
+    console.log('🔍 Approach 1: Searching for teachers with assignments to this class...');
+    
+    // Log the actual assignment data to see what's stored
+    if (teachersWithAssignments.length > 0) {
+      console.log('\n📋 Current assignment data:');
+      teachersWithAssignments.forEach(teacher => {
+        console.log(`\nTeacher: ${teacher.name}`);
+        teacher.assignedClasses.forEach((assignment, index) => {
+          console.log(`  Assignment ${index}:`, {
+            class: assignment.class,
+            classType: typeof assignment.class,
+            classId: assignment.class?._id || assignment.class,
+            classIdType: typeof (assignment.class?._id || assignment.class),
+            subject: assignment.subject,
+            section: assignment.section
+          });
+        });
+      });
+    }
+    
+    // Approach 2: Use $pull with exact match
+    console.log('\n🗑️  Approach 2: Using $pull with exact ObjectId match...');
+    const updateResult1 = await Teacher.updateMany(
       { 'assignedClasses.class': classId },
       { $pull: { assignedClasses: { class: classId } } }
     );
+    console.log(`Update result 1:`, updateResult1);
+    totalModified += updateResult1.modifiedCount || 0;
     
-    console.log(`Database update result:`, updateResult);
-    
-    // Also try with string comparison as backup
-    const updateResultString = await Teacher.updateMany(
+    // Approach 3: Use $pull with string match
+    console.log('\n🗑️  Approach 3: Using $pull with string match...');
+    const updateResult2 = await Teacher.updateMany(
       { 'assignedClasses.class': classId.toString() },
       { $pull: { assignedClasses: { class: classId.toString() } } }
     );
+    console.log(`Update result 2:`, updateResult2);
+    totalModified += updateResult2.modifiedCount || 0;
     
-    console.log(`Database update result (string):`, updateResultString);
+    // Approach 4: Use $pull with $in operator to catch any variations
+    console.log('\n🗑️  Approach 4: Using $pull with $in operator...');
+    const updateResult3 = await Teacher.updateMany(
+      {},
+      { $pull: { assignedClasses: { class: { $in: [classId, classId.toString()] } } } }
+    );
+    console.log(`Update result 3:`, updateResult3);
+    totalModified += updateResult3.modifiedCount || 0;
     
-    // Get the total count of assignments removed
-    const totalModified = (updateResult.modifiedCount || 0) + (updateResultString.modifiedCount || 0);
+    // Approach 5: Manual removal as last resort
+    console.log('\n🗑️  Approach 5: Manual removal as last resort...');
+    const allTeachers = await Teacher.find({});
+    let manualRemovals = 0;
+    
+    for (const teacher of allTeachers) {
+      if (teacher.assignedClasses && teacher.assignedClasses.length > 0) {
+        const originalLength = teacher.assignedClasses.length;
+        
+        // Remove assignments that match this class (any format)
+        teacher.assignedClasses = teacher.assignedClasses.filter(assignment => {
+          const assignmentClassId = assignment.class?._id || assignment.class;
+          const assignmentClassIdString = assignmentClassId?.toString();
+          const targetClassIdString = classId.toString();
+          
+          const shouldRemove = assignmentClassIdString === targetClassIdString;
+          
+          if (shouldRemove) {
+            console.log(`  Removing assignment for teacher ${teacher.name}:`, {
+              class: assignmentClassId,
+              subject: assignment.subject,
+              section: assignment.section
+            });
+          }
+          
+          return !shouldRemove;
+        });
+        
+        const newLength = teacher.assignedClasses.length;
+        const removed = originalLength - newLength;
+        
+        if (removed > 0) {
+          await teacher.save();
+          manualRemovals += removed;
+          console.log(`  ✅ Teacher ${teacher.name}: removed ${removed} assignments`);
+        }
+      }
+    }
+    
+    totalModified += manualRemovals;
     deletedAssignments = totalModified;
     
-    console.log(`✅ Removed assignments from ${totalModified} teachers using direct database updates`);
+    console.log(`\n📊 Total assignments removed: ${totalModified}`);
+    console.log(`  - Database updates: ${(updateResult1.modifiedCount || 0) + (updateResult2.modifiedCount || 0) + (updateResult3.modifiedCount || 0)}`);
+    console.log(`  - Manual removals: ${manualRemovals}`);
     
-    // Verify the cleanup by checking if any assignments remain
+    // Final verification
+    console.log('\n🔍 Final verification: Checking for remaining assignments...');
     const remainingAssignments = await Teacher.find({
-      'assignedClasses.class': { $in: [classId, classId.toString()] }
+      $or: [
+        { 'assignedClasses.class': classId },
+        { 'assignedClasses.class': classId.toString() }
+      ]
     });
     
     if (remainingAssignments.length > 0) {
       console.log(`⚠️  Warning: ${remainingAssignments.length} teachers still have assignments to this class`);
-      console.log('Teachers with remaining assignments:');
       remainingAssignments.forEach(teacher => {
         console.log(`  - ${teacher.name}: ${teacher.assignedClasses.length} assignments`);
+        teacher.assignedClasses.forEach(assignment => {
+          console.log(`    * Class: ${assignment.class} (${typeof assignment.class})`);
+        });
       });
     } else {
       console.log(`✅ All teacher assignments to class ${classId} have been successfully removed`);

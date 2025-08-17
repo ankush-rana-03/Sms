@@ -14,9 +14,9 @@ const router = express.Router();
 
 const { protect, authorize, teacherLocationCheck } = require('../middleware/auth');
 
-// Teacher routes (with location check)
-router.post('/mark', protect, authorize('teacher'), teacherLocationCheck, markAttendance);
-router.post('/bulk', protect, authorize('teacher'), teacherLocationCheck, bulkMarkAttendance);
+// Teacher/Admin/Principal routes (with location check for teachers)
+router.post('/mark', protect, authorize('teacher', 'admin', 'principal'), teacherLocationCheck, markAttendance);
+router.post('/bulk', protect, authorize('teacher', 'admin', 'principal'), teacherLocationCheck, bulkMarkAttendance);
 
 // Routes for all authenticated users
 router.get('/date/:date', protect, getAttendanceByDate);

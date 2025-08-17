@@ -55,8 +55,9 @@ exports.checkActive = (req, res, next) => {
   next();
 };
 
-// Location-based access for teachers
+// Location-based access for teachers (admin and principal can bypass)
 exports.teacherLocationCheck = (req, res, next) => {
+  // Only apply location check for teachers
   if (req.user.role === 'teacher') {
     // This would typically check GPS coordinates against school location
     // For now, we'll allow access but log the location
@@ -66,5 +67,6 @@ exports.teacherLocationCheck = (req, res, next) => {
       req.user.save();
     }
   }
+  // Admin and principal users can bypass location check
   next();
 };

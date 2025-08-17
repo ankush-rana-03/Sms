@@ -19,9 +19,20 @@ exports.markAttendance = async (req, res, next) => {
     }
 
     // Find student
-    const student = await Student.findById(studentId).populate('class');
+    const student = await Student.findById(studentId);
     if (!student) {
       return next(new ErrorResponse('Student not found', 404));
+    }
+
+    // Find class based on student's grade and section
+    const classData = await Class.findOne({
+      name: student.grade,
+      section: student.section,
+      session: student.currentSession || '2025-2026'
+    });
+
+    if (!classData) {
+      return next(new ErrorResponse(`Class not found for grade ${student.grade} section ${student.section}`, 404));
     }
 
     // Check if attendance already marked for the specified date
@@ -29,7 +40,7 @@ exports.markAttendance = async (req, res, next) => {
     attendanceDate.setHours(0, 0, 0, 0);
     
     const existingAttendance = await Attendance.findOne({
-      student: studentId,
+      studentId: studentId,
       date: {
         $gte: attendanceDate,
         $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
@@ -42,8 +53,9 @@ exports.markAttendance = async (req, res, next) => {
 
     // Create attendance record
     const attendance = await Attendance.create({
-      student: studentId,
-      class: student.class._id,
+      studentId: studentId,
+      classId: classData._id,
+      session: student.currentSession || '2025-2026',
       date: attendanceDate,
       status,
       markedBy: req.user.id,
@@ -209,9 +221,21 @@ exports.bulkMarkAttendance = async (req, res, next) => {
 
       try {
         // Find student
-        const student = await Student.findById(studentId).populate('class');
+        const student = await Student.findById(studentId);
         if (!student) {
           errors.push({ studentId, error: 'Student not found' });
+          continue;
+        }
+
+        // Find class based on student's grade and section
+        const classData = await Class.findOne({
+          name: student.grade,
+          section: student.section,
+          session: student.currentSession || '2025-2026'
+        });
+
+        if (!classData) {
+          errors.push({ studentId, error: `Class not found for grade ${student.grade} section ${student.section}` });
           continue;
         }
 
@@ -220,7 +244,7 @@ exports.bulkMarkAttendance = async (req, res, next) => {
         attendanceDate.setHours(0, 0, 0, 0);
         
         const existingAttendance = await Attendance.findOne({
-          student: studentId,
+          studentId: studentId,
           date: {
             $gte: attendanceDate,
             $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
@@ -237,8 +261,9 @@ exports.bulkMarkAttendance = async (req, res, next) => {
         } else {
           // Create new attendance record
           const attendance = await Attendance.create({
-            student: studentId,
-            class: student.class._id,
+            studentId: studentId,
+            classId: classData._id,
+            session: student.currentSession || '2025-2026',
             date: attendanceDate,
             status,
             markedBy: req.user.id,

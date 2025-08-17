@@ -8,6 +8,14 @@ const Attendance = require('../models/Attendance');
 const Teacher = require('../models/Teacher');
 const { protect, authorize } = require('../middleware/auth');
 
+// Import session management functions
+const {
+  completeSession,
+  archiveSession,
+  startNewSession,
+  getSessionAnalytics
+} = require('../controllers/sessionManagement');
+
 // Get all sessions
 router.get('/', protect, async (req, res) => {
   try {
@@ -533,5 +541,11 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     res.status(500).json({ message: 'Error deleting session', error: error.message });
   }
 });
+
+// Session management routes
+router.post('/start', protect, authorize('admin', 'principal'), startNewSession);
+router.put('/:id/complete', protect, authorize('admin', 'principal'), completeSession);
+router.put('/:id/archive', protect, authorize('admin', 'principal'), archiveSession);
+router.get('/:id/analytics', protect, authorize('admin', 'principal'), getSessionAnalytics);
 
 module.exports = router;

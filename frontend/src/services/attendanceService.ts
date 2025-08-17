@@ -83,10 +83,11 @@ class AttendanceService {
   }
 
   // Get attendance by date
-  async getAttendanceByDate(date: string, classId?: string): Promise<{ success: boolean; count: number; data: AttendanceRecord[] }> {
+  async getAttendanceByDate(date: string, classId?: string, session?: string): Promise<{ success: boolean; count: number; data: AttendanceRecord[] }> {
     try {
       const query = new URLSearchParams();
       if (classId) query.set('classId', classId);
+      if (session) query.set('session', session);
 
       const response = await api.get<{ success: boolean; count: number; data: AttendanceRecord[] }>(`/attendance/date/${date}?${query.toString()}`);
       return response;

@@ -118,7 +118,9 @@ const StudentAttendance: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedSession, setSelectedSession] = useState('2025-2026'); // Default to current session
   const [availableClasses, setAvailableClasses] = useState<ClassData[]>([]);
+  const [availableSessions, setAvailableSessions] = useState<string[]>(['2025-2026']);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
@@ -149,7 +151,13 @@ const StudentAttendance: React.FC = () => {
   // Fetch available classes on component mount
   useEffect(() => {
     fetchAvailableClasses();
+    fetchAvailableSessions();
   }, []);
+
+  // Fetch available classes when session changes
+  useEffect(() => {
+    fetchAvailableClasses();
+  }, [selectedSession]);
 
   // Fetch students when class and section change
   useEffect(() => {
@@ -158,12 +166,12 @@ const StudentAttendance: React.FC = () => {
     }
   }, [selectedClass, selectedSection]);
 
-  // Fetch attendance when date, class, or section change
+  // Fetch attendance when date, class, section, or session change
   useEffect(() => {
     if (selectedClass && selectedSection && selectedDate) {
       fetchAttendanceByDate();
     }
-  }, [selectedClass, selectedSection, selectedDate]);
+  }, [selectedClass, selectedSection, selectedDate, selectedSession]);
 
   // Calculate attendance statistics when data changes
   useEffect(() => {
@@ -174,7 +182,7 @@ const StudentAttendance: React.FC = () => {
     try {
       setLoadingClasses(true);
       console.log('Fetching available classes...');
-      const response = await classService.getClasses();
+      const response = await classService.getClasses(selectedSession);
       console.log('Classes response:', response);
       if (response.success) {
         // Show all classes (remove isActive filter since most classes have isActive: false)
@@ -190,6 +198,27 @@ const StudentAttendance: React.FC = () => {
       showSnackbar('Failed to fetch classes: ' + (error.message || 'Unknown error'), 'error');
     } finally {
       setLoadingClasses(false);
+    }
+  };
+
+  const fetchAvailableSessions = async () => {
+    try {
+      console.log('Fetching available sessions...');
+      const response = await apiService.get('/sessions');
+      if (response && Array.isArray(response)) {
+        const sessionNames = response.map((session: any) => session.name).sort().reverse();
+        console.log('Available sessions:', sessionNames);
+        setAvailableSessions(sessionNames);
+        
+        // Set current session if available
+        const currentSession = response.find((session: any) => session.isCurrent);
+        if (currentSession) {
+          setSelectedSession(currentSession.name);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching sessions:', error);
+      // Keep default session if fetch fails
     }
   };
 
@@ -242,7 +271,7 @@ const StudentAttendance: React.FC = () => {
         return;
       }
 
-      const response = await attendanceService.getAttendanceByDate(selectedDate, selectedClassData._id);
+      const response = await attendanceService.getAttendanceByDate(selectedDate, selectedClassData._id, selectedSession);
       if (response && response.data) {
         setAttendanceRecords(response.data);
         
@@ -448,11 +477,28 @@ const StudentAttendance: React.FC = () => {
         </Typography>
       </Box>
 
-      {/* Class and Date Selection */}
+      {/* Session, Class and Date Selection */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Session</InputLabel>
+                <Select
+                  value={selectedSession}
+                  onChange={(e) => setSelectedSession(e.target.value)}
+                  label="Session"
+                >
+                  {availableSessions.map((session) => (
+                    <MenuItem key={session} value={session}>
+                      {session}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth>
                 <InputLabel>Class</InputLabel>
                 <Select
@@ -473,7 +519,7 @@ const StudentAttendance: React.FC = () => {
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth disabled={!selectedClass}>
                 <InputLabel>Section</InputLabel>
                 <Select
@@ -490,7 +536,7 @@ const StudentAttendance: React.FC = () => {
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2}>
               <TextField
                 fullWidth
                 type="date"
@@ -501,7 +547,7 @@ const StudentAttendance: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2}>
               <Button
                 variant="outlined"
                 startIcon={<Refresh />}

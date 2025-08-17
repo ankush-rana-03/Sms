@@ -6,6 +6,7 @@ const {
   updateAttendance,
   bulkMarkAttendance,
   getClassAttendanceStatistics,
+  getAttendanceStatsBySession,
   getAttendanceDashboard,
   sendAttendanceNotifications
 } = require('../controllers/attendance');
@@ -27,6 +28,7 @@ router.put('/:id', protect, authorize('teacher', 'admin', 'principal'), updateAt
 
 // Additional routes
 router.get('/class/:classId/statistics', protect, getClassAttendanceStatistics);
+router.get('/session/:session/stats', protect, getAttendanceStatsBySession);
 router.get('/dashboard', protect, getAttendanceDashboard);
 router.post('/notifications', protect, authorize('teacher', 'admin', 'principal'), sendAttendanceNotifications);
 

@@ -3,6 +3,7 @@ const Student = require('../models/Student');
 const Class = require('../models/Class');
 const ErrorResponse = require('../utils/errorResponse');
 const { validateAttendanceDate, canEditAttendance } = require('../utils/dateValidation');
+const mongoose = require('mongoose'); // Added for session management
 
 
 // @desc    Mark attendance manually
@@ -80,7 +81,7 @@ exports.markAttendance = async (req, res, next) => {
 exports.getAttendanceByDate = async (req, res, next) => {
   try {
     const { date } = req.params;
-    const { classId } = req.query;
+    const { classId, session } = req.query;
 
     const query = {
       date: {
@@ -93,15 +94,27 @@ exports.getAttendanceByDate = async (req, res, next) => {
       query.classId = classId;
     }
 
+    // If session is specified, filter by it; otherwise use current session
+    if (session) {
+      query.session = session;
+    } else {
+      // Get current session
+      const currentSession = await mongoose.model('Session').findOne({ isCurrent: true });
+      if (currentSession) {
+        query.session = currentSession.name;
+      }
+    }
+
     const attendance = await Attendance.find(query)
-      .populate('studentId', 'name rollNumber parentPhone')
+      .populate('studentId', 'name rollNumber')
       .populate('classId', 'name section')
       .populate('markedBy', 'name');
 
     res.status(200).json({
       success: true,
       count: attendance.length,
-      data: attendance
+      data: attendance,
+      session: query.session || 'Not specified'
     });
   } catch (err) {
     next(err);
@@ -227,24 +240,28 @@ exports.bulkMarkAttendance = async (req, res, next) => {
           continue;
         }
 
-        // Find class based on student's grade and section
+        // Get current session if not specified
+        const sessionToUse = student.currentSession || '2025-2026';
+        
+        // Find class based on student's grade and section for the specific session
         const classData = await Class.findOne({
           name: student.grade,
           section: student.section,
-          session: student.currentSession || '2025-2026'
+          session: sessionToUse
         });
 
         if (!classData) {
-          errors.push({ studentId, error: `Class not found for grade ${student.grade} section ${student.section}` });
+          errors.push({ studentId, error: `Class not found for grade ${student.grade} section ${student.section} in session ${sessionToUse}` });
           continue;
         }
 
-        // Check if attendance already marked for the specified date
+        // Check if attendance already marked for the specified date and session
         const attendanceDate = new Date(date || new Date());
         attendanceDate.setHours(0, 0, 0, 0);
         
         const existingAttendance = await Attendance.findOne({
           studentId: studentId,
+          session: sessionToUse,
           date: {
             $gte: attendanceDate,
             $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
@@ -449,6 +466,87 @@ exports.sendAttendanceNotifications = async (req, res, next) => {
       message: `Notifications prepared for ${sentCount} parents`,
       sentCount,
       notifications
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get attendance statistics by session
+// @route   GET /api/attendance/session/:session/stats
+// @access  Private
+exports.getAttendanceStatsBySession = async (req, res, next) => {
+  try {
+    const { session } = req.params;
+    const { classId, startDate, endDate } = req.query;
+
+    const query = { session };
+
+    if (classId) {
+      query.classId = classId;
+    }
+
+    if (startDate && endDate) {
+      query.date = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const attendance = await Attendance.find(query)
+      .populate('studentId', 'name rollNumber')
+      .populate('classId', 'name section');
+
+    // Calculate comprehensive statistics
+    const totalRecords = attendance.length;
+    const presentCount = attendance.filter(a => a.status === 'present').length;
+    const absentCount = attendance.filter(a => a.status === 'absent').length;
+    const lateCount = attendance.filter(a => a.status === 'late').length;
+    const halfDayCount = attendance.filter(a => a.status === 'half-day').length;
+    
+    const attendancePercentage = totalRecords > 0 ? (presentCount / totalRecords) * 100 : 0;
+
+    // Group by class
+    const classStats = {};
+    attendance.forEach(record => {
+      const className = `${record.classId.name}-${record.classId.section}`;
+      if (!classStats[className]) {
+        classStats[className] = {
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          halfDay: 0
+        };
+      }
+      classStats[className].total++;
+      classStats[className][record.status]++;
+    });
+
+    // Calculate class-wise percentages
+    Object.keys(classStats).forEach(className => {
+      const stats = classStats[className];
+      stats.percentage = stats.total > 0 ? (stats.present / stats.total) * 100 : 0;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        session,
+        overallStats: {
+          totalRecords,
+          presentCount,
+          absentCount,
+          lateCount,
+          halfDayCount,
+          attendancePercentage: Math.round(attendancePercentage * 100) / 100
+        },
+        classStats,
+        dateRange: {
+          startDate: startDate || 'Not specified',
+          endDate: endDate || 'Not specified'
+        }
+      }
     });
   } catch (err) {
     next(err);

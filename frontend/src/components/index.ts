@@ -11,6 +11,3 @@ export { default as LoadingSpinner } from './LoadingSpinner';
 
 // Utility Components
 export { default as LoginDebug } from './LoginDebug';
-
-// Re-export commonly used components for convenience
-export { default as ResponsiveDataTable } from './ResponsiveDataTable';

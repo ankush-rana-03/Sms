@@ -105,14 +105,8 @@ const StandardDialog: React.FC<StandardDialogProps> = ({
       sx={dialogStyles}
       className={className}
       TransitionProps={{
-        enter: {
-          duration: 300,
-          easing: 'ease-out',
-        },
-        exit: {
-          duration: 200,
-          easing: 'ease-in',
-        },
+        enter: true,
+        exit: true,
       }}
     >
       {(title || subtitle) && (

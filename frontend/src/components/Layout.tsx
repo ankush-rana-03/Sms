@@ -113,7 +113,7 @@ const Layout: React.FC = () => {
           🏫 School Management
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.9 }}>
-          {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)} Portal
+          {user?.role ? `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)}` : 'User'} Portal
         </Typography>
         {isMobile && (
           <IconButton

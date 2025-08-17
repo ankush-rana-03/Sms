@@ -251,9 +251,9 @@ const StudentAttendance: React.FC = () => {
         const existingRemarks: { [key: string]: string } = {};
         
         response.data.forEach((record: AttendanceRecord) => {
-          existingData[record.student._id] = record.status;
+          existingData[record.studentId._id] = record.status;
           if (record.remarks) {
-            existingRemarks[record.student._id] = record.remarks;
+            existingRemarks[record.studentId._id] = record.remarks;
           }
         });
         
@@ -795,14 +795,14 @@ const StudentAttendance: React.FC = () => {
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Avatar sx={{ mr: 2, width: 32, height: 32 }}>
-                                  {record.student.name.charAt(0)}
+                                  {record.studentId.name.charAt(0)}
                                 </Avatar>
                                 <Box>
                                   <Typography variant="body2" fontWeight="medium">
-                                    {record.student.name}
+                                    {record.studentId.name}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    {record.student.rollNumber}
+                                    {record.studentId.rollNumber}
                                   </Typography>
                                 </Box>
                               </Box>

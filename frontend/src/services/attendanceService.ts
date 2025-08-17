@@ -12,13 +12,13 @@ export interface Student {
 
 export interface AttendanceRecord {
   _id: string;
-  student: {
+  studentId: {
     _id: string;
     name: string;
     rollNumber: string;
     parentPhone: string;
   };
-  class: {
+  classId: {
     _id: string;
     name: string;
     section: string;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -14,6 +14,14 @@ import {
   Avatar,
   Button,
   Divider,
+  useTheme,
+  useMediaQuery,
+  Tabs,
+  Tab,
+  IconButton,
+  Tooltip,
+  LinearProgress,
+  CircularProgress,
 } from '@mui/material';
 import {
   People,
@@ -28,12 +36,65 @@ import {
   Visibility,
   Edit,
   BarChart,
+  PieChart,
+  ShowChart,
+  Refresh,
+  Download,
+  FilterList,
+  MoreVert,
 } from '@mui/icons-material';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart as RechartsBarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import TeacherDashboard from './TeacherDashboard';
 
+// Mock data for charts
+const attendanceData = [
+  { name: 'Mon', present: 95, absent: 5, late: 3 },
+  { name: 'Tue', present: 92, absent: 8, late: 2 },
+  { name: 'Wed', present: 98, absent: 2, late: 1 },
+  { name: 'Thu', present: 94, absent: 6, late: 4 },
+  { name: 'Fri', present: 96, absent: 4, late: 2 },
+];
+
+const performanceData = [
+  { name: 'Math', score: 85, target: 90 },
+  { name: 'Science', score: 88, target: 85 },
+  { name: 'English', score: 92, target: 88 },
+  { name: 'History', score: 78, target: 80 },
+  { name: 'Geography', score: 91, target: 87 },
+];
+
+const subjectDistribution = [
+  { name: 'Mathematics', value: 25, color: '#8884d8' },
+  { name: 'Science', value: 20, color: '#82ca9d' },
+  { name: 'English', value: 18, color: '#ffc658' },
+  { name: 'History', value: 15, color: '#ff7300' },
+  { name: 'Geography', value: 12, color: '#00ff00' },
+  { name: 'Others', value: 10, color: '#ff0000' },
+];
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [activeTab, setActiveTab] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   // If user is a teacher, render the specialized TeacherDashboard
   if (user?.role === 'teacher') {
@@ -51,7 +112,8 @@ const Dashboard: React.FC = () => {
             icon: <School />, 
             gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             change: '+12%',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 85
           },
           { 
             title: 'Total Teachers', 
@@ -59,7 +121,8 @@ const Dashboard: React.FC = () => {
             icon: <People />, 
             gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
             change: '+5%',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 92
           },
           { 
             title: 'Active Classes', 
@@ -67,7 +130,8 @@ const Dashboard: React.FC = () => {
             icon: <Assignment />, 
             gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
             change: '+2',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 78
           },
           { 
             title: 'Attendance Rate', 
@@ -75,7 +139,8 @@ const Dashboard: React.FC = () => {
             icon: <TrendingUp />, 
             gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
             change: '+1.2%',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 94.5
           },
         ];
       case 'teacher':
@@ -86,7 +151,8 @@ const Dashboard: React.FC = () => {
             icon: <School />, 
             gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             change: '+2',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 88
           },
           { 
             title: 'Classes Today', 
@@ -94,7 +160,8 @@ const Dashboard: React.FC = () => {
             icon: <Assignment />, 
             gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
             change: 'On Track',
-            changeType: 'neutral'
+            changeType: 'neutral',
+            progress: 100
           },
           { 
             title: 'Pending Homework', 
@@ -102,7 +169,8 @@ const Dashboard: React.FC = () => {
             icon: <Assessment />, 
             gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
             change: '-3',
-            changeType: 'negative'
+            changeType: 'negative',
+            progress: 65
           },
           { 
             title: 'Attendance Rate', 
@@ -110,7 +178,8 @@ const Dashboard: React.FC = () => {
             icon: <TrendingUp />, 
             gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
             change: '+0.8%',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 96.2
           },
         ];
       case 'parent':
@@ -121,7 +190,8 @@ const Dashboard: React.FC = () => {
             icon: <School />, 
             gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             change: 'Active',
-            changeType: 'neutral'
+            changeType: 'neutral',
+            progress: 100
           },
           { 
             title: 'Attendance Rate', 
@@ -129,7 +199,8 @@ const Dashboard: React.FC = () => {
             icon: <TrendingUp />, 
             gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
             change: '+2.1%',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 92.1
           },
           { 
             title: 'Pending Homework', 
@@ -137,7 +208,8 @@ const Dashboard: React.FC = () => {
             icon: <Assessment />, 
             gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
             change: '-1',
-            changeType: 'negative'
+            changeType: 'negative',
+            progress: 75
           },
           { 
             title: 'Upcoming Tests', 
@@ -145,7 +217,8 @@ const Dashboard: React.FC = () => {
             icon: <BarChart />, 
             gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
             change: 'This Week',
-            changeType: 'neutral'
+            changeType: 'neutral',
+            progress: 50
           },
         ];
       default:
@@ -156,7 +229,8 @@ const Dashboard: React.FC = () => {
             icon: <TrendingUp />, 
             gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
             change: '+1.2%',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 95.2
           },
           { 
             title: 'Homework Due', 
@@ -164,7 +238,8 @@ const Dashboard: React.FC = () => {
             icon: <Assignment />, 
             gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
             change: 'Due Today',
-            changeType: 'warning'
+            changeType: 'warning',
+            progress: 40
           },
           { 
             title: 'Tests This Week', 
@@ -172,7 +247,8 @@ const Dashboard: React.FC = () => {
             icon: <Assessment />, 
             gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
             change: 'Tomorrow',
-            changeType: 'neutral'
+            changeType: 'neutral',
+            progress: 25
           },
           { 
             title: 'Average Score', 
@@ -180,7 +256,8 @@ const Dashboard: React.FC = () => {
             icon: <School />, 
             gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             change: '+2.5%',
-            changeType: 'positive'
+            changeType: 'positive',
+            progress: 87.5
           },
         ];
     }
@@ -193,28 +270,32 @@ const Dashboard: React.FC = () => {
         time: '2 hours ago', 
         type: 'attendance',
         icon: <CalendarToday color="primary" />,
-        color: 'primary'
+        color: 'primary',
+        priority: 'high'
       },
       { 
         text: 'New homework assigned in Mathematics', 
         time: '4 hours ago', 
         type: 'homework',
         icon: <Assignment color="secondary" />,
-        color: 'secondary'
+        color: 'secondary',
+        priority: 'medium'
       },
       { 
         text: 'Test results published for Science', 
         time: '1 day ago', 
         type: 'test',
         icon: <Assessment color="success" />,
-        color: 'success'
+        color: 'success',
+        priority: 'low'
       },
       { 
         text: 'New student enrolled in Class 9B', 
         time: '2 days ago', 
         type: 'student',
         icon: <School color="info" />,
-        color: 'info'
+        color: 'info',
+        priority: 'medium'
       },
     ];
 
@@ -261,12 +342,21 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1000);
+  };
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
   return (
-    <Box sx={{ flexGrow: 1, p: 3 }}>
+    <Box sx={{ flexGrow: 1, p: { xs: 1, sm: 2, md: 3 } }}>
       {/* Welcome Header */}
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
+      <Box sx={{ mb: { xs: 2, md: 4 }, textAlign: 'center' }}>
         <Typography 
-          variant="h3" 
+          variant={isMobile ? "h4" : "h3"}
           gutterBottom 
           sx={{ 
             fontWeight: 700,
@@ -279,13 +369,13 @@ const Dashboard: React.FC = () => {
         >
           Welcome back, {user?.name}! 👋
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ opacity: 0.8 }}>
+        <Typography variant={isMobile ? "body1" : "h6"} color="text.secondary" sx={{ opacity: 0.8 }}>
           Here's what's happening in your school today
         </Typography>
       </Box>
 
       {/* Enhanced Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: { xs: 2, md: 4 } }}>
         {stats.map((stat, index) => (
           <Grid item xs={12} sm={6} md={3} key={index}>
             <Card 
@@ -301,14 +391,14 @@ const Dashboard: React.FC = () => {
                 }
               }}
             >
-              <CardContent sx={{ p: 3 }}>
+              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                   <Avatar 
                     sx={{ 
                       bgcolor: 'rgba(255,255,255,0.2)', 
                       color: 'white',
-                      width: 56,
-                      height: 56
+                      width: { xs: 40, md: 56 },
+                      height: { xs: 40, md: 56 }
                     }}
                   >
                     {stat.icon}
@@ -324,19 +414,103 @@ const Dashboard: React.FC = () => {
                     }}
                   />
                 </Box>
-                <Typography variant="h3" component="div" sx={{ fontWeight: 700, mb: 1 }}>
+                <Typography variant={isMobile ? "h4" : "h3"} component="div" sx={{ fontWeight: 700, mb: 1 }}>
                   {stat.value}
                 </Typography>
-                <Typography variant="body1" sx={{ opacity: 0.9, fontWeight: 500 }}>
+                <Typography variant={isMobile ? "body2" : "body1"} sx={{ opacity: 0.9, fontWeight: 500, mb: 2 }}>
                   {stat.title}
                 </Typography>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={stat.progress} 
+                  sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.3)',
+                    '& .MuiLinearProgress-bar': {
+                      bgcolor: 'rgba(255,255,255,0.8)'
+                    }
+                  }} 
+                />
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      <Grid container spacing={3}>
+      {/* Analytics Tabs */}
+      <Card sx={{ mb: { xs: 2, md: 3 }, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', borderRadius: 3 }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs 
+            value={activeTab} 
+            onChange={handleTabChange}
+            variant={isMobile ? "scrollable" : "fullWidth"}
+            scrollButtons={isMobile ? "auto" : false}
+          >
+            <Tab label="Attendance Trends" icon={<ShowChart />} />
+            <Tab label="Performance Analysis" icon={<BarChart />} />
+            <Tab label="Subject Distribution" icon={<PieChart />} />
+          </Tabs>
+        </Box>
+        <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+          {activeTab === 0 && (
+            <Box sx={{ height: { xs: 250, md: 300 } }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={attendanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Area type="monotone" dataKey="present" stackId="1" stroke="#8884d8" fill="#8884d8" />
+                  <Area type="monotone" dataKey="absent" stackId="1" stroke="#ff7300" fill="#ff7300" />
+                  <Area type="monotone" dataKey="late" stackId="1" stroke="#ffc658" fill="#ffc658" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+          
+          {activeTab === 1 && (
+            <Box sx={{ height: { xs: 250, md: 300 } }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsBarChart data={performanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="score" fill="#8884d8" />
+                  <Bar dataKey="target" fill="#82ca9d" />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+          
+          {activeTab === 2 && (
+            <Box sx={{ height: { xs: 250, md: 300 } }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={subjectDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {subjectDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
+      <Grid container spacing={{ xs: 1, sm: 2, md: 3 }}>
         {/* Enhanced Recent Activities */}
         <Grid item xs={12} md={8}>
           <Card sx={{ 
@@ -344,46 +518,62 @@ const Dashboard: React.FC = () => {
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
             borderRadius: 3
           }}>
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: 'primary.main' }}>
                   Recent Activities
                 </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Visibility />}
-                  sx={{ borderRadius: 2 }}
-                >
-                  View All
-                </Button>
+                <Box>
+                  <Tooltip title="Refresh">
+                    <IconButton onClick={handleRefresh} disabled={isLoading}>
+                      {isLoading ? <CircularProgress size={20} /> : <Refresh />}
+                    </IconButton>
+                  </Tooltip>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<Visibility />}
+                    sx={{ borderRadius: 2, ml: 1 }}
+                  >
+                    View All
+                  </Button>
+                </Box>
               </Box>
               <List sx={{ p: 0 }}>
                 {activities.map((activity, index) => (
                   <Box key={index}>
-                    <ListItem sx={{ px: 0, py: 2 }}>
-                      <ListItemIcon sx={{ minWidth: 40 }}>
+                    <ListItem sx={{ px: 0, py: { xs: 1, md: 2 } }}>
+                      <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 } }}>
                         {activity.icon}
                       </ListItemIcon>
                       <ListItemText
                         primary={
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
                             {activity.text}
                           </Typography>
                         }
                         secondary={
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant={isMobile ? "caption" : "body2"} color="text.secondary">
                             {activity.time}
                           </Typography>
                         }
                       />
-                      <Chip
-                        label={activity.type}
-                        size="small"
-                        color={activity.color as any}
-                        variant="outlined"
-                        sx={{ fontWeight: 600, textTransform: 'capitalize' }}
-                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={activity.type}
+                          size="small"
+                          color={activity.color as any}
+                          variant="outlined"
+                          sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                        />
+                        <Chip
+                          label={activity.priority}
+                          size="small"
+                          color={activity.priority === 'high' ? 'error' : activity.priority === 'medium' ? 'warning' : 'success'}
+                          variant="filled"
+                          sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                        />
+                      </Box>
                     </ListItem>
                     {index < activities.length - 1 && <Divider />}
                   </Box>
@@ -401,12 +591,12 @@ const Dashboard: React.FC = () => {
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
             borderRadius: 3
           }}>
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: 'primary.main' }}>
                   Quick Actions
                 </Typography>
-                <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+                <Avatar sx={{ bgcolor: 'primary.main', width: { xs: 28, md: 32 }, height: { xs: 28, md: 32 } }}>
                   <Add />
                 </Avatar>
               </Box>
@@ -425,12 +615,12 @@ const Dashboard: React.FC = () => {
                       }
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 40, color: `${action.color}.main` }}>
+                    <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: `${action.color}.main` }}>
                       {action.icon}
                     </ListItemIcon>
                     <ListItemText 
                       primary={
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
                           {action.text}
                         </Typography>
                       }
@@ -446,23 +636,23 @@ const Dashboard: React.FC = () => {
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
             borderRadius: 3
           }}>
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: 'primary.main' }}>
                   Today's Schedule
                 </Typography>
-                <Avatar sx={{ bgcolor: 'success.main', width: 32, height: 32 }}>
+                <Avatar sx={{ bgcolor: 'success.main', width: { xs: 28, md: 32 }, height: { xs: 28, md: 32 } }}>
                   <CalendarToday />
                 </Avatar>
               </Box>
               <List sx={{ p: 0 }}>
-                <ListItem sx={{ px: 0, py: 1.5 }}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'warning.main' }}>
+                <ListItem sx={{ px: 0, py: { xs: 1, md: 1.5 } }}>
+                  <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'warning.main' }}>
                     <CalendarToday />
                   </ListItemIcon>
                   <ListItemText
                     primary={
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
                         Morning Assembly
                       </Typography>
                     }
@@ -470,13 +660,13 @@ const Dashboard: React.FC = () => {
                   />
                 </ListItem>
                 <Divider />
-                <ListItem sx={{ px: 0, py: 1.5 }}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'primary.main' }}>
+                <ListItem sx={{ px: 0, py: { xs: 1, md: 1.5 } }}>
+                  <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'primary.main' }}>
                     <School />
                   </ListItemIcon>
                   <ListItemText
                     primary={
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
                         Regular Classes
                       </Typography>
                     }
@@ -484,13 +674,13 @@ const Dashboard: React.FC = () => {
                   />
                 </ListItem>
                 <Divider />
-                <ListItem sx={{ px: 0, py: 1.5 }}>
-                  <ListItemIcon sx={{ minWidth: 40, color: 'info.main' }}>
+                <ListItem sx={{ px: 0, py: { xs: 1, md: 1.5 } }}>
+                  <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'info.main' }}>
                     <LocationOn />
                   </ListItemIcon>
                   <ListItemText
                     primary={
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
                         Staff Meeting
                       </Typography>
                     }

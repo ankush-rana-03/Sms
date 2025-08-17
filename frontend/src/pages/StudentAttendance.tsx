@@ -177,10 +177,10 @@ const StudentAttendance: React.FC = () => {
       const response = await classService.getClasses();
       console.log('Classes response:', response);
       if (response.success) {
-        // Filter only active classes
-        const activeClasses = response.data.filter((cls: ClassData) => cls.isActive);
-        console.log('Active classes:', activeClasses);
-        setAvailableClasses(activeClasses);
+        // Show all classes (remove isActive filter since most classes have isActive: false)
+        const allClasses = response.data;
+        console.log('All classes loaded:', allClasses.length);
+        setAvailableClasses(allClasses);
       } else {
         console.error('Classes response not successful:', response);
         showSnackbar('Failed to fetch classes: Unknown error', 'error');

@@ -90,12 +90,12 @@ exports.getAttendanceByDate = async (req, res, next) => {
     };
 
     if (classId) {
-      query.class = classId;
+      query.classId = classId;
     }
 
     const attendance = await Attendance.find(query)
-      .populate('student', 'name studentId parentPhone')
-      .populate('class', 'name section')
+      .populate('studentId', 'name rollNumber parentPhone')
+      .populate('classId', 'name section')
       .populate('markedBy', 'name');
 
     res.status(200).json({
@@ -116,7 +116,7 @@ exports.getStudentAttendance = async (req, res, next) => {
     const { studentId } = req.params;
     const { startDate, endDate } = req.query;
 
-    const query = { student: studentId };
+    const query = { studentId: studentId };
 
     if (startDate && endDate) {
       query.date = {
@@ -126,7 +126,7 @@ exports.getStudentAttendance = async (req, res, next) => {
     }
 
     const attendance = await Attendance.find(query)
-      .populate('class', 'name section')
+      .populate('classId', 'name section')
       .populate('markedBy', 'name')
       .sort({ date: -1 });
 
@@ -163,7 +163,7 @@ exports.updateAttendance = async (req, res, next) => {
     const { id } = req.params;
     const { status, remarks } = req.body;
 
-    const attendance = await Attendance.findById(id).populate('student');
+    const attendance = await Attendance.findById(id).populate('studentId');
     if (!attendance) {
       return next(new ErrorResponse('Attendance record not found', 404));
     }

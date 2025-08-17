@@ -74,6 +74,24 @@ const Students: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
   const [showToast, setShowToast] = useState(false);
+
+  // Auto-hide toast after 5 seconds
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+        setToastMessage('');
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
+
+  const showToastMessage = (message: string, severity: 'success' | 'error') => {
+    setToastMessage(message);
+    setToastSeverity(severity);
+    setShowToast(true);
+  };
   const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [tabValue, setTabValue] = useState(0);
@@ -145,9 +163,7 @@ const Students: React.FC = () => {
       setDeletedStudents(response.data);
     } catch (error: any) {
       console.error('Error fetching deleted students:', error);
-      setToastMessage(error.message || 'Failed to fetch deleted students');
-      setToastSeverity('error');
-      setShowToast(true);
+      showToastMessage(error.message || 'Failed to fetch deleted students', 'error');
     } finally {
       setFetchingDeletedStudents(false);
     }
@@ -158,18 +174,14 @@ const Students: React.FC = () => {
       const response = await studentService.createStudent(data);
       if (response.success) {
         setStudents(prev => [response.data, ...prev]);
-        setToastMessage('Student registered successfully!');
-        setToastSeverity('success');
-        setShowToast(true);
+        showToastMessage('Student registered successfully!', 'success');
         setSuccess('Student registered successfully!');
         setOpenRegistration(false);
       }
     } catch (error: any) {
       console.error('Error handling student registration:', error);
       const msg = error?.message || 'Failed to complete registration';
-      setToastMessage(msg);
-      setToastSeverity('error');
-      setShowToast(true);
+      showToastMessage(msg, 'error');
     }
   };
 
@@ -199,17 +211,13 @@ const Students: React.FC = () => {
       const response = await studentService.updateStudent(editingStudent._id, editForm);
       if (response.success) {
         setStudents(prev => prev.map(s => s._id === editingStudent._id ? response.data : s));
-        setToastMessage('Student updated successfully!');
-        setToastSeverity('success');
-        setShowToast(true);
+        showToastMessage('Student updated successfully!', 'success');
         setOpenEditDialog(false);
         setEditingStudent(null);
       }
     } catch (error: any) {
       console.error('Error updating student:', error);
-      setToastMessage(error.message || 'Failed to update student');
-      setToastSeverity('error');
-      setShowToast(true);
+      showToastMessage(error.message || 'Failed to update student', 'error');
     }
   };
 
@@ -226,18 +234,14 @@ const Students: React.FC = () => {
       const response = await studentService.deleteStudent(deletingStudent._id, deletionReason);
       if (response.success) {
         setStudents(prev => prev.filter(s => s._id !== deletingStudent._id));
-        setToastMessage('Student deleted successfully!');
-        setToastSeverity('success');
-        setShowToast(true);
+        showToastMessage('Student deleted successfully!', 'success');
         setOpenDeleteDialog(false);
         setDeletingStudent(null);
         setDeletionReason('');
       }
     } catch (error: any) {
       console.error('Error deleting student:', error);
-      setToastMessage(error.message || 'Failed to delete student');
-      setToastSeverity('error');
-      setShowToast(true);
+      showToastMessage(error.message || 'Failed to delete student', 'error');
     }
   };
 
@@ -254,17 +258,13 @@ const Students: React.FC = () => {
       if (response.success) {
         setDeletedStudents(prev => prev.filter(s => s._id !== restoringStudent._id));
         setStudents(prev => [response.data, ...prev]);
-        setToastMessage('Student restored successfully!');
-        setToastSeverity('success');
-        setShowToast(true);
+        showToastMessage('Student restored successfully!', 'success');
         setOpenRestoreDialog(false);
         setRestoringStudent(null);
       }
     } catch (error: any) {
       console.error('Error restoring student:', error);
-      setToastMessage(error.message || 'Failed to restore student');
-      setToastSeverity('error');
-      setShowToast(true);
+      showToastMessage(error.message || 'Failed to restore student', 'error');
     }
   };
 
@@ -277,15 +277,11 @@ const Students: React.FC = () => {
       const response = await studentService.permanentlyDeleteStudent(student._id);
       if (response.success) {
         setDeletedStudents(prev => prev.filter(s => s._id !== student._id));
-        setToastMessage('Student permanently deleted!');
-        setToastSeverity('success');
-        setShowToast(true);
+        showToastMessage('Student permanently deleted!', 'success');
       }
     } catch (error: any) {
       console.error('Error permanently deleting student:', error);
-      setToastMessage(error.message || 'Failed to permanently delete student');
-      setToastSeverity('error');
-      setShowToast(true);
+      showToastMessage(error.message || 'Failed to permanently delete student', 'error');
     }
   };
 
@@ -614,13 +610,9 @@ const Students: React.FC = () => {
                             try {
                               const res = await studentService.approveStudent(student._id);
                               setStudents(prev => prev.map(s => s._id === student._id ? res.data : s));
-                              setToastMessage('Student approved');
-                              setToastSeverity('success');
-                              setShowToast(true);
+                              showToastMessage('Student approved', 'success');
                             } catch (e: any) {
-                              setToastMessage(e.message || 'Approval failed');
-                              setToastSeverity('error');
-                              setShowToast(true);
+                              showToastMessage(e.message || 'Approval failed', 'error');
                             }
                           }}
                           sx={{ 

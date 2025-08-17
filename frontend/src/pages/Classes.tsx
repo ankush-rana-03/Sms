@@ -165,7 +165,7 @@ const Classes: React.FC = () => {
     if (!selectedClass || !teacherId) return;
     
     try {
-      const res = await apiService.put<{ success: boolean; message: string; data: ClassItem }>(`/classes/${selectedClass._id}/assign-teacher`, { teacherId });
+      const res = await apiService.put<{ success: boolean; message: string; data: ClassItem }>(`/classes/${selectedClass._id}/class-teacher`, { teacherId });
       if ((res as any).success) {
         setClasses(prev => prev.map(c => c._id === selectedClass._id ? (res as any).data : c));
         setSnackbar({ open: true, message: 'Class teacher assigned successfully', severity: 'success' });
@@ -199,7 +199,7 @@ const Classes: React.FC = () => {
 
   const handleUnassign = async (cls: ClassItem) => {
     try {
-      const res = await apiService.delete<{ success: boolean; message: string; data: ClassItem }>(`/classes/${cls._id}/unassign-teacher`);
+      const res = await apiService.delete<{ success: boolean; message: string; data: ClassItem }>(`/classes/${cls._id}/class-teacher`);
       if ((res as any).success) {
         setClasses(prev => prev.map(c => c._id === cls._id ? (res as any).data : c));
         setSnackbar({ open: true, message: 'Class teacher unassigned successfully', severity: 'success' });

@@ -173,15 +173,21 @@ const StudentAttendance: React.FC = () => {
   const fetchAvailableClasses = async () => {
     try {
       setLoadingClasses(true);
+      console.log('Fetching available classes...');
       const response = await classService.getClasses();
+      console.log('Classes response:', response);
       if (response.success) {
         // Filter only active classes
         const activeClasses = response.data.filter((cls: ClassData) => cls.isActive);
+        console.log('Active classes:', activeClasses);
         setAvailableClasses(activeClasses);
+      } else {
+        console.error('Classes response not successful:', response);
+        showSnackbar('Failed to fetch classes: Unknown error', 'error');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching classes:', error);
-      showSnackbar('Failed to fetch classes', 'error');
+      showSnackbar('Failed to fetch classes: ' + (error.message || 'Unknown error'), 'error');
     } finally {
       setLoadingClasses(false);
     }
@@ -190,9 +196,12 @@ const StudentAttendance: React.FC = () => {
   const fetchStudents = async () => {
     try {
       setLoadingStudents(true);
+      console.log('Fetching students for:', selectedClass, selectedSection);
       const response = await apiService.get(`/students?grade=${selectedClass}&section=${selectedSection}&deletedAt=null`);
+      console.log('Students response:', response);
       if (response && (response as any).data) {
         const studentData = (response as any).data;
+        console.log('Student data:', studentData);
         setStudents(studentData);
         
         // Initialize attendance data for new students
@@ -208,10 +217,13 @@ const StudentAttendance: React.FC = () => {
         
         setAttendanceData(prev => ({ ...prev, ...newAttendanceData }));
         setRemarks(prev => ({ ...prev, ...newRemarks }));
+      } else {
+        console.error('No student data in response:', response);
+        showSnackbar('No student data received', 'error');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching students:', error);
-      showSnackbar('Failed to fetch students', 'error');
+      showSnackbar('Failed to fetch students: ' + (error.message || 'Unknown error'), 'error');
     } finally {
       setLoadingStudents(false);
     }
@@ -248,7 +260,7 @@ const StudentAttendance: React.FC = () => {
         setAttendanceData(prev => ({ ...prev, ...existingData }));
         setRemarks(prev => ({ ...prev, ...existingRemarks }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching attendance:', error);
       showSnackbar('Failed to fetch attendance records', 'error');
     } finally {
@@ -501,6 +513,43 @@ const StudentAttendance: React.FC = () => {
               </Button>
             </Grid>
           </Grid>
+          
+          {/* Debug Section */}
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Debug Info: {availableClasses.length} classes loaded, {students.length} students loaded
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                console.log('Available classes:', availableClasses);
+                console.log('Selected class/section:', selectedClass, selectedSection);
+                console.log('Students:', students);
+                console.log('Attendance data:', attendanceData);
+              }}
+              sx={{ mr: 1 }}
+            >
+              Log Debug Info
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={async () => {
+                try {
+                  console.log('Testing API connection...');
+                  const response = await apiService.get('/classes');
+                  console.log('API test response:', response);
+                  showSnackbar('API connection successful!', 'success');
+                } catch (error: any) {
+                  console.error('API test failed:', error);
+                  showSnackbar('API connection failed: ' + error.message, 'error');
+                }
+              }}
+            >
+              Test API
+            </Button>
+          </Box>
         </CardContent>
       </Card>
 

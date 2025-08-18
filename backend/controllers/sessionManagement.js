@@ -3,6 +3,7 @@ const Student = require('../models/Student');
 const Class = require('../models/Class');
 const Attendance = require('../models/Attendance');
 const ErrorResponse = require('../utils/errorResponse');
+const RolloverRun = require('../models/RolloverRun');
 
 // @desc    Complete a session
 // @route   PUT /api/sessions/:sessionId/complete
@@ -185,6 +186,14 @@ exports.rolloverSession = async (req, res, next) => {
       return next(new ErrorResponse('Session not found', 404));
     }
 
+    // Prevent concurrent runs for the same source session
+    const existingActive = await RolloverRun.findOne({ sourceSessionName: source.name, status: 'running' });
+    if (existingActive) {
+      return next(new ErrorResponse('A rollover is already running for this session', 409));
+    }
+
+    const run = await RolloverRun.create({ sourceSessionName: source.name, status: 'running' });
+
     // Derive next session name and academic year
     const deriveNext = (name, academicYear) => {
       const yearRange = /^(\d{4})[-/](\d{4})$/;
@@ -300,6 +309,12 @@ exports.rolloverSession = async (req, res, next) => {
     // Deactivate source session classes
     await Class.updateMany({ session: source.name }, { isActiveSession: false, sessionEndDate: new Date() });
 
+    run.status = 'completed';
+    run.targetSessionName = newSession.name;
+    run.counts = { classesCopied: createdClasses.length, promoted: promotedCount, retained: retainedCount };
+    run.finishedAt = new Date();
+    await run.save();
+
     res.status(200).json({
       success: true,
       message: 'Auto rollover completed',
@@ -312,6 +327,20 @@ exports.rolloverSession = async (req, res, next) => {
       }
     });
   } catch (err) {
+    try {
+      // Best-effort mark run as failed
+      const { sessionId } = req.params;
+      const source = await Session.findById(sessionId);
+      if (source) {
+        const run = await RolloverRun.findOne({ sourceSessionName: source.name, status: 'running' });
+        if (run) {
+          run.status = 'failed';
+          run.message = err.message;
+          run.finishedAt = new Date();
+          await run.save();
+        }
+      }
+    } catch (_) {}
     next(err);
   }
 };

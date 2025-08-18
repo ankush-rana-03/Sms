@@ -88,6 +88,7 @@ const Sessions: React.FC = () => {
   const [openAutoCreateClassesDialog, setOpenAutoCreateClassesDialog] = useState(false);
   const [openCopyClassesDialog, setOpenCopyClassesDialog] = useState(false);
   const [openDeleteClassesDialog, setOpenDeleteClassesDialog] = useState(false);
+  const [rollingOverSessionId, setRollingOverSessionId] = useState<string | null>(null);
   const [selectedSourceSession, setSelectedSourceSession] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [promotionResults, setPromotionResults] = useState<any[]>([]);
@@ -248,6 +249,19 @@ const Sessions: React.FC = () => {
       setSelectedSession(null);
       setSelectedSourceSession('');
     }
+  });
+
+  // Auto Rollover mutation
+  const rolloverMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const response = await api.post<any>(`/sessions/${sessionId}/auto-rollover`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      setRollingOverSessionId(null);
+    },
+    onError: () => setRollingOverSessionId(null)
   });
 
   // Delete classes mutation
@@ -444,6 +458,20 @@ const Sessions: React.FC = () => {
                     sx={{ mb: 1 }}
                   >
                     Auto-Create Classes
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<TrendingUpIcon />}
+                    onClick={() => {
+                      setRollingOverSessionId(session._id);
+                      rolloverMutation.mutate(session._id);
+                    }}
+                    disabled={!['admin', 'principal'].includes(user?.role || '') || rolloverMutation.isPending}
+                    sx={{ mb: 1 }}
+                  >
+                    {rollingOverSessionId === session._id && rolloverMutation.isPending ? 'Rolling Over…' : 'Auto Rollover'}
                   </Button>
                   {!['admin', 'principal'].includes(user?.role || '') && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>

@@ -63,6 +63,7 @@ class AttendanceService {
     status: 'present' | 'absent' | 'late' | 'half-day';
     date: string;
     remarks?: string;
+    session?: string;
   }): Promise<{ success: boolean; data: AttendanceRecord; message: string }> {
     try {
       const response = await api.post<{ success: boolean; data: AttendanceRecord; message: string }>('/attendance/mark', data);
@@ -73,7 +74,7 @@ class AttendanceService {
   }
 
   // Mark bulk attendance
-  async markBulkAttendance(data: BulkAttendanceData[]): Promise<{ success: boolean; message: string; data: AttendanceRecord[] }> {
+  async markBulkAttendance(data: (BulkAttendanceData & { session?: string })[]): Promise<{ success: boolean; message: string; data: AttendanceRecord[] }> {
     try {
       const response = await api.post<{ success: boolean; message: string; data: AttendanceRecord[] }>('/attendance/bulk', data);
       return response;

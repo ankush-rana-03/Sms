@@ -112,6 +112,10 @@ const studentSchema = new mongoose.Schema({
       enum: ['present', 'absent', 'late'],
       default: 'present'
     },
+    session: {
+      type: String,
+      default: null
+    },
     markedAt: {
       type: Date,
       default: Date.now

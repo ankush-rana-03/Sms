@@ -319,6 +319,7 @@ const StudentAttendance: React.FC = () => {
         date: selectedDate,
         status: attendanceData[student._id] || 'present',
         remarks: remarks[student._id] || '',
+        session: selectedSession,
       }));
 
       const response = await attendanceService.markBulkAttendance(attendancePayload);

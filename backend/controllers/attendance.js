@@ -11,7 +11,7 @@ const mongoose = require('mongoose'); // Added for session management
 // @access  Private (Teacher only)
 exports.markAttendance = async (req, res, next) => {
   try {
-    const { studentId, status, date, remarks } = req.body;
+    const { studentId, status, date, remarks, session: sessionFromBody } = req.body;
 
     // Validate date based on user role
     const dateValidation = validateAttendanceDate(date || new Date(), req.user.role);
@@ -36,12 +36,23 @@ exports.markAttendance = async (req, res, next) => {
       return next(new ErrorResponse(`Class not found for grade ${student.grade} section ${student.section}`, 404));
     }
 
-    // Check if attendance already marked for the specified date
+    // Resolve session to use
+    let sessionName = sessionFromBody;
+    if (!sessionName) {
+      sessionName = student.currentSession || null;
+      if (!sessionName) {
+        const currentSessionDoc = await mongoose.model('Session').findOne({ isCurrent: true });
+        sessionName = currentSessionDoc?.name || '2025-2026';
+      }
+    }
+
+    // Check if attendance already marked for the specified date and session
     const attendanceDate = new Date(date || new Date());
     attendanceDate.setHours(0, 0, 0, 0);
     
     const existingAttendance = await Attendance.findOne({
       studentId: studentId,
+      session: sessionName,
       date: {
         $gte: attendanceDate,
         $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
@@ -56,7 +67,7 @@ exports.markAttendance = async (req, res, next) => {
     const attendance = await Attendance.create({
       studentId: studentId,
       classId: classData._id,
-      session: student.currentSession || '2025-2026',
+      session: sessionName,
       date: attendanceDate,
       status,
       markedBy: req.user.id,
@@ -223,7 +234,7 @@ exports.bulkMarkAttendance = async (req, res, next) => {
     const notifications = []; // WhatsApp removed
 
     for (const record of attendanceData) {
-      const { studentId, status, date, remarks } = record;
+      const { studentId, status, date, remarks, session: sessionFromBody } = record;
 
       // Validate date based on user role
       const dateValidation = validateAttendanceDate(date || new Date(), req.user.role);
@@ -240,8 +251,15 @@ exports.bulkMarkAttendance = async (req, res, next) => {
           continue;
         }
 
-        // Get current session if not specified
-        const sessionToUse = student.currentSession || '2025-2026';
+        // Resolve session to use
+        let sessionToUse = sessionFromBody;
+        if (!sessionToUse) {
+          sessionToUse = student.currentSession || null;
+          if (!sessionToUse) {
+            const currentSessionDoc = await mongoose.model('Session').findOne({ isCurrent: true });
+            sessionToUse = currentSessionDoc?.name || '2025-2026';
+          }
+        }
         
         // Find class based on student's grade and section for the specific session
         const classData = await Class.findOne({
@@ -280,7 +298,7 @@ exports.bulkMarkAttendance = async (req, res, next) => {
           const attendance = await Attendance.create({
             studentId: studentId,
             classId: classData._id,
-            session: student.currentSession || '2025-2026',
+            session: sessionToUse,
             date: attendanceDate,
             status,
             markedBy: req.user.id,

@@ -26,14 +26,23 @@ exports.markAttendance = async (req, res, next) => {
     }
 
     // Find class based on student's grade and section
-    const classData = await Class.findOne({
+    let classData = await Class.findOne({
       name: student.grade,
       section: student.section,
       session: student.currentSession || '2025-2026'
     });
 
     if (!classData) {
-      return next(new ErrorResponse(`Class not found for grade ${student.grade} section ${student.section}`, 404));
+      // Auto-create class for this session if missing
+      const sessionDoc = await mongoose.model('Session').findOne({ name: student.currentSession || sessionFromBody });
+      classData = await Class.create({
+        name: student.grade,
+        section: student.section,
+        academicYear: sessionDoc?.academicYear || (student.currentSession || ''),
+        session: student.currentSession || sessionFromBody || (sessionDoc?.name || ''),
+        capacity: 30,
+        isActiveSession: true
+      });
     }
 
     // Resolve session to use
@@ -262,15 +271,23 @@ exports.bulkMarkAttendance = async (req, res, next) => {
         }
         
         // Find class based on student's grade and section for the specific session
-        const classData = await Class.findOne({
+        let classData = await Class.findOne({
           name: student.grade,
           section: student.section,
           session: sessionToUse
         });
 
         if (!classData) {
-          errors.push({ studentId, error: `Class not found for grade ${student.grade} section ${student.section} in session ${sessionToUse}` });
-          continue;
+          // Auto-create class for this session if missing
+          const sessionDoc = await mongoose.model('Session').findOne({ name: sessionToUse });
+          classData = await Class.create({
+            name: student.grade,
+            section: student.section,
+            academicYear: sessionDoc?.academicYear || sessionToUse,
+            session: sessionToUse,
+            capacity: 30,
+            isActiveSession: true
+          });
         }
 
         // Check if attendance already marked for the specified date and session

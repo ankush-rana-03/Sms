@@ -324,8 +324,14 @@ const StudentAttendance: React.FC = () => {
 
       const response = await attendanceService.markBulkAttendance(attendancePayload);
       if (response && response.success) {
-        showSnackbar('Attendance marked successfully!', 'success');
-        fetchAttendanceByDate(); // Refresh attendance data
+        const failures = (response as any).errors || [];
+        if (failures.length > 0) {
+          showSnackbar(`Marked with ${failures.length} failures. Check console for details.`, 'warning');
+          console.warn('Bulk mark failures:', failures);
+        } else {
+          showSnackbar('Attendance marked successfully!', 'success');
+        }
+        fetchAttendanceByDate();
       }
     } catch (error: any) {
       console.error('Error marking attendance:', error);

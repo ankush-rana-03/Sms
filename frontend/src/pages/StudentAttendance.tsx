@@ -62,7 +62,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import classService, { ClassWithSections } from '../services/classService';
-import attendanceService from '../services/attendanceService';
+import attendanceService, { type AttendanceRecord } from '../services/attendanceService';
 
 interface Student {
   _id: string;
@@ -75,33 +75,7 @@ interface Student {
   profilePicture?: string;
 }
 
-interface AttendanceRecord {
-  _id: string;
-  student: {
-    _id: string;
-    name: string;
-    rollNumber: string;
-    parentPhone: string;
-  };
-  class: {
-    _id: string;
-    name: string;
-    section: string;
-  };
-  date: string;
-  status: 'present' | 'absent' | 'late' | 'half-day';
-  markedBy: {
-    _id: string;
-    name: string;
-  };
-  remarks?: string;
-  isVerified: boolean;
-  verifiedBy?: {
-    _id: string;
-    name: string;
-  };
-  verifiedAt?: string;
-}
+// Using AttendanceRecord type from attendance service
 
 interface ClassData {
   _id: string;
@@ -182,7 +156,7 @@ const StudentAttendance: React.FC = () => {
     try {
       setLoadingClasses(true);
       console.log('Fetching available classes...');
-      const response = await classService.getClasses(selectedSession);
+      const response = await classService.getClasses({ session: selectedSession });
       console.log('Classes response:', response);
       if (response.success) {
         // Show all classes (remove isActive filter since most classes have isActive: false)
@@ -279,7 +253,7 @@ const StudentAttendance: React.FC = () => {
         const existingData: { [key: string]: 'present' | 'absent' | 'late' | 'half-day' } = {};
         const existingRemarks: { [key: string]: string } = {};
         
-        response.data.forEach((record: AttendanceRecord) => {
+        response.data.forEach((record) => {
           existingData[record.studentId._id] = record.status;
           if (record.remarks) {
             existingRemarks[record.studentId._id] = record.remarks;

@@ -13,7 +13,8 @@ const {
   completeSession,
   archiveSession,
   startNewSession,
-  getSessionAnalytics
+  getSessionAnalytics,
+  rolloverSession
 } = require('../controllers/sessionManagement');
 
 // Get all sessions
@@ -69,6 +70,9 @@ router.post('/', async (req, res) => {
     res.status(500).json({ message: 'Error creating session', error: error.message });
   }
 });
+// Auto rollover: create next session, copy classes, move promoted students
+router.post('/:sessionId/auto-rollover', protect, authorize('admin', 'principal'), rolloverSession);
+
 
 // Update session
 router.put('/:id', protect, authorize('admin', 'principal'), async (req, res) => {

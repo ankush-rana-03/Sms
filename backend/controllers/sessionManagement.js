@@ -174,6 +174,148 @@ exports.startNewSession = async (req, res, next) => {
   }
 };
 
+// @desc    Complete promotion rollover: create next session, copy classes, move promoted students
+// @route   POST /api/sessions/:sessionId/auto-rollover
+// @access  Private (Admin, Principal)
+exports.rolloverSession = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const source = await Session.findById(sessionId);
+    if (!source) {
+      return next(new ErrorResponse('Session not found', 404));
+    }
+
+    // Derive next session name and academic year
+    const deriveNext = (name, academicYear) => {
+      const yearRange = /^(\d{4})[-/](\d{4})$/;
+      const singleYear = /^(\d{4})$/;
+      let nextName = '';
+      let nextAcademicYear = '';
+      if (yearRange.test(academicYear)) {
+        const [, y1, y2] = academicYear.match(yearRange);
+        const ny1 = String(Number(y1) + 1);
+        const ny2 = String(Number(y2) + 1);
+        nextAcademicYear = `${ny1}-${ny2}`;
+      } else if (singleYear.test(academicYear)) {
+        nextAcademicYear = String(Number(academicYear) + 1);
+      } else {
+        nextAcademicYear = academicYear;
+      }
+      if (yearRange.test(name)) {
+        const [, y1, y2] = name.match(yearRange);
+        nextName = `${Number(y1) + 1}-${Number(y2) + 1}`;
+      } else if (singleYear.test(name)) {
+        nextName = String(Number(name) + 1);
+      } else {
+        nextName = `${name}-next`;
+      }
+      return { nextName, nextAcademicYear };
+    };
+
+    const { nextName, nextAcademicYear } = deriveNext(source.name, source.academicYear);
+
+    // Compute dates (start day after source endDate, end one year later)
+    const startDate = new Date((source.endDate || new Date()).getTime() + 24*60*60*1000);
+    const endDate = new Date(startDate.getTime());
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    endDate.setDate(endDate.getDate() - 1);
+
+    // Create next session
+    const newSession = await Session.create({
+      name: nextName,
+      academicYear: nextAcademicYear,
+      startDate,
+      endDate,
+      description: source.description || '',
+      promotionCriteria: source.promotionCriteria,
+      isCurrent: true,
+      status: 'active'
+    });
+    await Session.updateMany({ _id: { $ne: newSession._id } }, { isCurrent: false });
+
+    // Copy classes from source session into new session
+    const sourceClasses = await Class.find({ session: source.name });
+    const createdClasses = [];
+    for (const sc of sourceClasses) {
+      const exists = await Class.findOne({ name: sc.name, section: sc.section, session: newSession.name });
+      if (!exists) {
+        const nc = await Class.create({
+          name: sc.name,
+          section: sc.section,
+          academicYear: newSession.academicYear,
+          session: newSession.name,
+          capacity: sc.capacity,
+          roomNumber: sc.roomNumber,
+          isActiveSession: true
+        });
+        createdClasses.push(nc);
+      }
+    }
+
+    // Promote and move eligible students
+    const students = await Student.find({ currentSession: source.name, deletedAt: null });
+    const gradeMap = { nursery: 'lkg', lkg: 'ukg', ukg: '1', '1': '2', '2': '3', '3': '4', '4': '5', '5': '6', '6': '7', '7': '8', '8': '9', '9': '10', '10': '11', '11': '12' };
+    let promotedCount = 0;
+    let retainedCount = 0;
+    for (const student of students) {
+      // Attendance-based eligibility
+      const attendance = await Attendance.find({ studentId: student._id, session: source.name });
+      const total = attendance.length;
+      const present = attendance.filter(a => a.status === 'present').length;
+      const percentage = total > 0 ? (present / total) * 100 : 0;
+      const eligible = percentage >= (source.promotionCriteria?.minimumAttendance || 0);
+
+      if (eligible) {
+        const nextGrade = gradeMap[student.grade];
+        if (nextGrade) {
+          student.previousGrade = student.grade;
+          student.previousSection = student.section;
+          student.grade = nextGrade;
+          // Keep same section by default
+          student.section = student.section || 'A';
+          student.promotionStatus = 'promoted';
+          student.promotionDate = new Date();
+          student.promotionNotes = 'Auto rollover';
+          student.currentSession = newSession.name;
+          promotedCount++;
+        } else {
+          // Graduating (no next grade)
+          student.promotionStatus = 'graduated';
+          student.previousGrade = student.grade;
+          student.previousSection = student.section;
+          student.grade = 'graduated';
+          student.section = 'N/A';
+          student.currentSession = null;
+          promotedCount++;
+        }
+      } else {
+        student.promotionStatus = 'retained';
+        student.promotionNotes = 'Below attendance criteria';
+        // Remain in source session
+        retainedCount++;
+      }
+      await student.save();
+    }
+
+    // Deactivate source session classes
+    await Class.updateMany({ session: source.name }, { isActiveSession: false, sessionEndDate: new Date() });
+
+    res.status(200).json({
+      success: true,
+      message: 'Auto rollover completed',
+      data: {
+        sourceSession: source.name,
+        newSession: newSession.name,
+        classesCopied: createdClasses.length,
+        promoted: promotedCount,
+        retained: retainedCount
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @desc    Get session analytics
 // @route   GET /api/sessions/:sessionId/analytics
 // @access  Private (Admin, Principal)

@@ -314,13 +314,20 @@ const StudentAttendance: React.FC = () => {
         return;
       }
 
-      const attendancePayload = students.map(student => ({
-        studentId: student._id,
-        date: selectedDate,
-        status: attendanceData[student._id] || 'present',
-        remarks: remarks[student._id] || '',
-        session: selectedSession,
-      }));
+      const attendancePayload = students
+        .filter(student => attendanceData[student._id] !== undefined)
+        .map(student => ({
+          studentId: student._id,
+          date: selectedDate,
+          status: attendanceData[student._id],
+          remarks: remarks[student._id] || '',
+          session: selectedSession,
+        }));
+
+      if (attendancePayload.length === 0) {
+        showSnackbar('No changes to submit', 'info');
+        return;
+      }
 
       const response = await attendanceService.markBulkAttendance(attendancePayload);
       if (response && response.success) {

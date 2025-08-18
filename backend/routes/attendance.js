@@ -8,7 +8,9 @@ const {
   getClassAttendanceStatistics,
   getAttendanceStatsBySession,
   getAttendanceDashboard,
-  sendAttendanceNotifications
+  sendAttendanceNotifications,
+  getAttendanceRecords,
+  getAttendanceReport
 } = require('../controllers/attendance');
 
 const router = express.Router();
@@ -22,6 +24,8 @@ router.post('/bulk', protect, authorize('teacher', 'admin', 'principal'), teache
 // Routes for all authenticated users
 router.get('/date/:date', protect, getAttendanceByDate);
 router.get('/student/:studentId', protect, getStudentAttendance);
+router.get('/records', protect, getAttendanceRecords);
+router.get('/report', protect, getAttendanceReport);
 
 // Admin/Principal routes
 router.put('/:id', protect, authorize('teacher', 'admin', 'principal'), updateAttendance);

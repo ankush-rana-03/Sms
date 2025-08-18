@@ -141,6 +141,62 @@ exports.getAttendanceByDate = async (req, res, next) => {
   }
 };
 
+// @desc    Get attendance records (list) with filters
+// @route   GET /api/attendance/records
+// @access  Private
+exports.getAttendanceRecords = async (req, res, next) => {
+  try {
+    const { session, classId, grade, section, startDate, endDate } = req.query;
+
+    const query = {};
+    if (session) query.session = session;
+    if (classId) query.classId = classId;
+    if (startDate && endDate) {
+      query.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    }
+
+    // Fallback: resolve classId by grade/section/session
+    if (!classId && grade) {
+      const cls = await mongoose.model('Class').findOne({ name: grade, section: section || 'A', session: session });
+      if (cls) query.classId = cls._id;
+    }
+
+    const records = await Attendance.find(query)
+      .populate('studentId', 'name rollNumber')
+      .populate('classId', 'name section')
+      .populate('markedBy', 'name')
+      .sort({ date: -1 });
+
+    res.status(200).json({ success: true, count: records.length, data: records });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get attendance summary report by class/day/session
+// @route   GET /api/attendance/report
+// @access  Private
+exports.getAttendanceReport = async (req, res, next) => {
+  try {
+    const { session, classId, date } = req.query;
+    if (!session || !classId || !date) {
+      return next(new ErrorResponse('session, classId and date are required', 400));
+    }
+    const day = new Date(date); day.setHours(0,0,0,0);
+    const nextDay = new Date(day.getTime() + 24*60*60*1000);
+
+    const records = await Attendance.find({ session, classId, date: { $gte: day, $lt: nextDay } });
+    const total = records.length;
+    const present = records.filter(r=>r.status==='present').length;
+    const absent = records.filter(r=>r.status==='absent').length;
+    const late = records.filter(r=>r.status==='late').length;
+    const halfDay = records.filter(r=>r.status==='half-day').length;
+
+    res.status(200).json({ success: true, data: { total, present, absent, late, halfDay, percentage: total>0 ? Math.round((present/total)*100) : 0 } });
+  } catch (err) {
+    next(err);
+  }
+};
 // @desc    Get student attendance report
 // @route   GET /api/attendance/student/:studentId
 // @access  Private

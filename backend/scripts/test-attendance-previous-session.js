@@ -42,7 +42,7 @@ async function main() {
 
   // Create class 4-A for session 2026 and 2027
   const class2026 = await ClassModel.create({ name: '4', section: 'A', academicYear: '2026', session: '2026' });
-  await ClassModel.create({ name: '4', section: 'A', academicYear: '2027', session: '2027' });
+  const class2027 = await ClassModel.create({ name: '4', section: 'A', academicYear: '2027', session: '2027' });
 
   // Create student in 2026 session
   const student = await Student.create({
@@ -73,6 +73,25 @@ async function main() {
     process.exitCode = 1;
   } else {
     console.log('✅ Previous session retrieval works for class 4-A in session 2026');
+  }
+
+  // Mark attendance in new session 2027
+  req = fakeReq('admin', { studentId: student._id, status: 'absent', date: today, session: '2027' });
+  res = fakeRes();
+  await attendanceController.markAttendance(req, res, next);
+  if (!(res.payload && res.payload.success)) throw new Error('Failed to mark attendance for 2027');
+
+  // Retrieve 2027 session attendance
+  req = fakeReq('teacher', {}, { date: today }, { classId: String(class2027._id), session: '2027' });
+  res = fakeRes();
+  await attendanceController.getAttendanceByDate(req, res, next);
+  console.log('New session (2027) retrieval count:', res.payload?.count);
+
+  if (res.payload?.count !== 1) {
+    console.error('❌ Expected 1 record for session 2027, got:', res.payload?.count);
+    process.exitCode = 1;
+  } else {
+    console.log('✅ New session retrieval works for class 4-A in session 2027');
   }
 
   await mongoose.disconnect();

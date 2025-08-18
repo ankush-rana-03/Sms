@@ -62,7 +62,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import classService, { ClassWithSections } from '../services/classService';
-import attendanceService from '../services/attendanceService';
+import attendanceService, { AttendanceRecord as ServiceAttendanceRecord } from '../services/attendanceService';
 
 interface Student {
   _id: string;
@@ -75,33 +75,7 @@ interface Student {
   profilePicture?: string;
 }
 
-interface AttendanceRecord {
-  _id: string;
-  student: {
-    _id: string;
-    name: string;
-    rollNumber: string;
-    parentPhone: string;
-  };
-  class: {
-    _id: string;
-    name: string;
-    section: string;
-  };
-  date: string;
-  status: 'present' | 'absent' | 'late' | 'half-day';
-  markedBy: {
-    _id: string;
-    name: string;
-  };
-  remarks?: string;
-  isVerified: boolean;
-  verifiedBy?: {
-    _id: string;
-    name: string;
-  };
-  verifiedAt?: string;
-}
+// Use the AttendanceRecord type from the attendance service to ensure consistency with API responses
 
 interface ClassData {
   _id: string;
@@ -114,7 +88,7 @@ interface ClassData {
 const StudentAttendance: React.FC = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<ServiceAttendanceRecord[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -128,7 +102,7 @@ const StudentAttendance: React.FC = () => {
   const [attendanceData, setAttendanceData] = useState<{ [key: string]: 'present' | 'absent' | 'late' | 'half-day' }>({});
   const [remarks, setRemarks] = useState<{ [key: string]: string }>({});
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<ServiceAttendanceRecord | null>(null);
   const [editForm, setEditForm] = useState({
     status: 'present' as 'present' | 'absent' | 'late' | 'half-day',
     remarks: '',
@@ -182,7 +156,7 @@ const StudentAttendance: React.FC = () => {
     try {
       setLoadingClasses(true);
       console.log('Fetching available classes...');
-      const response = await classService.getClasses(selectedSession);
+      const response = await classService.getClasses({ session: selectedSession });
       console.log('Classes response:', response);
       if (response.success) {
         // Show all classes (remove isActive filter since most classes have isActive: false)
@@ -273,13 +247,13 @@ const StudentAttendance: React.FC = () => {
 
       const response = await attendanceService.getAttendanceByDate(selectedDate, selectedClassData._id, selectedSession);
       if (response && response.data) {
-        setAttendanceRecords(response.data);
+        setAttendanceRecords(response.data as ServiceAttendanceRecord[]);
         
         // Update attendance data with existing records
         const existingData: { [key: string]: 'present' | 'absent' | 'late' | 'half-day' } = {};
         const existingRemarks: { [key: string]: string } = {};
         
-        response.data.forEach((record: AttendanceRecord) => {
+        response.data.forEach((record: ServiceAttendanceRecord) => {
           existingData[record.studentId._id] = record.status;
           if (record.remarks) {
             existingRemarks[record.studentId._id] = record.remarks;
@@ -360,7 +334,7 @@ const StudentAttendance: React.FC = () => {
     }
   };
 
-  const handleEditAttendance = (record: AttendanceRecord) => {
+  const handleEditAttendance = (record: ServiceAttendanceRecord) => {
     setEditingRecord(record);
     setEditForm({
       status: record.status,

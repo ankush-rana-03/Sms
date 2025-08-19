@@ -11,7 +11,8 @@ const {
   getDeletedStudents,
   approveStudent,
   getStudentAttendance,
-  getAllStudentsTest
+  getAllStudentsTest,
+  getStudentsByClass
 } = require('../controllers/students');
 
 // Test route (no authentication required for debugging)
@@ -31,5 +32,8 @@ router.delete('/:studentId/permanent', protect, authorize('admin', 'principal'),
 
 // Attendance routes
 router.get('/:studentId/attendance', protect, authorize('teacher', 'admin'), getStudentAttendance);
+
+// Get students by class
+router.get('/class/:classId', protect, authorize('teacher', 'admin'), getStudentsByClass);
 
 module.exports = router;

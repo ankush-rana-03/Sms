@@ -41,6 +41,9 @@ import {
 
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import attendanceService from '../services/attendanceService';
+import classService from '../services/classService';
+import studentService from '../services/studentService';
 
 interface Student {
   id: string;
@@ -84,20 +87,8 @@ const Attendance: React.FC = () => {
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
 
-  // Mock data - in real app, this would come from API
-  const mockStudents: Student[] = [
-    { id: '1', name: 'John Doe', rollNumber: '001', parentPhone: '+919876543210', status: 'present' },
-    { id: '2', name: 'Jane Smith', rollNumber: '002', parentPhone: '+919876543211', status: 'absent' },
-    { id: '3', name: 'Mike Johnson', rollNumber: '003', parentPhone: '+919876543212', status: 'present' },
-    { id: '4', name: 'Sarah Wilson', rollNumber: '004', parentPhone: '+919876543213', status: 'late' },
-  ];
-
-  const classes = [
-    { id: '1', name: 'Class 10A' },
-    { id: '2', name: 'Class 10B' },
-    { id: '3', name: 'Class 9A' },
-    { id: '4', name: 'Class 9B' },
-  ];
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -131,9 +122,32 @@ const Attendance: React.FC = () => {
     return false;
   };
 
-  const handleClassChange = (classId: string) => {
+  const handleClassChange = async (classId: string) => {
     setSelectedClass(classId);
-    setStudents(mockStudents); // In real app, fetch students for this class
+    setLoading(true);
+    try {
+      // Fetch students for the selected class
+      const response = await studentService.getStudentsByClass(classId);
+      if (response.success) {
+        const studentsWithStatus = response.data.map((student: any) => ({
+          id: student._id,
+          name: student.name,
+          rollNumber: student.rollNumber,
+          parentPhone: student.parentPhone,
+          status: 'present' as const // Default status
+        }));
+        setStudents(studentsWithStatus);
+      }
+    } catch (error: any) {
+      console.error('Error fetching students:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error loading students. Please try again.',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStatusChange = (studentId: string, status: Student['status']) => {
@@ -167,34 +181,30 @@ const Attendance: React.FC = () => {
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.bulkMarkAttendance({
-      //   classId: selectedClass,
-      //   date: selectedDate,
-      //   attendanceData: students.map(student => ({
-      //     studentId: student.id,
-      //     status: student.status,
-      //     remarks: ''
-      //   }))
-      // });
+      // Call the real API
+      const attendanceData = students.map(student => ({
+        studentId: student.id,
+        status: student.status,
+        date: selectedDate,
+        remarks: ''
+      }));
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await attendanceService.markBulkAttendance(attendanceData);
 
       setSnackbar({
         open: true,
-        message: 'Attendance marked successfully! Notifications sent to parents.',
+        message: result.message || 'Attendance marked successfully!',
         severity: 'success'
       });
 
       // Switch to view mode after saving
       setViewMode('view');
       fetchAttendanceHistory();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving attendance:', error);
       setSnackbar({
         open: true,
-        message: 'Error saving attendance. Please try again.',
+        message: error.message || 'Error saving attendance. Please try again.',
         severity: 'error'
       });
     } finally {
@@ -207,50 +217,39 @@ const Attendance: React.FC = () => {
 
     setLoading(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      // Call the real API
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
       
-      // Mock data
-      const mockHistory: AttendanceRecord[] = students.map(student => ({
-        id: `att_${student.id}_${selectedDate}`,
-        student: {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          parentPhone: student.parentPhone
-        },
-        date: selectedDate,
-        status: student.status,
-        markedBy: user?.name || 'Unknown',
-        remarks: ''
-      }));
-
-      setAttendanceHistory(mockHistory);
-    } catch (error) {
+      if (result.success) {
+        setAttendanceHistory(result.data);
+      }
+    } catch (error: any) {
       console.error('Error fetching attendance history:', error);
+      setSnackbar({
+        open: true,
+        message: error.message || 'Error loading attendance history.',
+        severity: 'error'
+      });
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, students, user?.name]);
+  }, [selectedClass, selectedDate, user?.name]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // await attendanceService.updateAttendance(editingAttendance.id, {
-      //   status: editStatus,
-      //   remarks: editRemarks
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the real API
+      const result = await attendanceService.updateAttendance(editingAttendance._id, {
+        status: editStatus,
+        remarks: editRemarks
+      });
 
       // Update local state
       setAttendanceHistory(prev =>
         prev.map(record =>
-          record.id === editingAttendance.id
+          record._id === editingAttendance._id
             ? { ...record, status: editStatus, remarks: editRemarks }
             : record
         )
@@ -258,17 +257,17 @@ const Attendance: React.FC = () => {
 
       setSnackbar({
         open: true,
-        message: 'Attendance updated successfully! Notification sent to parent.',
+        message: result.message || 'Attendance updated successfully!',
         severity: 'success'
       });
 
       setEditDialogOpen(false);
       setEditingAttendance(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating attendance:', error);
       setSnackbar({
         open: true,
-        message: 'Error updating attendance. Please try again.',
+        message: error.message || 'Error updating attendance. Please try again.',
         severity: 'error'
       });
     } finally {
@@ -295,6 +294,30 @@ const Attendance: React.FC = () => {
       default: return 'default';
     }
   };
+
+  // Fetch classes on component mount
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoadingClasses(true);
+        const response = await classService.getAvailableClassesForRegistration();
+        if (response.success) {
+          setClasses(response.data.classes);
+        }
+      } catch (error: any) {
+        console.error('Error fetching classes:', error);
+        setSnackbar({
+          open: true,
+          message: 'Error loading classes. Please try again.',
+          severity: 'error'
+        });
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+
+    fetchClasses();
+  }, []);
 
   useEffect(() => {
     if (selectedClass && selectedDate) {
@@ -343,12 +366,17 @@ const Attendance: React.FC = () => {
                 value={selectedClass}
                 label="Class"
                 onChange={(e) => handleClassChange(e.target.value)}
+                disabled={loadingClasses}
               >
-                {classes.map((cls) => (
-                  <MenuItem key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </MenuItem>
-                ))}
+                {loadingClasses ? (
+                  <MenuItem disabled>Loading classes...</MenuItem>
+                ) : (
+                  classes.map((cls) => (
+                    <MenuItem key={cls._id} value={cls._id}>
+                      {cls.name} - {cls.section}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
 
@@ -476,9 +504,9 @@ const Attendance: React.FC = () => {
                       </TableHead>
                       <TableBody>
                         {attendanceHistory.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell>{record.student.name}</TableCell>
-                            <TableCell>{record.student.rollNumber}</TableCell>
+                          <TableRow key={record._id}>
+                            <TableCell>{record.studentId.name}</TableCell>
+                            <TableCell>{record.studentId.rollNumber}</TableCell>
                             <TableCell>
                               <Chip
                                 icon={getStatusIcon(record.status)}
@@ -487,7 +515,7 @@ const Attendance: React.FC = () => {
                                 size="small"
                               />
                             </TableCell>
-                            <TableCell>{record.markedBy}</TableCell>
+                            <TableCell>{record.markedBy.name}</TableCell>
                             <TableCell>
                               {canEditAttendance(record.date) && (
                                 <Tooltip title="Edit Attendance">
@@ -527,7 +555,7 @@ const Attendance: React.FC = () => {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              {editingAttendance?.student.name} - {editingAttendance?.student.rollNumber}
+              {editingAttendance?.studentId.name} - {editingAttendance?.studentId.rollNumber}
             </Typography>
             
             <FormControl fullWidth sx={{ mb: 2 }}>

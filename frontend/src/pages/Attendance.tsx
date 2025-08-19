@@ -41,27 +41,48 @@ import {
 
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import attendanceService from '../services/attendanceService';
+import studentService from '../services/studentService';
+import classService from '../services/classService';
 
 interface Student {
-  id: string;
+  _id: string;
   name: string;
   rollNumber: string;
   parentPhone: string;
+  grade: string;
+  section: string;
   status: 'present' | 'absent' | 'late' | 'half-day';
 }
 
 interface AttendanceRecord {
-  id: string;
-  student: {
-    id: string;
+  _id: string;
+  studentId: {
+    _id: string;
     name: string;
     rollNumber: string;
     parentPhone: string;
   };
+  classId: {
+    _id: string;
+    name: string;
+    section: string;
+  };
   date: string;
   status: 'present' | 'absent' | 'late' | 'half-day';
-  markedBy: string;
+  markedBy: {
+    _id: string;
+    name: string;
+  };
   remarks?: string;
+}
+
+interface Class {
+  _id: string;
+  name: string;
+  section: string;
+  academicYear: string;
+  session: string;
 }
 
 const Attendance: React.FC = () => {
@@ -69,10 +90,12 @@ const Attendance: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'mark' | 'view'>('mark');
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const [editingAttendance, setEditingAttendance] = useState<AttendanceRecord | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -83,21 +106,6 @@ const Attendance: React.FC = () => {
     message: string;
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
-
-  // Mock data - in real app, this would come from API
-  const mockStudents: Student[] = [
-    { id: '1', name: 'John Doe', rollNumber: '001', parentPhone: '+919876543210', status: 'present' },
-    { id: '2', name: 'Jane Smith', rollNumber: '002', parentPhone: '+919876543211', status: 'absent' },
-    { id: '3', name: 'Mike Johnson', rollNumber: '003', parentPhone: '+919876543212', status: 'present' },
-    { id: '4', name: 'Sarah Wilson', rollNumber: '004', parentPhone: '+919876543213', status: 'late' },
-  ];
-
-  const classes = [
-    { id: '1', name: 'Class 10A' },
-    { id: '2', name: 'Class 10B' },
-    { id: '3', name: 'Class 9A' },
-    { id: '4', name: 'Class 9B' },
-  ];
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -131,15 +139,67 @@ const Attendance: React.FC = () => {
     return false;
   };
 
+  // Fetch classes from API
+  const fetchClasses = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await classService.getClasses();
+      setClasses(response.data);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error loading classes. Please try again.',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch students for selected class
+  const fetchStudentsForClass = useCallback(async (classId: string) => {
+    if (!classId) return;
+    
+    try {
+      setLoadingStudents(true);
+      const selectedClassData = classes.find(cls => cls._id === classId);
+      if (!selectedClassData) return;
+
+      const response = await studentService.getStudents({
+        grade: selectedClassData.name,
+        section: selectedClassData.section,
+        limit: 100 // Get all students in class
+      });
+
+      // Initialize all students with 'present' status for marking
+      const studentsWithStatus = response.data.map(student => ({
+        ...student,
+        status: 'present' as const
+      }));
+
+      setStudents(studentsWithStatus);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error loading students. Please try again.',
+        severity: 'error'
+      });
+    } finally {
+      setLoadingStudents(false);
+    }
+  }, [classes]);
+
   const handleClassChange = (classId: string) => {
     setSelectedClass(classId);
-    setStudents(mockStudents); // In real app, fetch students for this class
+    fetchStudentsForClass(classId);
   };
 
   const handleStatusChange = (studentId: string, status: Student['status']) => {
     setStudents(prev =>
       prev.map(student =>
-        student.id === studentId ? { ...student, status } : student
+        student._id === studentId ? { ...student, status } : student
       )
     );
   };
@@ -167,23 +227,19 @@ const Attendance: React.FC = () => {
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.bulkMarkAttendance({
-      //   classId: selectedClass,
-      //   date: selectedDate,
-      //   attendanceData: students.map(student => ({
-      //     studentId: student.id,
-      //     status: student.status,
-      //     remarks: ''
-      //   }))
-      // });
+      // Prepare attendance data for bulk marking
+      const attendanceData = students.map(student => ({
+        studentId: student._id,
+        status: student.status,
+        date: selectedDate,
+        remarks: ''
+      }));
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await attendanceService.markBulkAttendance(attendanceData);
 
       setSnackbar({
         open: true,
-        message: 'Attendance marked successfully! Notifications sent to parents.',
+        message: result.message || 'Attendance marked successfully!',
         severity: 'success'
       });
 
@@ -194,7 +250,7 @@ const Attendance: React.FC = () => {
       console.error('Error saving attendance:', error);
       setSnackbar({
         open: true,
-        message: 'Error saving attendance. Please try again.',
+        message: error instanceof Error ? error.message : 'Error saving attendance. Please try again.',
         severity: 'error'
       });
     } finally {
@@ -207,50 +263,34 @@ const Attendance: React.FC = () => {
 
     setLoading(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
-      
-      // Mock data
-      const mockHistory: AttendanceRecord[] = students.map(student => ({
-        id: `att_${student.id}_${selectedDate}`,
-        student: {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          parentPhone: student.parentPhone
-        },
-        date: selectedDate,
-        status: student.status,
-        markedBy: user?.name || 'Unknown',
-        remarks: ''
-      }));
-
-      setAttendanceHistory(mockHistory);
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      setAttendanceHistory(result.data);
     } catch (error) {
       console.error('Error fetching attendance history:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error loading attendance history. Please try again.',
+        severity: 'error'
+      });
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, students, user?.name]);
+  }, [selectedClass, selectedDate]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // await attendanceService.updateAttendance(editingAttendance.id, {
-      //   status: editStatus,
-      //   remarks: editRemarks
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const result = await attendanceService.updateAttendance(editingAttendance._id, {
+        status: editStatus,
+        remarks: editRemarks
+      });
 
       // Update local state
       setAttendanceHistory(prev =>
         prev.map(record =>
-          record.id === editingAttendance.id
+          record._id === editingAttendance._id
             ? { ...record, status: editStatus, remarks: editRemarks }
             : record
         )
@@ -258,7 +298,7 @@ const Attendance: React.FC = () => {
 
       setSnackbar({
         open: true,
-        message: 'Attendance updated successfully! Notification sent to parent.',
+        message: result.message || 'Attendance updated successfully!',
         severity: 'success'
       });
 
@@ -268,7 +308,7 @@ const Attendance: React.FC = () => {
       console.error('Error updating attendance:', error);
       setSnackbar({
         open: true,
-        message: 'Error updating attendance. Please try again.',
+        message: error instanceof Error ? error.message : 'Error updating attendance. Please try again.',
         severity: 'error'
       });
     } finally {
@@ -295,6 +335,11 @@ const Attendance: React.FC = () => {
       default: return 'default';
     }
   };
+
+  // Fetch classes when component mounts
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
 
   useEffect(() => {
     if (selectedClass && selectedDate) {
@@ -343,14 +388,24 @@ const Attendance: React.FC = () => {
                 value={selectedClass}
                 label="Class"
                 onChange={(e) => handleClassChange(e.target.value)}
+                disabled={loading}
               >
                 {classes.map((cls) => (
-                  <MenuItem key={cls.id} value={cls.id}>
-                    {cls.name}
+                  <MenuItem key={cls._id} value={cls._id}>
+                    {cls.name} - {cls.section}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
+
+            {loadingStudents && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={20} />
+                <Typography variant="body2" sx={{ ml: 1 }}>
+                  Loading students...
+                </Typography>
+              </Box>
+            )}
 
             <TextField
               fullWidth
@@ -401,10 +456,17 @@ const Attendance: React.FC = () => {
                   </Button>
                 </Box>
 
-                {students.length > 0 ? (
+                {loadingStudents ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                    <CircularProgress />
+                    <Typography variant="body1" sx={{ ml: 2 }}>
+                      Loading students...
+                    </Typography>
+                  </Box>
+                ) : students.length > 0 ? (
                   <Grid container spacing={2}>
                     {students.map((student) => (
-                      <Grid item xs={12} sm={6} key={student.id}>
+                      <Grid item xs={12} sm={6} key={student._id}>
                         <Card>
                           <CardContent>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -413,12 +475,9 @@ const Attendance: React.FC = () => {
                                 <Typography variant="body2" color="text.secondary">
                                   Roll No: {student.rollNumber}
                                 </Typography>
-                                <Chip
-                                  label="Parent notified"
-                                  size="small"
-                                  color="success"
-                                  sx={{ mt: 1 }}
-                                />
+                                <Typography variant="body2" color="text.secondary">
+                                  Grade: {student.grade} - {student.section}
+                                </Typography>
                               </Box>
                               
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -426,7 +485,7 @@ const Attendance: React.FC = () => {
                                 <FormControl size="small">
                                   <Select
                                     value={student.status}
-                                    onChange={(e) => handleStatusChange(student.id, e.target.value as Student['status'])}
+                                    onChange={(e) => handleStatusChange(student._id, e.target.value as Student['status'])}
                                   >
                                     <MenuItem value="present">Present</MenuItem>
                                     <MenuItem value="absent">Absent</MenuItem>
@@ -441,6 +500,10 @@ const Attendance: React.FC = () => {
                       </Grid>
                     ))}
                   </Grid>
+                ) : selectedClass ? (
+                  <Alert severity="info">
+                    No students found in this class
+                  </Alert>
                 ) : (
                   <Alert severity="info">
                     Select a class to view students
@@ -476,9 +539,9 @@ const Attendance: React.FC = () => {
                       </TableHead>
                       <TableBody>
                         {attendanceHistory.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell>{record.student.name}</TableCell>
-                            <TableCell>{record.student.rollNumber}</TableCell>
+                          <TableRow key={record._id}>
+                            <TableCell>{record.studentId.name}</TableCell>
+                            <TableCell>{record.studentId.rollNumber}</TableCell>
                             <TableCell>
                               <Chip
                                 icon={getStatusIcon(record.status)}
@@ -487,7 +550,7 @@ const Attendance: React.FC = () => {
                                 size="small"
                               />
                             </TableCell>
-                            <TableCell>{record.markedBy}</TableCell>
+                            <TableCell>{record.markedBy.name}</TableCell>
                             <TableCell>
                               {canEditAttendance(record.date) && (
                                 <Tooltip title="Edit Attendance">
@@ -527,7 +590,7 @@ const Attendance: React.FC = () => {
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              {editingAttendance?.student.name} - {editingAttendance?.student.rollNumber}
+              {editingAttendance?.studentId.name} - {editingAttendance?.studentId.rollNumber}
             </Typography>
             
             <FormControl fullWidth sx={{ mb: 2 }}>

@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const mongoose = require('./backend/node_modules/mongoose');
+const bcrypt = require('./backend/node_modules/bcryptjs');
 require('dotenv').config();
 
 // Import models

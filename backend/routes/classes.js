@@ -489,6 +489,43 @@ router.delete('/:classId/class-teacher', protect, authorize('admin', 'principal'
   }
 });
 
+// Get students in a specific class
+router.get('/:classId/students', protect, authorize('admin', 'principal', 'teacher'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    
+    // Find the class
+    const classData = await Class.findById(classId);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    // Find students in this class
+    const Student = require('../models/Student');
+    const students = await Student.find({
+      grade: classData.name,
+      section: classData.section,
+      currentSession: classData.session,
+      deletedAt: null // Only active students
+    }).select('_id name rollNumber parentPhone grade section currentSession');
+
+    res.status(200).json({
+      success: true,
+      data: students
+    });
+  } catch (error) {
+    console.error('Error fetching class students:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching class students',
+      error: error.message
+    });
+  }
+});
+
 // Get available classes and sections for student registration
 router.get('/available-for-registration', protect, async (req, res) => {
   try {

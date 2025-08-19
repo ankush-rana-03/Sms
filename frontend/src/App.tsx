@@ -25,6 +25,7 @@ import LoginDebug from './components/LoginDebug';
 
 import TeacherAttendance from './pages/TeacherAttendance';
 import TeacherManagement from './pages/TeacherManagement';
+import AttendanceDebug from './pages/AttendanceDebug';
 
 // Import custom theme
 import theme from './theme';
@@ -55,6 +56,7 @@ const App: React.FC = () => {
             <Routes>
 
               <Route path="/debug" element={<LoginDebug />} />
+              <Route path="/debug-attendance" element={<AttendanceDebug />} />
               <Route path="/login" element={<Login />} />
               <Route
                 path="/"

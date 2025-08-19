@@ -37,6 +37,17 @@ class ClassService {
       throw new Error(error.response?.data?.message || 'Failed to fetch classes');
     }
   }
+
+  // Get students for a specific class
+  async getClassStudents(classId: string): Promise<{ success: boolean; data: any[] }> {
+    try {
+      const response = await api.get<{ success: boolean; data: any[] }>(`/classes/${classId}/students`);
+      return response;
+    } catch (error: any) {
+      console.error('Error fetching class students:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch class students');
+    }
+  }
 }
 
 const classService = new ClassService();

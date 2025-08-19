@@ -33,7 +33,8 @@ import {
   CardContent,
   Avatar,
   IconButton,
-  Tooltip
+  Tooltip,
+  Snackbar
 } from '@mui/material';
 import {
   Save,
@@ -158,32 +159,44 @@ const TeacherAttendance: React.FC = () => {
 
     setLoading(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.getAttendanceByDate(selectedDate, selectedGrade);
+      // Find the class ID for the selected grade and section
+      const selectedClass = availableClasses.find(cls => 
+        cls.name === selectedGrade && (!selectedSection || cls.section === selectedSection)
+      );
       
-      // Mock data
-      const mockHistory = students.map(student => ({
-        id: `att_${student.id}_${selectedDate}`,
-        student: {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          parentPhone: student.parentPhone || '+919876543210'
-        },
-        date: selectedDate,
-        status: 'present' as const,
-        markedBy: user?.name || 'Unknown',
-        remarks: ''
-      }));
+      if (!selectedClass) {
+        setAttendanceHistory([]);
+        return;
+      }
 
-      setAttendanceHistory(mockHistory);
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass._id);
+      
+      if (result.success) {
+        // Transform the data to match our interface
+        const transformedHistory = result.data.map((record: any) => ({
+          id: record._id,
+          student: {
+            id: record.studentId._id,
+            name: record.studentId.name,
+            rollNumber: record.studentId.rollNumber,
+            parentPhone: record.studentId.parentPhone || ''
+          },
+          date: record.date,
+          status: record.status,
+          markedBy: record.markedBy?.name || 'Unknown',
+          remarks: record.remarks || ''
+        }));
+        setAttendanceHistory(transformedHistory);
+      } else {
+        setAttendanceHistory([]);
+      }
     } catch (error: any) {
       console.error('Error fetching attendance history:', error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
-  }, [selectedGrade, selectedDate, students, user?.name]);
+  }, [selectedGrade, selectedSection, selectedDate, availableClasses]);
 
   // Fetch data when selections change
   useEffect(() => {
@@ -196,21 +209,47 @@ const TeacherAttendance: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({ open: false, message: '', severity: 'info' });
 
   const handleBulkSaveAttendance = async () => {
     if (!selectedGrade || students.length === 0) {
+      setError('Please select a class and ensure students are loaded');
+      return;
+    }
+
+    if (!canMarkAttendance(selectedDate)) {
+      setError(user?.role === 'teacher' 
+        ? 'Teachers can only mark attendance for the current day'
+        : 'Cannot mark attendance for future dates');
       return;
     }
 
     setSaving(true);
     try {
-      // In real app, call the API to save all attendance
-      console.log('Saving attendance for all students...');
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Prepare bulk attendance data using today's attendance status
+      const attendanceData = students.map(student => {
+        const existingAttendance = todayAttendance.find(att => att.studentId === student.id);
+        return {
+          studentId: student.id,
+          status: existingAttendance?.todayStatus === 'not_marked' ? 'present' : existingAttendance?.todayStatus || 'present',
+          date: selectedDate,
+          remarks: ''
+        };
+      });
+
+      const result = await attendanceService.markBulkAttendance(attendanceData);
       
       setError(null);
+      setSnackbar({
+        open: true,
+        message: result.message || 'Attendance saved successfully! Notifications sent to parents.',
+        severity: 'success'
+      });
+      
       // Refresh data
       fetchTodayAttendance();
     } catch (error: any) {
@@ -233,11 +272,33 @@ const TeacherAttendance: React.FC = () => {
 
     setSaving(true);
     try {
-      // In real app, call the API to update attendance
-      console.log('Updating attendance:', editingAttendance.id, editStatus, editRemarks);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (editingAttendance.id) {
+        // Update existing attendance record
+        const result = await attendanceService.updateAttendance(editingAttendance.id, {
+          status: editStatus,
+          remarks: editRemarks
+        });
+        
+        setSnackbar({
+          open: true,
+          message: result.message || 'Attendance updated successfully!',
+          severity: 'success'
+        });
+      } else {
+        // Mark new attendance
+        const result = await attendanceService.markAttendance({
+          studentId: editingAttendance.studentId,
+          status: editStatus,
+          date: selectedDate,
+          remarks: editRemarks
+        });
+        
+        setSnackbar({
+          open: true,
+          message: result.message || 'Attendance marked successfully!',
+          severity: 'success'
+        });
+      }
       
       // Update local state
       if (viewMode === 'mark') {
@@ -256,9 +317,14 @@ const TeacherAttendance: React.FC = () => {
       
       setEditDialogOpen(false);
       setEditingAttendance(null);
+      setError(null);
     } catch (error: any) {
       console.error('Error updating attendance:', error);
-      setError(error.message || 'Failed to update attendance');
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to update attendance',
+        severity: 'error'
+      });
     } finally {
       setSaving(false);
     }
@@ -526,6 +592,21 @@ const TeacherAttendance: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -407,6 +407,44 @@ exports.approveStudent = async (req, res) => {
   }
 };
 
+// Get students by class
+exports.getStudentsByClass = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    
+    // Find the class to get grade and section
+    const Class = require('../models/Class');
+    const classData = await Class.findById(classId);
+    
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    // Find students in this class (grade and section)
+    const students = await Student.find({
+      grade: classData.name,
+      section: classData.section,
+      deletedAt: null // Exclude deleted students
+    }).select('name rollNumber parentPhone grade section');
+
+    res.status(200).json({
+      success: true,
+      data: students
+    });
+
+  } catch (error) {
+    console.error('Error fetching students by class:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching students by class',
+      error: error.message
+    });
+  }
+};
+
 // Get attendance records for a student
 exports.getStudentAttendance = async (req, res) => {
   try {

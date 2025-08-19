@@ -221,6 +221,16 @@ class StudentService {
       throw new Error(error.response?.data?.message || 'Failed to approve student');
     }
   }
+
+  // Get students by class
+  async getStudentsByClass(classId: string): Promise<{ success: boolean; data: Student[] }> {
+    try {
+      const response = await api.get<{ success: boolean; data: Student[] }>(`/students/class/${classId}`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch students by class');
+    }
+  }
 }
 
 const studentService = new StudentService();

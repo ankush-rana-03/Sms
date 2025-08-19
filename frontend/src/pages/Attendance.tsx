@@ -38,9 +38,10 @@ import {
   Save,
   Edit,
   Visibility,
-
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import studentService from '../services/studentService';
+import attendanceService from '../services/attendanceService';
 
 interface Student {
   id: string;
@@ -84,20 +85,11 @@ const Attendance: React.FC = () => {
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
 
-  // Mock data - in real app, this would come from API
-  const mockStudents: Student[] = [
-    { id: '1', name: 'John Doe', rollNumber: '001', parentPhone: '+919876543210', status: 'present' },
-    { id: '2', name: 'Jane Smith', rollNumber: '002', parentPhone: '+919876543211', status: 'absent' },
-    { id: '3', name: 'Mike Johnson', rollNumber: '003', parentPhone: '+919876543212', status: 'present' },
-    { id: '4', name: 'Sarah Wilson', rollNumber: '004', parentPhone: '+919876543213', status: 'late' },
-  ];
-
-  const classes = [
-    { id: '1', name: 'Class 10A' },
-    { id: '2', name: 'Class 10B' },
-    { id: '3', name: 'Class 9A' },
-    { id: '4', name: 'Class 9B' },
-  ];
+  // State for classes and sections
+  const [classes, setClasses] = useState<{ id: string; name: string; section: string }[]>([]);
+  const [sections, setSections] = useState<string[]>([]);
+  const [selectedSection, setSelectedSection] = useState('');
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -131,9 +123,55 @@ const Attendance: React.FC = () => {
     return false;
   };
 
-  const handleClassChange = (classId: string) => {
+  const handleClassChange = async (classId: string) => {
     setSelectedClass(classId);
-    setStudents(mockStudents); // In real app, fetch students for this class
+    setStudents([]); // Clear existing students
+    
+    if (!classId) return;
+    
+    try {
+      setLoading(true);
+      // Extract grade and section from classId (assuming format like "10-A" or similar)
+      const [grade, section] = classId.split('-');
+      
+      // Fetch students for this class using the teachers API endpoint
+      const response = await fetch(`/api/teachers/students?grade=${grade}${section ? `&section=${section}` : ''}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch students');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Transform the API response to match our Student interface
+        const transformedStudents: Student[] = data.data.map((student: any) => ({
+          id: student._id,
+          name: student.name,
+          rollNumber: student.rollNumber,
+          parentPhone: student.parentPhone,
+          status: 'present' as const // Default status
+        }));
+        
+        setStudents(transformedStudents);
+      } else {
+        throw new Error(data.message || 'Failed to fetch students');
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error fetching students. Please try again.',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStatusChange = (studentId: string, status: Student['status']) => {
@@ -167,29 +205,29 @@ const Attendance: React.FC = () => {
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.bulkMarkAttendance({
-      //   classId: selectedClass,
-      //   date: selectedDate,
-      //   attendanceData: students.map(student => ({
-      //     studentId: student.id,
-      //     status: student.status,
-      //     remarks: ''
-      //   }))
-      // });
+      // Call the real API
+      const attendanceData = students.map(student => ({
+        studentId: student.id,
+        status: student.status,
+        date: selectedDate,
+        remarks: ''
+      }));
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await attendanceService.markBulkAttendance(attendanceData);
 
-      setSnackbar({
-        open: true,
-        message: 'Attendance marked successfully! Notifications sent to parents.',
-        severity: 'success'
-      });
+      if (result.success) {
+        setSnackbar({
+          open: true,
+          message: 'Attendance marked successfully! Notifications sent to parents.',
+          severity: 'success'
+        });
 
-      // Switch to view mode after saving
-      setViewMode('view');
-      fetchAttendanceHistory();
+        // Switch to view mode after saving
+        setViewMode('view');
+        fetchAttendanceHistory();
+      } else {
+        throw new Error(result.message || 'Failed to save attendance');
+      }
     } catch (error) {
       console.error('Error saving attendance:', error);
       setSnackbar({
@@ -202,68 +240,107 @@ const Attendance: React.FC = () => {
     }
   };
 
+  // Fetch classes and sections
+  const fetchClasses = useCallback(async () => {
+    try {
+      setLoadingClasses(true);
+      const response = await fetch('/api/classes/available-for-registration', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch classes');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const availableClasses = data.data.classes;
+        const classList = availableClasses.map((cls: any) => ({
+          id: `${cls.name}-${cls.sections[0]}`, // Use first section as default
+          name: `Class ${cls.name}`,
+          section: cls.sections[0]
+        }));
+        
+        setClasses(classList);
+        setSections(availableClasses.flatMap((cls: any) => cls.sections));
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error fetching classes. Please try again.',
+        severity: 'error'
+      });
+    } finally {
+      setLoadingClasses(false);
+    }
+  }, []);
+
   const fetchAttendanceHistory = useCallback(async () => {
     if (!selectedClass || !selectedDate) return;
 
     setLoading(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      // Extract grade and section from selectedClass
+      const [grade, section] = selectedClass.split('-');
       
-      // Mock data
-      const mockHistory: AttendanceRecord[] = students.map(student => ({
-        id: `att_${student.id}_${selectedDate}`,
-        student: {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          parentPhone: student.parentPhone
-        },
-        date: selectedDate,
-        status: student.status,
-        markedBy: user?.name || 'Unknown',
-        remarks: ''
-      }));
-
-      setAttendanceHistory(mockHistory);
+      // Call the real API
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      
+      if (result.success) {
+        setAttendanceHistory(result.data);
+      } else {
+        // If no attendance found, create empty records
+        setAttendanceHistory([]);
+      }
     } catch (error) {
       console.error('Error fetching attendance history:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error fetching attendance history. Please try again.',
+        severity: 'error'
+      });
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, students, user?.name]);
+  }, [selectedClass, selectedDate, user?.name]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // await attendanceService.updateAttendance(editingAttendance.id, {
-      //   status: editStatus,
-      //   remarks: editRemarks
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Update local state
-      setAttendanceHistory(prev =>
-        prev.map(record =>
-          record.id === editingAttendance.id
-            ? { ...record, status: editStatus, remarks: editRemarks }
-            : record
-        )
-      );
-
-      setSnackbar({
-        open: true,
-        message: 'Attendance updated successfully! Notification sent to parent.',
-        severity: 'success'
+      // Call the real API
+      const result = await attendanceService.updateAttendance(editingAttendance.id, {
+        status: editStatus,
+        remarks: editRemarks
       });
 
-      setEditDialogOpen(false);
-      setEditingAttendance(null);
+      if (result.success) {
+        // Update local state
+        setAttendanceHistory(prev =>
+          prev.map(record =>
+            record.id === editingAttendance.id
+              ? { ...record, status: editStatus, remarks: editRemarks }
+              : record
+          )
+        );
+
+        setSnackbar({
+          open: true,
+          message: 'Attendance updated successfully! Notification sent to parent.',
+          severity: 'success'
+        });
+
+        setEditDialogOpen(false);
+        setEditingAttendance(null);
+      } else {
+        throw new Error(result.message || 'Failed to update attendance');
+      }
     } catch (error) {
       console.error('Error updating attendance:', error);
       setSnackbar({
@@ -295,6 +372,11 @@ const Attendance: React.FC = () => {
       default: return 'default';
     }
   };
+
+  useEffect(() => {
+    // Fetch classes when component mounts
+    fetchClasses();
+  }, [fetchClasses]);
 
   useEffect(() => {
     if (selectedClass && selectedDate) {
@@ -343,12 +425,20 @@ const Attendance: React.FC = () => {
                 value={selectedClass}
                 label="Class"
                 onChange={(e) => handleClassChange(e.target.value)}
+                disabled={loadingClasses}
               >
-                {classes.map((cls) => (
-                  <MenuItem key={cls.id} value={cls.id}>
-                    {cls.name}
+                {loadingClasses ? (
+                  <MenuItem disabled>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Loading classes...
                   </MenuItem>
-                ))}
+                ) : (
+                  classes.map((cls) => (
+                    <MenuItem key={cls.id} value={cls.id}>
+                      {cls.name} - Section {cls.section}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
 
@@ -401,7 +491,11 @@ const Attendance: React.FC = () => {
                   </Button>
                 </Box>
 
-                {students.length > 0 ? (
+                {loading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : students.length > 0 ? (
                   <Grid container spacing={2}>
                     {students.map((student) => (
                       <Grid item xs={12} sm={6} key={student.id}>
@@ -441,6 +535,10 @@ const Attendance: React.FC = () => {
                       </Grid>
                     ))}
                   </Grid>
+                ) : selectedClass ? (
+                  <Alert severity="info">
+                    No students found in this class
+                  </Alert>
                 ) : (
                   <Alert severity="info">
                     Select a class to view students

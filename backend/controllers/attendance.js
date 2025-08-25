@@ -415,20 +415,34 @@ exports.bulkMarkAttendance = async (req, res, next) => {
 exports.getClassAttendanceStatistics = async (req, res, next) => {
   try {
     const { classId } = req.params;
-    const { date } = req.query;
+    const { date, session } = req.query;
 
     const attendanceDate = new Date(date || new Date());
     attendanceDate.setHours(0, 0, 0, 0);
 
+    // Resolve session name
+    let sessionName = session;
+    if (!sessionName) {
+      const currentSession = await mongoose.model('Session').findOne({ isCurrent: true });
+      sessionName = currentSession?.name;
+    }
+
     const attendance = await Attendance.find({
-      class: classId,
+      classId: classId,
+      ...(sessionName ? { session: sessionName } : {}),
       date: {
         $gte: attendanceDate,
         $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
       }
-    }).populate('student', 'name rollNumber');
+    }).populate('studentId', 'name rollNumber');
 
-    const totalStudents = await Student.countDocuments({ class: classId });
+    // Determine total students from class grade/section and session
+    const classDoc = await Class.findById(classId);
+    let totalStudents = 0;
+    if (classDoc) {
+      const classSession = sessionName || classDoc.session;
+      totalStudents = await Student.countDocuments({ grade: classDoc.name, section: classDoc.section, currentSession: classSession });
+    }
     const presentCount = attendance.filter(a => a.status === 'present').length;
     const absentCount = attendance.filter(a => a.status === 'absent').length;
     const lateCount = attendance.filter(a => a.status === 'late').length;
@@ -456,7 +470,7 @@ exports.getClassAttendanceStatistics = async (req, res, next) => {
 // @access  Private
 exports.getAttendanceDashboard = async (req, res, next) => {
   try {
-    const { date, classId } = req.query;
+    const { date, classId, session } = req.query;
     const today = date ? new Date(date) : new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -468,17 +482,36 @@ exports.getAttendanceDashboard = async (req, res, next) => {
     };
 
     if (classId) {
-      query.class = classId;
+      query.classId = classId;
+    }
+    // Apply session scope
+    if (session) {
+      query.session = session;
+    } else {
+      const currentSession = await mongoose.model('Session').findOne({ isCurrent: true });
+      if (currentSession) query.session = currentSession.name;
     }
 
     const attendance = await Attendance.find(query)
-      .populate('student', 'name rollNumber')
-      .populate('class', 'name section')
+      .populate('studentId', 'name rollNumber')
+      .populate('classId', 'name section')
       .populate('markedBy', 'name');
 
-    const totalStudents = classId 
-      ? await Student.countDocuments({ class: classId })
-      : await Student.countDocuments();
+    let totalStudents = 0;
+    if (classId) {
+      const classDoc = await Class.findById(classId);
+      if (classDoc) {
+        const sessionName = query.session;
+        totalStudents = await Student.countDocuments({ grade: classDoc.name, section: classDoc.section, currentSession: sessionName });
+      }
+    } else {
+      const sessionName = query.session;
+      if (sessionName) {
+        totalStudents = await Student.countDocuments({ currentSession: sessionName });
+      } else {
+        totalStudents = await Student.countDocuments();
+      }
+    }
 
     const presentCount = attendance.filter(a => a.status === 'present').length;
     const absentCount = attendance.filter(a => a.status === 'absent').length;
@@ -509,7 +542,7 @@ exports.getAttendanceDashboard = async (req, res, next) => {
 // @access  Private (Teacher, Admin)
 exports.sendAttendanceNotifications = async (req, res, next) => {
   try {
-    const { date, classId, type } = req.body;
+    const { date, classId, type, session } = req.body;
 
     const attendanceDate = new Date(date || new Date());
     attendanceDate.setHours(0, 0, 0, 0);
@@ -522,25 +555,33 @@ exports.sendAttendanceNotifications = async (req, res, next) => {
     };
 
     if (classId) {
-      query.class = classId;
+      query.classId = classId;
     }
 
     if (type && type !== 'all') {
       query.status = type;
     }
 
+    // Scope by session
+    if (session) {
+      query.session = session;
+    } else {
+      const currentSession = await mongoose.model('Session').findOne({ isCurrent: true });
+      if (currentSession) query.session = currentSession.name;
+    }
+
     const attendance = await Attendance.find(query)
-      .populate('student', 'name parentPhone')
-      .populate('class', 'name section');
+      .populate('studentId', 'name parentPhone')
+      .populate('classId', 'name section');
 
     const notifications = [];
     let sentCount = 0;
 
     for (const record of attendance) {
-      if (record.student.parentPhone) {
-        const message = `Dear Parent, ${record.student.name} was ${record.status} on ${attendanceDate.toLocaleDateString()}. Please ensure regular attendance.`;
+      if (record.studentId && record.studentId.parentPhone) {
+        const message = `Dear Parent, ${record.studentId.name} was ${record.status} on ${attendanceDate.toLocaleDateString()}. Please ensure regular attendance.`;
         notifications.push({
-          phone: record.student.parentPhone,
+          phone: record.studentId.parentPhone,
           message
         });
         sentCount++;

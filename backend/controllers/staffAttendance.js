@@ -36,8 +36,14 @@ exports.staffCheckIn = async (req, res, next) => {
       existingAttendance.status = 'present';
       attendance = await existingAttendance.save();
     } else {
+      // Resolve session name for staff attendance
+      let sessionName = null;
+      const Session = require('../models/Session');
+      const currentSession = await Session.findOne({ isCurrent: true });
+      sessionName = currentSession?.name || null;
       attendance = await StaffAttendance.create({
         staffId,
+        session: sessionName,
         date: today,
         checkIn: {
           time: new Date(),
@@ -128,7 +134,7 @@ exports.markStaffAttendance = async (req, res, next) => {
     const attendanceDate = new Date(date || new Date());
     attendanceDate.setHours(0, 0, 0, 0);
 
-    // Check if attendance already exists
+    // Check if attendance already exists (by day and session)
     const existingAttendance = await StaffAttendance.findOne({
       staffId,
       date: {
@@ -141,9 +147,16 @@ exports.markStaffAttendance = async (req, res, next) => {
       return next(new ErrorResponse('Attendance already marked for this date', 400));
     }
 
+    // Resolve session name
+    let sessionName = null;
+    const Session = require('../models/Session');
+    const currentSession = await Session.findOne({ isCurrent: true });
+    sessionName = currentSession?.name || null;
+
     // Create attendance record
     const attendanceData = {
       staffId,
+      session: sessionName,
       date: attendanceDate,
       status,
       markedBy: req.user.id,
@@ -193,7 +206,7 @@ exports.markStaffAttendance = async (req, res, next) => {
 exports.getStaffAttendanceByDate = async (req, res, next) => {
   try {
     const { date } = req.params;
-    const { department } = req.query;
+    const { department, session } = req.query;
 
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
@@ -204,6 +217,15 @@ exports.getStaffAttendanceByDate = async (req, res, next) => {
         $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
       }
     };
+
+    // Scope by session if provided, otherwise default to current
+    if (session) {
+      query.session = session;
+    } else {
+      const Session = require('../models/Session');
+      const currentSession = await Session.findOne({ isCurrent: true });
+      if (currentSession) query.session = currentSession.name;
+    }
 
     const attendance = await StaffAttendance.find(query)
       .populate('staffId', 'name email role department')

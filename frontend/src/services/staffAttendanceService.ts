@@ -107,10 +107,11 @@ class StaffAttendanceService {
   }
 
   // Get staff attendance by date (Admin/Principal)
-  async getAttendanceByDate(date: string, department?: string): Promise<{ success: boolean; count: number; data: StaffAttendance[] }> {
+  async getAttendanceByDate(date: string, department?: string, session?: string): Promise<{ success: boolean; count: number; data: StaffAttendance[] }> {
     try {
       const query = new URLSearchParams();
       if (department) query.set('department', department);
+      if (session) query.set('session', session);
 
       const response = await api.get<{ success: boolean; count: number; data: StaffAttendance[] }>(`/staff-attendance/date/${date}?${query.toString()}`);
       return response;
@@ -172,10 +173,11 @@ class StaffAttendanceService {
   }
 
   // Get staff attendance dashboard (Admin/Principal)
-  async getDashboard(date?: string): Promise<{ success: boolean; data: StaffAttendanceDashboard }> {
+  async getDashboard(date?: string, session?: string): Promise<{ success: boolean; data: StaffAttendanceDashboard }> {
     try {
       const query = new URLSearchParams();
       if (date) query.set('date', date);
+      if (session) query.set('session', session);
 
       const response = await api.get<{ success: boolean; data: StaffAttendanceDashboard }>(`/staff-attendance/dashboard?${query.toString()}`);
       return response;

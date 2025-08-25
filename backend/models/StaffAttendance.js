@@ -6,6 +6,11 @@ const staffAttendanceSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  // Academic session identifier (e.g., '2025-2026')
+  session: {
+    type: String,
+    default: null
+  },
   date: {
     type: Date,
     required: true,
@@ -89,8 +94,8 @@ const staffAttendanceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for staff and date (one record per staff per day)
-staffAttendanceSchema.index({ staffId: 1, date: 1 }, { unique: true });
+// Compound index for staff, date, and session (one record per staff/day/session)
+staffAttendanceSchema.index({ staffId: 1, date: 1, session: 1 }, { unique: true });
 
 // Index for date-based queries
 staffAttendanceSchema.index({ date: 1 });

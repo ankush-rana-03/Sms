@@ -25,34 +25,38 @@ exports.markAttendance = async (req, res, next) => {
       return next(new ErrorResponse('Student not found', 404));
     }
 
-    // Find class based on student's grade and section
-    let classData = await Class.findOne({
-      name: student.grade,
-      section: student.section,
-      session: student.currentSession || '2025-2026'
-    });
-
-    if (!classData) {
-      // Auto-create class for this session if missing
-      const sessionDoc = await mongoose.model('Session').findOne({ name: student.currentSession || sessionFromBody });
-      classData = await Class.create({
-        name: student.grade,
-        section: student.section,
-        academicYear: sessionDoc?.academicYear || (student.currentSession || ''),
-        session: student.currentSession || sessionFromBody || (sessionDoc?.name || ''),
-        capacity: 30,
-        isActiveSession: true
-      });
-    }
-
-    // Resolve session to use
+    // Resolve session to use in strict priority: request -> student.currentSession -> current Session document
     let sessionName = sessionFromBody;
     if (!sessionName) {
       sessionName = student.currentSession || null;
       if (!sessionName) {
         const currentSessionDoc = await mongoose.model('Session').findOne({ isCurrent: true });
-        sessionName = currentSessionDoc?.name || '2025-2026';
+        sessionName = currentSessionDoc?.name || null;
       }
+    }
+
+    if (!sessionName) {
+      return next(new ErrorResponse('No active session found to record attendance', 400));
+    }
+
+    // Find class based on student's grade and section for the resolved session
+    let classData = await Class.findOne({
+      name: student.grade,
+      section: student.section,
+      session: sessionName
+    });
+
+    if (!classData) {
+      // Auto-create class for this session if missing
+      const sessionDoc = await mongoose.model('Session').findOne({ name: sessionName });
+      classData = await Class.create({
+        name: student.grade,
+        section: student.section,
+        academicYear: sessionDoc?.academicYear || sessionName,
+        session: sessionName,
+        capacity: 30,
+        isActiveSession: true
+      });
     }
 
     // Check if attendance already marked for the specified date and session
@@ -114,15 +118,15 @@ exports.getAttendanceByDate = async (req, res, next) => {
       query.classId = classId;
     }
 
-    // If session is specified, filter by it; otherwise use current session
+    // If session is specified, filter by it; otherwise require current session
     if (session) {
       query.session = session;
     } else {
-      // Get current session
       const currentSession = await mongoose.model('Session').findOne({ isCurrent: true });
-      if (currentSession) {
-        query.session = currentSession.name;
+      if (!currentSession) {
+        return next(new ErrorResponse('No active session found', 400));
       }
+      query.session = currentSession.name;
     }
 
     const attendance = await Attendance.find(query)
@@ -149,7 +153,15 @@ exports.getAttendanceRecords = async (req, res, next) => {
     const { session, classId, grade, section, startDate, endDate } = req.query;
 
     const query = {};
-    if (session) query.session = session;
+    if (session) {
+      query.session = session;
+    } else {
+      const currentSession = await mongoose.model('Session').findOne({ isCurrent: true });
+      if (!currentSession) {
+        return next(new ErrorResponse('No active session found', 400));
+      }
+      query.session = currentSession.name;
+    }
     if (classId) query.classId = classId;
     if (startDate && endDate) {
       query.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
@@ -322,8 +334,12 @@ exports.bulkMarkAttendance = async (req, res, next) => {
           sessionToUse = student.currentSession || null;
           if (!sessionToUse) {
             const currentSessionDoc = await mongoose.model('Session').findOne({ isCurrent: true });
-            sessionToUse = currentSessionDoc?.name || '2025-2026';
+            sessionToUse = currentSessionDoc?.name || null;
           }
+        }
+
+        if (!sessionToUse) {
+          throw new Error('No active session found to record attendance');
         }
         
         // Find class based on student's grade and section for the specific session

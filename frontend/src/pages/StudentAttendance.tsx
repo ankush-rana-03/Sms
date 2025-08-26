@@ -677,9 +677,71 @@ const StudentAttendance: React.FC = () => {
                 <Typography variant="h6" gutterBottom>
                   Attendance Reports
                 </Typography>
-                <Alert severity="info">
-                  Attendance reports and analytics will be available here. This feature is under development.
-                </Alert>
+                <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel id="report-class-label">Class</InputLabel>
+                      <Select
+                        labelId="report-class-label"
+                        label="Class"
+                        value={selectedClass}
+                        onChange={(e) => handleClassSelection(e.target.value)}
+                      >
+                        {classes.map((cls) => (
+                          <MenuItem key={cls.id} value={cls.id}>{cls.displayName}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Date"
+                      type="date"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      variant="contained"
+                      onClick={async () => {
+                        if (!selectedClass) { setSnackbar({ open: true, message: 'Select class for report', severity: 'error' }); return; }
+                        setReportLoading(true);
+                        try {
+                          const res = await attendanceService.getClassAttendanceStatistics(selectedClass, reportDate);
+                          setReportStats({
+                            total: res.data.totalStudents,
+                            present: res.data.presentCount,
+                            absent: res.data.absentCount,
+                            late: res.data.lateCount,
+                            halfDay: res.data.halfDayCount,
+                            percentage: res.data.attendancePercentage
+                          });
+                        } catch (e) {
+                          setSnackbar({ open: true, message: 'Failed to fetch report', severity: 'error' });
+                        } finally {
+                          setReportLoading(false);
+                        }
+                      }}
+                      disabled={reportLoading}
+                    >
+                      {reportLoading ? 'Loading...' : 'Generate Report'}
+                    </Button>
+                  </Grid>
+                </Grid>
+
+                {reportStats && reportStats.total !== undefined && (
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} md={2}><Card><CardContent><Typography variant="subtitle2">Total</Typography><Typography variant="h6">{reportStats.total}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={6} md={2}><Card><CardContent><Typography variant="subtitle2">Present</Typography><Typography variant="h6">{reportStats.present}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={6} md={2}><Card><CardContent><Typography variant="subtitle2">Absent</Typography><Typography variant="h6">{reportStats.absent}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={6} md={2}><Card><CardContent><Typography variant="subtitle2">Late</Typography><Typography variant="h6">{reportStats.late}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={6} md={2}><Card><CardContent><Typography variant="subtitle2">Half-day</Typography><Typography variant="h6">{reportStats.halfDay}</Typography></CardContent></Card></Grid>
+                    <Grid item xs={6} md={2}><Card><CardContent><Typography variant="subtitle2">%</Typography><Typography variant="h6">{reportStats.percentage}%</Typography></CardContent></Card></Grid>
+                  </Grid>
+                )}
               </Box>
             )}
           </Paper>

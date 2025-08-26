@@ -79,6 +79,7 @@ const StudentAttendance: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'mark' | 'view' | 'reports'>('mark');
@@ -162,12 +163,60 @@ const StudentAttendance: React.FC = () => {
         status: 'present',
         className: `${s.grade}${s.section || ''}`
       }));
-      setStudents(mapped);
+      setAllStudents(mapped);
+      // Fetch existing attendance for this date/class and filter unmarked for mark view
+      const result = await attendanceService.getAttendanceByDate(selectedDate, classId);
+      const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
+      const unmarked = mapped.filter(s => !markedIds.has(String(s.id)));
+      setStudents(unmarked);
+      // Also update view records
+      const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
+        id: r._id,
+        student: {
+          id: r.studentId?._id,
+          name: r.studentId?.name,
+          rollNumber: r.studentId?.rollNumber,
+          parentPhone: r.studentId?.parentPhone,
+          className: r.classId ? `${r.classId.name}${r.classId.section || ''}` : undefined
+        },
+        date: r.date,
+        status: r.status,
+        markedBy: r.markedBy?.name || 'Unknown',
+        remarks: r.remarks
+      }));
+      setAttendanceHistory(history);
     } catch (e) {
       console.error('Failed to load students', e);
       setStudents([]);
     }
   };
+
+  // When date changes, refresh unmarked and view records for selected class
+  useEffect(() => {
+    const refreshForDate = async () => {
+      if (!selectedClass) return;
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
+      const unmarked = allStudents.filter(s => !markedIds.has(String(s.id)));
+      setStudents(unmarked);
+      const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
+        id: r._id,
+        student: {
+          id: r.studentId?._id,
+          name: r.studentId?.name,
+          rollNumber: r.studentId?.rollNumber,
+          parentPhone: r.studentId?.parentPhone,
+          className: r.classId ? `${r.classId.name}${r.classId.section || ''}` : undefined
+        },
+        date: r.date,
+        status: r.status,
+        markedBy: r.markedBy?.name || 'Unknown',
+        remarks: r.remarks
+      }));
+      setAttendanceHistory(history);
+    };
+    refreshForDate();
+  }, [selectedDate, selectedClass, allStudents]);
 
   const handleStatusChange = (studentId: string, status: Student['status']) => {
     setStudents(prev =>
@@ -251,12 +300,16 @@ const StudentAttendance: React.FC = () => {
         remarks: r.remarks
       }));
       setAttendanceHistory(history);
+      // Also update unmarked list for mark view
+      const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
+      const unmarked = allStudents.filter(s => !markedIds.has(String(s.id)));
+      setStudents(unmarked);
     } catch (error) {
       console.error('Error fetching attendance history:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, user?.name]);
+  }, [selectedClass, selectedDate, allStudents, user?.name]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;

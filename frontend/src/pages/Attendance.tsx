@@ -72,6 +72,7 @@ const Attendance: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'mark' | 'view'>('mark');
@@ -122,12 +123,14 @@ const Attendance: React.FC = () => {
         remarks: r.remarks
       }));
       setAttendanceHistory(history);
+      const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
+      setStudents(allStudents.filter(s => !markedIds.has(String(s.id))));
     } catch (error) {
       console.error('Error fetching attendance history:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, user?.name]);
+  }, [selectedClass, selectedDate, allStudents, user?.name]);
 
   useEffect(() => {
     if (selectedClass && selectedDate) {
@@ -136,6 +139,30 @@ const Attendance: React.FC = () => {
       }
     }
   }, [selectedClass, selectedDate, viewMode, fetchAttendanceHistory]);
+
+  useEffect(() => {
+    const refreshForDate = async () => {
+      if (!selectedClass) return;
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
+      setStudents(allStudents.filter(s => !markedIds.has(String(s.id))));
+      const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
+        id: r._id,
+        student: {
+          id: r.studentId?._id,
+          name: r.studentId?.name,
+          rollNumber: r.studentId?.rollNumber,
+          parentPhone: r.studentId?.parentPhone
+        },
+        date: r.date,
+        status: r.status,
+        markedBy: r.markedBy?.name || 'Unknown',
+        remarks: r.remarks
+      }));
+      setAttendanceHistory(history);
+    };
+    refreshForDate();
+  }, [selectedDate, selectedClass, allStudents]);
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -182,7 +209,24 @@ const Attendance: React.FC = () => {
         parentPhone: s.parentPhone,
         status: 'present'
       }));
-      setStudents(mapped);
+      setAllStudents(mapped);
+      const result = await attendanceService.getAttendanceByDate(selectedDate, classId);
+      const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
+      setStudents(mapped.filter(s => !markedIds.has(String(s.id))));
+      const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
+        id: r._id,
+        student: {
+          id: r.studentId?._id,
+          name: r.studentId?.name,
+          rollNumber: r.studentId?.rollNumber,
+          parentPhone: r.studentId?.parentPhone
+        },
+        date: r.date,
+        status: r.status,
+        markedBy: r.markedBy?.name || 'Unknown',
+        remarks: r.remarks
+      }));
+      setAttendanceHistory(history);
     } catch (e) {
       console.error('Failed to load students', e);
       setStudents([]);

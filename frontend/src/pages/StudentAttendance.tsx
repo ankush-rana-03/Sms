@@ -762,7 +762,7 @@ const StudentAttendance: React.FC = () => {
                                   <TableCell key={date} align="center">
                                     <Chip
                                       icon={getStatusIcon(student.attendance[date] || 'absent')}
-                                      label={student.attendance[date] || 'N/A'}
+                                      label={student.attendance[date] || '-'}
                                       color={getStatusColor(student.attendance[date] || 'absent')}
                                       size="small"
                                     />

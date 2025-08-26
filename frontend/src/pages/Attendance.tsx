@@ -41,6 +41,9 @@ import {
 
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import classService from '../services/classService';
+import studentService from '../services/studentService';
+import attendanceService from '../services/attendanceService';
 
 interface Student {
   id: string;
@@ -84,20 +87,55 @@ const Attendance: React.FC = () => {
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
 
-  // Mock data - in real app, this would come from API
-  const mockStudents: Student[] = [
-    { id: '1', name: 'John Doe', rollNumber: '001', parentPhone: '+919876543210', status: 'present' },
-    { id: '2', name: 'Jane Smith', rollNumber: '002', parentPhone: '+919876543211', status: 'absent' },
-    { id: '3', name: 'Mike Johnson', rollNumber: '003', parentPhone: '+919876543212', status: 'present' },
-    { id: '4', name: 'Sarah Wilson', rollNumber: '004', parentPhone: '+919876543213', status: 'late' },
-  ];
+  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string; section: string; displayName: string }>>([]);
 
-  const classes = [
-    { id: '1', name: 'Class 10A' },
-    { id: '2', name: 'Class 10B' },
-    { id: '3', name: 'Class 9A' },
-    { id: '4', name: 'Class 9B' },
-  ];
+  useEffect(() => {
+    const loadClasses = async () => {
+      try {
+        const res = await classService.getClasses();
+        const mapped = (res.data || []).map((c: any) => ({ id: c._id, name: c.name, section: c.section, displayName: `${c.name}${c.section || ''}` }));
+        setAvailableClasses(mapped);
+      } catch (e) {
+        console.error('Failed to load classes', e);
+      }
+    };
+    loadClasses();
+  }, []);
+
+  const fetchAttendanceHistory = useCallback(async () => {
+    if (!selectedClass || !selectedDate) return;
+
+    setLoading(true);
+    try {
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
+        id: r._id,
+        student: {
+          id: r.studentId?._id,
+          name: r.studentId?.name,
+          rollNumber: r.studentId?.rollNumber,
+          parentPhone: r.studentId?.parentPhone
+        },
+        date: r.date,
+        status: r.status,
+        markedBy: r.markedBy?.name || 'Unknown',
+        remarks: r.remarks
+      }));
+      setAttendanceHistory(history);
+    } catch (error) {
+      console.error('Error fetching attendance history:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedClass, selectedDate, user?.name]);
+
+  useEffect(() => {
+    if (selectedClass && selectedDate) {
+      if (viewMode === 'view') {
+        fetchAttendanceHistory();
+      }
+    }
+  }, [selectedClass, selectedDate, viewMode, fetchAttendanceHistory]);
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -131,9 +169,24 @@ const Attendance: React.FC = () => {
     return false;
   };
 
-  const handleClassChange = (classId: string) => {
+  const handleClassChange = async (classId: string) => {
     setSelectedClass(classId);
-    setStudents(mockStudents); // In real app, fetch students for this class
+    const cls = availableClasses.find(c => c.id === classId);
+    if (!cls) { setStudents([]); return; }
+    try {
+      const res = await studentService.getStudents({ grade: cls.name, section: cls.section });
+      const mapped: Student[] = (res.data || []).map((s: any) => ({
+        id: s._id,
+        name: s.name,
+        rollNumber: s.rollNumber,
+        parentPhone: s.parentPhone,
+        status: 'present'
+      }));
+      setStudents(mapped);
+    } catch (e) {
+      console.error('Failed to load students', e);
+      setStudents([]);
+    }
   };
 
   const handleStatusChange = (studentId: string, status: Student['status']) => {
@@ -167,19 +220,9 @@ const Attendance: React.FC = () => {
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // const result = await attendanceService.bulkMarkAttendance({
-      //   classId: selectedClass,
-      //   date: selectedDate,
-      //   attendanceData: students.map(student => ({
-      //     studentId: student.id,
-      //     status: student.status,
-      //     remarks: ''
-      //   }))
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await attendanceService.markBulkAttendance(
+        students.map(s => ({ studentId: s.id, status: s.status, date: selectedDate, remarks: '' }))
+      );
 
       setSnackbar({
         open: true,
@@ -201,37 +244,6 @@ const Attendance: React.FC = () => {
       setSaving(false);
     }
   };
-
-  const fetchAttendanceHistory = useCallback(async () => {
-    if (!selectedClass || !selectedDate) return;
-
-    setLoading(true);
-    try {
-      // In real app, call the API
-      // const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
-      
-      // Mock data
-      const mockHistory: AttendanceRecord[] = students.map(student => ({
-        id: `att_${student.id}_${selectedDate}`,
-        student: {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          parentPhone: student.parentPhone
-        },
-        date: selectedDate,
-        status: student.status,
-        markedBy: user?.name || 'Unknown',
-        remarks: ''
-      }));
-
-      setAttendanceHistory(mockHistory);
-    } catch (error) {
-      console.error('Error fetching attendance history:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedDate, students, user?.name]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;
@@ -296,14 +308,6 @@ const Attendance: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (selectedClass && selectedDate) {
-      if (viewMode === 'view') {
-        fetchAttendanceHistory();
-      }
-    }
-  }, [selectedClass, selectedDate, viewMode, fetchAttendanceHistory]);
-
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -344,9 +348,9 @@ const Attendance: React.FC = () => {
                 label="Class"
                 onChange={(e) => handleClassChange(e.target.value)}
               >
-                {classes.map((cls) => (
+                {availableClasses.map((cls) => (
                   <MenuItem key={cls.id} value={cls.id}>
-                    {cls.name}
+                    {cls.displayName}
                   </MenuItem>
                 ))}
               </Select>

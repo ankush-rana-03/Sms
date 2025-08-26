@@ -100,18 +100,15 @@ const StudentAttendance: React.FC = () => {
   }>({ open: false, message: '', severity: 'info' });
 
   // Reports state
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportStats, setReportStats] = useState<{ total?: number; present?: number; absent?: number; late?: number; halfDay?: number; percentage?: number }>({});
-  const [reportClassName, setReportClassName] = useState('');
-  const [reportSection, setReportSection] = useState('');
 
   const [classes, setClasses] = useState<Array<{ id: string; name: string; section: string; displayName: string }>>([]);
   const classNames = Array.from(new Set(classes.map(c => c.name)));
   const sectionsForSelectedClass = classes.filter(c => c.name === selectedClassName).map(c => c.section || '');
   const reportClassNames = Array.from(new Set(classes.map(c => c.name)));
-  const reportSections = classes.filter(c => c.name === reportClassName).map(c => c.section || '');
-  const reportClassMatch = classes.find(c => c.name === reportClassName && c.section === reportSection);
+  const reportSections = classes.filter(c => c.name === selectedClassName).map(c => c.section || '');
+  const reportClassMatch = classes.find(c => c.name === selectedClassName && c.section === selectedSection);
   const reportClassId = reportClassMatch ? reportClassMatch.id : '';
 
   const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
@@ -683,75 +680,35 @@ const StudentAttendance: React.FC = () => {
                 <Typography variant="h6" gutterBottom>
                   Attendance Reports
                 </Typography>
-                <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                  <Grid item xs={12} md={4}>
-                    <FormControl fullWidth>
-                      <InputLabel id="report-class-name-label">Class</InputLabel>
-                      <Select
-                        labelId="report-class-name-label"
-                        label="Class"
-                        value={reportClassName}
-                        onChange={(e) => { setReportClassName(e.target.value); setReportSection(''); setReportStats({}); }}
-                      >
-                        {reportClassNames.map(name => (
-                          <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <FormControl fullWidth disabled={!reportClassName}>
-                      <InputLabel id="report-section-label">Section</InputLabel>
-                      <Select
-                        labelId="report-section-label"
-                        label="Section"
-                        value={reportSection}
-                        onChange={(e) => { setReportSection(e.target.value); setReportStats({}); }}
-                      >
-                        {reportSections.map(sec => (
-                          <MenuItem key={sec} value={sec}>{sec || 'A'}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      fullWidth
-                      label="Date"
-                      type="date"
-                      value={reportDate}
-                      onChange={(e) => setReportDate(e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Button
-                      variant="contained"
-                      onClick={async () => {
-                        if (!reportClassId) { setSnackbar({ open: true, message: 'Select class and section for report', severity: 'error' }); return; }
-                        setReportLoading(true);
-                        try {
-                          const res = await attendanceService.getClassAttendanceStatistics(reportClassId, reportDate);
-                          setReportStats({
-                            total: res.data.totalStudents,
-                            present: res.data.presentCount,
-                            absent: res.data.absentCount,
-                            late: res.data.lateCount,
-                            halfDay: res.data.halfDayCount,
-                            percentage: res.data.attendancePercentage
-                          });
-                        } catch (e) {
-                          setSnackbar({ open: true, message: 'Failed to fetch report', severity: 'error' });
-                        } finally {
-                          setReportLoading(false);
-                        }
-                      }}
-                      disabled={reportLoading}
-                    >
-                      {reportLoading ? 'Loading...' : 'Generate Report'}
-                    </Button>
-                  </Grid>
-                </Grid>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Using selected Class/Section and Date from the left panel.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={async () => {
+                    if (!selectedClass) { setSnackbar({ open: true, message: 'Select class and section first', severity: 'error' }); return; }
+                    setReportLoading(true);
+                    try {
+                      const res = await attendanceService.getClassAttendanceStatistics(selectedClass, selectedDate);
+                      setReportStats({
+                        total: res.data.totalStudents,
+                        present: res.data.presentCount,
+                        absent: res.data.absentCount,
+                        late: res.data.lateCount,
+                        halfDay: res.data.halfDayCount,
+                        percentage: res.data.attendancePercentage
+                      });
+                    } catch (e) {
+                      setSnackbar({ open: true, message: 'Failed to fetch report', severity: 'error' });
+                    } finally {
+                      setReportLoading(false);
+                    }
+                  }}
+                  disabled={reportLoading}
+                  sx={{ mb: 2 }}
+                >
+                  {reportLoading ? 'Loading...' : 'Generate Report'}
+                </Button>
 
                 {reportStats && reportStats.total !== undefined && (
                   <Grid container spacing={2}>

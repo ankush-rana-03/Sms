@@ -103,6 +103,8 @@ const StudentAttendance: React.FC = () => {
   const classNames = Array.from(new Set(classes.map(c => c.name)));
   const sectionsForSelectedClass = classes.filter(c => c.name === selectedClassName).map(c => c.section || '');
 
+  const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -405,8 +407,8 @@ const StudentAttendance: React.FC = () => {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          Student Attendance Management
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          Student Attendance
         </Typography>
         
         <Box sx={{ display: 'flex', gap: 2 }}>
@@ -453,7 +455,7 @@ const StudentAttendance: React.FC = () => {
                     onChange={(e) => { setSelectedClassName(e.target.value); setSelectedSection(''); }}
                   >
                     {classNames.map(name => (
-                      <MenuItem key={name} value={name}>{name}</MenuItem>
+                      <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>

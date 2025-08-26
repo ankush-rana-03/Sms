@@ -94,6 +94,8 @@ const Attendance: React.FC = () => {
   const classNames = Array.from(new Set(availableClasses.map(c => c.name)));
   const sectionsForSelectedClass = availableClasses.filter(c => c.name === selectedClassName).map(c => c.section || '');
 
+  const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -365,24 +367,16 @@ const Attendance: React.FC = () => {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          Attendance Management
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>Student Attendance</Typography>
+        <Box>
           <Button
-            variant={viewMode === 'mark' ? 'contained' : 'outlined'}
-            startIcon={<Edit />}
-            onClick={() => setViewMode('mark')}
+            variant="contained"
+            color="primary"
+            startIcon={<Save />}
+            onClick={handleSaveAttendance}
+            disabled={saving || !canMarkAttendance(selectedDate)}
           >
-            Mark Attendance
-          </Button>
-          <Button
-            variant={viewMode === 'view' ? 'contained' : 'outlined'}
-            startIcon={<Visibility />}
-            onClick={() => setViewMode('view')}
-          >
-            View Attendance
+            {saving ? 'Saving...' : 'Save Attendance'}
           </Button>
         </Box>
       </Box>
@@ -406,7 +400,7 @@ const Attendance: React.FC = () => {
                     onChange={(e) => { setSelectedClassName(e.target.value); setSelectedSection(''); }}
                   >
                     {classNames.map(name => (
-                      <MenuItem key={name} value={name}>{name}</MenuItem>
+                      <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>

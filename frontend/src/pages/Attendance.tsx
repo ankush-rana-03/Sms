@@ -431,6 +431,7 @@ const Attendance: React.FC = () => {
               onChange={(e) => setSelectedDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               disabled={viewMode === 'mark' && user?.role === 'teacher'}
+              inputProps={{ max: new Date().toISOString().split('T')[0] }}
             />
 
             {viewMode === 'mark' && (

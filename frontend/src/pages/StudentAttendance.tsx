@@ -545,7 +545,14 @@ const StudentAttendance: React.FC = () => {
                 </Select>
               </FormControl>
               {!rangeMode && (
-                <TextField size="small" type="date" value={selectedDate} onChange={(e)=>setSelectedDate(e.target.value)} InputLabelProps={{ shrink: true }} />
+                <TextField 
+                  size="small" 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={(e)=>setSelectedDate(e.target.value)} 
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ max: new Date().toISOString().split('T')[0] }}
+                />
               )}
             </Box>
             {/* Search Bar */}
@@ -643,8 +650,20 @@ const StudentAttendance: React.FC = () => {
                     </FormControl>
                     {rangeMode ? (
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <TextField size="small" type="date" value={rangeStart} onChange={(e)=>setRangeStart(e.target.value)} />
-                        <TextField size="small" type="date" value={rangeEnd} onChange={(e)=>setRangeEnd(e.target.value)} />
+                        <TextField 
+                          size="small" 
+                          type="date" 
+                          value={rangeStart} 
+                          onChange={(e)=>setRangeStart(e.target.value)} 
+                          inputProps={{ max: new Date().toISOString().split('T')[0] }}
+                        />
+                        <TextField 
+                          size="small" 
+                          type="date" 
+                          value={rangeEnd} 
+                          onChange={(e)=>setRangeEnd(e.target.value)} 
+                          inputProps={{ max: new Date().toISOString().split('T')[0] }}
+                        />
                         <Button size="small" variant="outlined" onClick={async ()=>{
                           if (!selectedClass) { setSnackbar({ open: true, message: 'Select class first', severity: 'error' }); return; }
                           setLoading(true);

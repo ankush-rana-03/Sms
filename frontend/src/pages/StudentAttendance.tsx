@@ -558,7 +558,7 @@ const StudentAttendance: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              {!rangeMode && (
+              {(viewMode !== 'view' || !rangeMode) && (
                 <TextField 
                   size="small" 
                   type="date" 

@@ -142,7 +142,7 @@ const Attendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, allStudents, user?.name]);
+  }, [selectedClass, selectedDate, allStudents]);
 
   useEffect(() => {
     if (selectedClass && selectedDate) {

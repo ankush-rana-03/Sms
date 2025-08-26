@@ -321,7 +321,7 @@ const StudentAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, allStudents, user?.name]);
+  }, [selectedClass, selectedDate, allStudents]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;

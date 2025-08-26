@@ -130,9 +130,11 @@ exports.getAttendanceByDate = async (req, res, next) => {
     }
 
     const attendance = await Attendance.find(query)
-      .populate('studentId', 'name rollNumber')
-      .populate('classId', 'name section')
-      .populate('markedBy', 'name');
+      .select('studentId classId date status remarks markedBy')
+      .populate({ path: 'studentId', select: 'name rollNumber parentPhone', options: { lean: true } })
+      .populate({ path: 'classId', select: 'name section', options: { lean: true } })
+      .populate({ path: 'markedBy', select: 'name', options: { lean: true } })
+      .lean();
 
     res.status(200).json({
       success: true,

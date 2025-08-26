@@ -50,7 +50,7 @@ const attendanceSchema = new mongoose.Schema({
 
 // Compound index for student, date, and session
 attendanceSchema.index({ studentId: 1, date: 1, session: 1 }, { unique: true });
-
-module.exports = mongoose.model('Attendance', attendanceSchema);
 // Additional compound index to optimize class/session/date queries
 attendanceSchema.index({ classId: 1, session: 1, date: 1 });
+
+module.exports = mongoose.model('Attendance', attendanceSchema);

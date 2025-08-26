@@ -301,9 +301,8 @@ const StudentAttendance: React.FC = () => {
         severity: 'success'
       });
 
-      // Switch to view mode after saving
-      setViewMode('view');
-      fetchAttendanceHistory();
+      // Refresh the student list to show updated unmarked students
+      await fetchAttendanceHistory();
     } catch (error) {
       console.error('Error saving attendance:', error);
       setSnackbar({

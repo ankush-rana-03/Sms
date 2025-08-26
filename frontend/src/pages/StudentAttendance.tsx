@@ -103,10 +103,16 @@ const StudentAttendance: React.FC = () => {
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportStats, setReportStats] = useState<{ total?: number; present?: number; absent?: number; late?: number; halfDay?: number; percentage?: number }>({});
+  const [reportClassName, setReportClassName] = useState('');
+  const [reportSection, setReportSection] = useState('');
 
   const [classes, setClasses] = useState<Array<{ id: string; name: string; section: string; displayName: string }>>([]);
   const classNames = Array.from(new Set(classes.map(c => c.name)));
   const sectionsForSelectedClass = classes.filter(c => c.name === selectedClassName).map(c => c.section || '');
+  const reportClassNames = Array.from(new Set(classes.map(c => c.name)));
+  const reportSections = classes.filter(c => c.name === reportClassName).map(c => c.section || '');
+  const reportClassMatch = classes.find(c => c.name === reportClassName && c.section === reportSection);
+  const reportClassId = reportClassMatch ? reportClassMatch.id : '';
 
   const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
@@ -678,22 +684,37 @@ const StudentAttendance: React.FC = () => {
                   Attendance Reports
                 </Typography>
                 <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} md={4}>
                     <FormControl fullWidth>
-                      <InputLabel id="report-class-label">Class</InputLabel>
+                      <InputLabel id="report-class-name-label">Class</InputLabel>
                       <Select
-                        labelId="report-class-label"
+                        labelId="report-class-name-label"
                         label="Class"
-                        value={selectedClass}
-                        onChange={(e) => handleClassSelection(e.target.value)}
+                        value={reportClassName}
+                        onChange={(e) => { setReportClassName(e.target.value); setReportSection(''); setReportStats({}); }}
                       >
-                        {classes.map((cls) => (
-                          <MenuItem key={cls.id} value={cls.id}>{cls.displayName}</MenuItem>
+                        {reportClassNames.map(name => (
+                          <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
                         ))}
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth disabled={!reportClassName}>
+                      <InputLabel id="report-section-label">Section</InputLabel>
+                      <Select
+                        labelId="report-section-label"
+                        label="Section"
+                        value={reportSection}
+                        onChange={(e) => { setReportSection(e.target.value); setReportStats({}); }}
+                      >
+                        {reportSections.map(sec => (
+                          <MenuItem key={sec} value={sec}>{sec || 'A'}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
                     <TextField
                       fullWidth
                       label="Date"
@@ -707,10 +728,10 @@ const StudentAttendance: React.FC = () => {
                     <Button
                       variant="contained"
                       onClick={async () => {
-                        if (!selectedClass) { setSnackbar({ open: true, message: 'Select class for report', severity: 'error' }); return; }
+                        if (!reportClassId) { setSnackbar({ open: true, message: 'Select class and section for report', severity: 'error' }); return; }
                         setReportLoading(true);
                         try {
-                          const res = await attendanceService.getClassAttendanceStatistics(selectedClass, reportDate);
+                          const res = await attendanceService.getClassAttendanceStatistics(reportClassId, reportDate);
                           setReportStats({
                             total: res.data.totalStudents,
                             present: res.data.presentCount,

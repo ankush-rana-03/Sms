@@ -97,6 +97,21 @@ class AttendanceService {
     }
   }
 
+  // Get attendance records by date range
+  async getAttendanceRecords(params: { startDate: string; endDate: string; classId?: string; session?: string }): Promise<{ success: boolean; count: number; data: AttendanceRecord[] }> {
+    try {
+      const query = new URLSearchParams();
+      query.set('startDate', params.startDate);
+      query.set('endDate', params.endDate);
+      if (params.classId) query.set('classId', params.classId);
+      if (params.session) query.set('session', params.session);
+      const response = await api.get<{ success: boolean; count: number; data: AttendanceRecord[] }>(`/attendance/records?${query.toString()}`);
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch attendance records');
+    }
+  }
+
   // Get student attendance report
   async getStudentAttendance(studentId: string, params?: { startDate?: string; endDate?: string; month?: number; year?: number }): Promise<{ success: boolean; data: AttendanceRecord[]; statistics: AttendanceStatistics }> {
     try {

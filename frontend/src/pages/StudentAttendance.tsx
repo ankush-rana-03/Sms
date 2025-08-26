@@ -98,6 +98,9 @@ const StudentAttendance: React.FC = () => {
     message: string;
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeStart, setRangeStart] = useState(new Date().toISOString().split('T')[0]);
+  const [rangeEnd, setRangeEnd] = useState(new Date().toISOString().split('T')[0]);
 
   // Reports state
   const [reportLoading, setReportLoading] = useState(false);
@@ -662,13 +665,50 @@ const StudentAttendance: React.FC = () => {
               </>
             ) : viewMode === 'view' ? (
               <>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
                   <Typography variant="h6">
                     Student Attendance Records
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {selectedDate}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FormControl size="small">
+                      <Select value={rangeMode ? 'range' : 'day'} onChange={(e)=>setRangeMode(e.target.value==='range')}>
+                        <MenuItem value="day">Single Day</MenuItem>
+                        <MenuItem value="range">Date Range</MenuItem>
+                      </Select>
+                    </FormControl>
+                    {rangeMode ? (
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <TextField size="small" type="date" value={rangeStart} onChange={(e)=>setRangeStart(e.target.value)} />
+                        <TextField size="small" type="date" value={rangeEnd} onChange={(e)=>setRangeEnd(e.target.value)} />
+                        <Button size="small" variant="outlined" onClick={async ()=>{
+                          if (!selectedClass) { setSnackbar({ open: true, message: 'Select class first', severity: 'error' }); return; }
+                          setLoading(true);
+                          try {
+                            const res = await attendanceService.getAttendanceRecords({ startDate: rangeStart, endDate: rangeEnd, classId: selectedClass });
+                            const history = (res.data || []).map((r: any) => ({
+                              id: r._id,
+                              student: {
+                                id: r.studentId?._id,
+                                name: r.studentId?.name,
+                                rollNumber: r.studentId?.rollNumber,
+                                parentPhone: r.studentId?.parentPhone,
+                                className: r.classId ? `${r.classId.name}${r.classId.section || ''}` : undefined
+                              },
+                              date: r.date,
+                              status: r.status,
+                              markedBy: r.markedBy?.name || 'Unknown',
+                              remarks: r.remarks
+                            }));
+                            setAttendanceHistory(history);
+                          } catch (e) {
+                            setSnackbar({ open: true, message: 'Failed to fetch range records', severity: 'error' });
+                          } finally { setLoading(false); }
+                        }}>Load</Button>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">{selectedDate}</Typography>
+                    )}
+                  </Box>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                   <Button variant="outlined" startIcon={<Print />} onClick={exportViewToPDF}>Export PDF</Button>

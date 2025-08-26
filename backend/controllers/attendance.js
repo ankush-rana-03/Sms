@@ -438,15 +438,28 @@ exports.getClassAttendanceStatistics = async (req, res, next) => {
     const attendanceDate = new Date(date || new Date());
     attendanceDate.setHours(0, 0, 0, 0);
 
-    const attendance = await Attendance.find({
-      class: classId,
-      date: {
-        $gte: attendanceDate,
-        $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000)
-      }
-    }).populate('student', 'name rollNumber');
+    // Fetch class to derive grade/section/session
+    const cls = await mongoose.model('Class').findById(classId).lean();
+    if (!cls) {
+      return next(new ErrorResponse('Class not found', 404));
+    }
 
-    const totalStudents = await Student.countDocuments({ class: classId });
+    // Attendance records for the day for this class
+    const dayEnd = new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000);
+    const attendance = await Attendance.find({
+      classId: classId,
+      date: { $gte: attendanceDate, $lt: dayEnd }
+    })
+      .select('status')
+      .lean();
+
+    // Total students in this class for this session
+    const totalStudents = await Student.countDocuments({
+      grade: cls.name,
+      section: cls.section,
+      currentSession: cls.session,
+      deletedAt: null
+    });
     const presentCount = attendance.filter(a => a.status === 'present').length;
     const absentCount = attendance.filter(a => a.status === 'absent').length;
     const lateCount = attendance.filter(a => a.status === 'late').length;

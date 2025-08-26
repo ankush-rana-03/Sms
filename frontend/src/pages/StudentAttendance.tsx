@@ -412,6 +412,63 @@ const StudentAttendance: React.FC = () => {
     }
   }, [selectedClass, selectedDate, viewMode, fetchAttendanceHistory]);
 
+  const exportViewToCSV = () => {
+    const rows = [
+      ['Student', 'Roll No', 'Class', 'Status', 'Marked By', 'Date'],
+      ...filteredAttendanceHistory.map(r => [
+        r.student.name,
+        r.student.rollNumber,
+        r.student.className || '',
+        r.status,
+        r.markedBy,
+        new Date(r.date).toLocaleDateString()
+      ])
+    ];
+    const csvContent = rows.map(row => row.map((v) => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `attendance_${selectedDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportViewToPDF = () => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const title = `Attendance ${selectedDate}`;
+    const tableRows = filteredAttendanceHistory.map(r => `<tr>
+      <td>${r.student.name}</td>
+      <td>${r.student.rollNumber}</td>
+      <td>${r.student.className || ''}</td>
+      <td>${r.status}</td>
+      <td>${r.markedBy}</td>
+      <td>${new Date(r.date).toLocaleDateString()}</td>
+    </tr>`).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title>
+      <style>
+        body{font-family:Arial,Helvetica,sans-serif;padding:16px}
+        h2{margin-top:0}
+        table{width:100%;border-collapse:collapse}
+        th,td{border:1px solid #ccc;padding:6px;text-align:left;font-size:12px}
+      </style>
+    </head><body>
+      <h2>${title}</h2>
+      <p>Class: ${classes.find(c=>c.id===selectedClass)?.displayName || ''}</p>
+      <table>
+        <thead><tr><th>Student</th><th>Roll No</th><th>Class</th><th>Status</th><th>Marked By</th><th>Date</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <script>window.onload = () => { window.print(); }</script>
+    </body></html>`;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  };
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -612,6 +669,10 @@ const StudentAttendance: React.FC = () => {
                   <Typography variant="body2" color="text.secondary">
                     {selectedDate}
                   </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <Button variant="outlined" startIcon={<Print />} onClick={exportViewToPDF}>Export PDF</Button>
+                  <Button variant="outlined" startIcon={<Download />} onClick={exportViewToCSV}>Export Excel</Button>
                 </Box>
 
                 {loading ? (

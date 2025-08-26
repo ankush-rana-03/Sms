@@ -74,7 +74,8 @@ const testLogin = async () => {
   try {
     const response = await axios.post(`${API_BASE_URL}/auth/login`, {
       email: 'admin@school.com',
-      password: 'admin123'
+      password: 'password123',
+      role: 'admin'
     });
     
     authToken = response.data.token;

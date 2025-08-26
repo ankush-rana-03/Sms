@@ -505,84 +505,49 @@ const StudentAttendance: React.FC = () => {
       </Box>
 
       <Grid container spacing={3}>
-        {/* Class and Date Selection */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Select Class & Date
-            </Typography>
-            
-            <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="class-name-label">Class</InputLabel>
-                    <Select
-                      labelId="class-name-label"
-                      value={selectedClassName}
-                      label="Class"
-                      onChange={(e) => { setSelectedClassName(e.target.value); setSelectedSection(''); }}
-                    >
-                      {classNames.map(name => (
-                        <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth disabled={!selectedClassName}>
-                    <InputLabel id="section-label">Section</InputLabel>
-                    <Select
-                      labelId="section-label"
-                      value={selectedSection}
-                      label="Section"
-                      onChange={(e) => {
-                        const newSection = e.target.value as string;
-                        setSelectedSection(newSection);
-                        const match = classes.find(c => c.name === selectedClassName && c.section === newSection);
-                        if (match) { handleClassSelection(match.id); }
-                      }}
-                    >
-                      {sectionsForSelectedClass.map(sec => (
-                        <MenuItem key={sec} value={sec}>{sec || 'A'}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Date"
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-              </Grid>
-
-            {viewMode === 'mark' && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                {user?.role === 'teacher' 
-                  ? 'Teachers can only mark attendance for the current day'
-                  : 'Admins can mark attendance for current and past dates'
-                }
-              </Alert>
-            )}
-
-            {viewMode === 'view' && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                {user?.role === 'teacher' 
-                  ? 'Teachers can view and edit today\'s attendance only'
-                  : 'Admins can view and edit all attendance records'
-                }
-              </Alert>
-            )}
-          </Paper>
-        </Grid>
+        {/* Class/Section/Date Selection moved to right panel; hide this box */}
+        <Grid item xs={12} md={4} sx={{ display: 'none' }} />
 
         {/* Attendance Content */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={12}>
           <Paper sx={{ p: 3 }}>
+            {/* Unified Selection Bar */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+              <FormControl sx={{ minWidth: 160 }} size="small">
+                <InputLabel id="class-name-label">Class</InputLabel>
+                <Select
+                  labelId="class-name-label"
+                  value={selectedClassName}
+                  label="Class"
+                  onChange={(e) => { setSelectedClassName(e.target.value); setSelectedSection(''); }}
+                >
+                  {classNames.map(name => (
+                    <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 120 }} size="small" disabled={!selectedClassName}>
+                <InputLabel id="section-label">Section</InputLabel>
+                <Select
+                  labelId="section-label"
+                  value={selectedSection}
+                  label="Section"
+                  onChange={(e) => {
+                    const newSection = e.target.value as string;
+                    setSelectedSection(newSection);
+                    const match = classes.find(c => c.name === selectedClassName && c.section === newSection);
+                    if (match) { handleClassSelection(match.id); }
+                  }}
+                >
+                  {sectionsForSelectedClass.map(sec => (
+                    <MenuItem key={sec} value={sec}>{sec || 'A'}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {!rangeMode && (
+                <TextField size="small" type="date" value={selectedDate} onChange={(e)=>setSelectedDate(e.target.value)} InputLabelProps={{ shrink: true }} />
+              )}
+            </Box>
             {/* Search Bar */}
             <Box sx={{ mb: 3 }}>
               <TextField
@@ -703,7 +668,7 @@ const StudentAttendance: React.FC = () => {
                           } catch (e) {
                             setSnackbar({ open: true, message: 'Failed to fetch range records', severity: 'error' });
                           } finally { setLoading(false); }
-                        }}>Load</Button>
+                        }}>View Records</Button>
                       </Box>
                     ) : (
                       <Typography variant="body2" color="text.secondary">{selectedDate}</Typography>

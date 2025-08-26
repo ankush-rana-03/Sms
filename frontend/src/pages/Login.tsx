@@ -42,13 +42,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const schema = yup.object().shape({
-  role: yup.string().oneOf(['teacher', 'admin', 'parent'], 'Please select a valid role').required('Role is required'),
+  role: yup.string().oneOf(['teacher', 'admin', 'parent', 'principal'], 'Please select a valid role').required('Role is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
 });
 
 interface LoginFormData {
-  role: 'teacher' | 'admin' | 'parent';
+  role: 'teacher' | 'admin' | 'parent' | 'principal';
   email: string;
   password: string;
 }
@@ -75,16 +75,54 @@ const Login: React.FC = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    // Prevent multiple submissions
+    if (loading) return;
+    
     try {
       setLoading(true);
       setError('');
       console.log('Attempting login with:', data.email, 'role:', data.role);
-      await login(data.email, data.password, data.role);
+      
+      // Test API connection first
+      console.log('Testing API connection...');
+      console.log('API Base URL:', process.env.REACT_APP_API_URL || 'https://sms-38ap.onrender.com/api');
+      
+      // Add timeout to prevent infinite spinning
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout. Please try again.')), 30000); // 30 seconds
+      });
+      
+      // Race between login and timeout
+      await Promise.race([
+        login(data.email, data.password, data.role),
+        timeoutPromise
+      ]);
+      
       console.log('Login successful, navigating to dashboard');
       navigate('/');
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response,
+        status: err.response?.status,
+        data: err.response?.data
+      });
+      
+      // More specific error messages
+      if (err.response?.status === 401) {
+        setError('Invalid email or password. Please check your credentials.');
+      } else if (err.response?.status === 403) {
+        setError('Access denied. Please check your role selection.');
+      } else if (err.response?.status === 404) {
+        setError('Login service not found. Please contact administrator.');
+      } else if (err.code === 'NETWORK_ERROR' || err.message?.includes('Network Error')) {
+        setError('Network error. Please check your internet connection and try again.');
+      } else if (err.response?.status >= 500) {
+        setError('Server error. Please try again later.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -93,6 +131,7 @@ const Login: React.FC = () => {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'admin': return <Security />;
+      case 'principal': return <School />;
       case 'teacher': return <People />;
       case 'parent': return <Person />;
       default: return <Person />;
@@ -263,6 +302,12 @@ const Login: React.FC = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Security fontSize="small" />
                               Admin
+                            </Box>
+                          </MenuItem>
+                          <MenuItem value="principal">
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <School fontSize="small" />
+                              Principal
                             </Box>
                           </MenuItem>
                           <MenuItem value="teacher">

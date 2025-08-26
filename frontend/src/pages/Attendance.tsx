@@ -69,7 +69,9 @@ interface AttendanceRecord {
 
 const Attendance: React.FC = () => {
   const { user } = useAuth();
-  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClass, setSelectedClass] = useState(''); // classId
+  const [selectedClassName, setSelectedClassName] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<Student[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -89,6 +91,8 @@ const Attendance: React.FC = () => {
   }>({ open: false, message: '', severity: 'info' });
 
   const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string; section: string; displayName: string }>>([]);
+  const classNames = Array.from(new Set(availableClasses.map(c => c.name)));
+  const sectionsForSelectedClass = availableClasses.filter(c => c.name === selectedClassName).map(c => c.section || '');
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -102,6 +106,12 @@ const Attendance: React.FC = () => {
     };
     loadClasses();
   }, []);
+
+  // Resolve classId when name/section change
+  useEffect(() => {
+    const match = availableClasses.find(c => c.name === selectedClassName && c.section === selectedSection);
+    setSelectedClass(match ? match.id : '');
+  }, [selectedClassName, selectedSection, availableClasses]);
 
   const fetchAttendanceHistory = useCallback(async () => {
     if (!selectedClass || !selectedDate) return;
@@ -196,7 +206,7 @@ const Attendance: React.FC = () => {
     return false;
   };
 
-  const handleClassChange = async (classId: string) => {
+  const handleClassSelection = async (classId: string) => {
     setSelectedClass(classId);
     const cls = availableClasses.find(c => c.id === classId);
     if (!cls) { setStudents([]); return; }
@@ -385,20 +395,39 @@ const Attendance: React.FC = () => {
               Select Class & Date
             </Typography>
             
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Class</InputLabel>
-              <Select
-                value={selectedClass}
-                label="Class"
-                onChange={(e) => handleClassChange(e.target.value)}
-              >
-                {availableClasses.map((cls) => (
-                  <MenuItem key={cls.id} value={cls.id}>
-                    {cls.displayName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="class-name-label">Class</InputLabel>
+                  <Select
+                    labelId="class-name-label"
+                    value={selectedClassName}
+                    label="Class"
+                    onChange={(e) => { setSelectedClassName(e.target.value); setSelectedSection(''); }}
+                  >
+                    {classNames.map(name => (
+                      <MenuItem key={name} value={name}>{name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={6}>
+                <FormControl fullWidth disabled={!selectedClassName}>
+                  <InputLabel id="section-label">Section</InputLabel>
+                  <Select
+                    labelId="section-label"
+                    value={selectedSection}
+                    label="Section"
+                    onChange={(e) => { setSelectedSection(e.target.value); }}
+                    onClose={() => { const match = availableClasses.find(c => c.name === selectedClassName && c.section === selectedSection); if (match) { handleClassSelection(match.id); } }}
+                  >
+                    {sectionsForSelectedClass.map(sec => (
+                      <MenuItem key={sec} value={sec}>{sec || 'A'}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
 
             <TextField
               fullWidth

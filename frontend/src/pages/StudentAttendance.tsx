@@ -708,48 +708,105 @@ const StudentAttendance: React.FC = () => {
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell>Student</TableCell>
+                          <TableCell>Student Name</TableCell>
                           <TableCell>Roll No</TableCell>
-                          <TableCell>Class</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Marked By</TableCell>
-                          <TableCell>Actions</TableCell>
+                          <TableCell>Class & Section</TableCell>
+                          {rangeMode ? (
+                            // For date range: show unique dates as columns
+                            Array.from(new Set(filteredAttendanceHistory.map(r => r.date))).sort().map(date => (
+                              <TableCell key={date} align="center">
+                                {new Date(date).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </TableCell>
+                            ))
+                          ) : (
+                            // For single day: show status and other columns
+                            <>
+                              <TableCell>Status</TableCell>
+                              <TableCell>Marked By</TableCell>
+                              <TableCell>Actions</TableCell>
+                            </>
+                          )}
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {filteredAttendanceHistory.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell>{record.student.name}</TableCell>
-                            <TableCell>{record.student.rollNumber}</TableCell>
-                            <TableCell>{record.student.className || 'N/A'}</TableCell>
-                            <TableCell>
-                              <Chip
-                                icon={getStatusIcon(record.status)}
-                                label={record.status}
-                                color={getStatusColor(record.status)}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>{record.markedBy}</TableCell>
-                            <TableCell>
-                              {canEditAttendance(record.date) && (
-                                <Tooltip title="Edit Attendance">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => {
-                                      setEditingAttendance(record);
-                                      setEditStatus(record.status);
-                                      setEditRemarks(record.remarks || '');
-                                      setEditDialogOpen(true);
-                                    }}
-                                  >
-                                    <Edit />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {rangeMode ? (
+                          // For date range: group by student and show status for each date
+                          (() => {
+                            const uniqueDates = Array.from(new Set(filteredAttendanceHistory.map(r => r.date))).sort();
+                            const studentsMap = new Map();
+                            
+                            // Group attendance records by student
+                            filteredAttendanceHistory.forEach(record => {
+                              const studentKey = record.student.id;
+                              if (!studentsMap.has(studentKey)) {
+                                studentsMap.set(studentKey, {
+                                  id: studentKey,
+                                  name: record.student.name,
+                                  rollNumber: record.student.rollNumber,
+                                  className: record.student.className || 'N/A',
+                                  attendance: {}
+                                });
+                              }
+                              studentsMap.get(studentKey).attendance[record.date] = record.status;
+                            });
+                            
+                            return Array.from(studentsMap.values()).map(student => (
+                              <TableRow key={student.id}>
+                                <TableCell>{student.name}</TableCell>
+                                <TableCell>{student.rollNumber}</TableCell>
+                                <TableCell>{student.className}</TableCell>
+                                {uniqueDates.map(date => (
+                                  <TableCell key={date} align="center">
+                                    <Chip
+                                      icon={getStatusIcon(student.attendance[date] || 'absent')}
+                                      label={student.attendance[date] || 'N/A'}
+                                      color={getStatusColor(student.attendance[date] || 'absent')}
+                                      size="small"
+                                    />
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ));
+                          })()
+                        ) : (
+                          // For single day: show original format
+                          filteredAttendanceHistory.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.student.name}</TableCell>
+                              <TableCell>{record.student.rollNumber}</TableCell>
+                              <TableCell>{record.student.className || 'N/A'}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  icon={getStatusIcon(record.status)}
+                                  label={record.status}
+                                  color={getStatusColor(record.status)}
+                                  size="small"
+                                />
+                              </TableCell>
+                              <TableCell>{record.markedBy}</TableCell>
+                              <TableCell>
+                                {canEditAttendance(record.date) && (
+                                  <Tooltip title="Edit Attendance">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => {
+                                        setEditingAttendance(record);
+                                        setEditStatus(record.status);
+                                        setEditRemarks(record.remarks || '');
+                                        setEditDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </TableContainer>

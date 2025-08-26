@@ -448,12 +448,22 @@ exports.resetTeacherPassword = async (req, res) => {
       });
     }
 
+    // Check if teacher has a user reference
+    if (!teacher.user) {
+      console.error('Teacher missing user reference:', teacherId);
+      return res.status(400).json({
+        success: false,
+        message: 'Teacher account is not properly linked to a user account. Please contact administrator.'
+      });
+    }
+
     // Update user password
     const user = await User.findById(teacher.user);
     if (!user) {
+      console.error('User not found for teacher:', teacherId, 'User ID:', teacher.user);
       return res.status(404).json({
         success: false,
-        message: 'User account not found'
+        message: 'User account not found. The teacher account may be corrupted. Please contact administrator.'
       });
     }
 

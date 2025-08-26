@@ -50,14 +50,7 @@ import {
   Person,
   Warning,
   People,
-  CheckCircle,
-  ContactMail,
-  Phone,
-  School,
-  Work,
-  CalendarToday,
-  AttachMoney,
-  LocalHospital
+  CheckCircle
 } from '@mui/icons-material';
 
 
@@ -222,7 +215,6 @@ const TeacherManagement: React.FC = () => {
 
   // Dynamic classes and sections from Classes API
   const [availableClasses, setAvailableClasses] = useState<ClassWithSections[]>([]);
-  const [dynamicSections, setDynamicSections] = useState<string[]>([]);
   
   // Classes and sections are now dynamically fetched from the Classes API
   // This ensures data consistency across the entire system
@@ -301,7 +293,6 @@ const TeacherManagement: React.FC = () => {
       const response = await classService.getAvailableClassesForRegistration();
       if (response.success && response.data) {
         setAvailableClasses(response.data.classes);
-        setDynamicSections(response.data.sections);
         
         console.log('Available classes fetched:', response.data.classes);
         console.log('Available sections:', response.data.sections);

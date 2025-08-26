@@ -445,48 +445,52 @@ const StudentAttendance: React.FC = () => {
             </Typography>
             
             <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <FormControl fullWidth>
-                  <InputLabel id="class-name-label">Class</InputLabel>
-                  <Select
-                    labelId="class-name-label"
-                    value={selectedClassName}
-                    label="Class"
-                    onChange={(e) => { setSelectedClassName(e.target.value); setSelectedSection(''); }}
-                  >
-                    {classNames.map(name => (
-                      <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel id="class-name-label">Class</InputLabel>
+                    <Select
+                      labelId="class-name-label"
+                      value={selectedClassName}
+                      label="Class"
+                      onChange={(e) => { setSelectedClassName(e.target.value); setSelectedSection(''); }}
+                    >
+                      {classNames.map(name => (
+                        <MenuItem key={name} value={name}>{capitalize(name)}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth disabled={!selectedClassName}>
+                    <InputLabel id="section-label">Section</InputLabel>
+                    <Select
+                      labelId="section-label"
+                      value={selectedSection}
+                      label="Section"
+                      onChange={(e) => {
+                        const newSection = e.target.value as string;
+                        setSelectedSection(newSection);
+                        const match = classes.find(c => c.name === selectedClassName && c.section === newSection);
+                        if (match) { handleClassSelection(match.id); }
+                      }}
+                    >
+                      {sectionsForSelectedClass.map(sec => (
+                        <MenuItem key={sec} value={sec}>{sec || 'A'}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth disabled={!selectedClassName}>
-                  <InputLabel id="section-label">Section</InputLabel>
-                  <Select
-                    labelId="section-label"
-                    value={selectedSection}
-                    label="Section"
-                    onChange={(e) => { setSelectedSection(e.target.value); }}
-                    onClose={() => { const match = classes.find(c => c.name === selectedClassName && c.section === selectedSection); if (match) { handleClassSelection(match.id); } }}
-                  >
-                    {sectionsForSelectedClass.map(sec => (
-                      <MenuItem key={sec} value={sec}>{sec || 'A'}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-
-            <TextField
-              fullWidth
-              type="date"
-              label="Date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              disabled={viewMode === 'mark' && user?.role === 'teacher'}
-            />
 
             {viewMode === 'mark' && (
               <Alert severity="info" sx={{ mt: 2 }}>

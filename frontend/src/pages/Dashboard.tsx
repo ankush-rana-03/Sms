@@ -62,32 +62,9 @@ import {
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import TeacherDashboard from './TeacherDashboard';
-
-// Mock data for charts
-const attendanceData = [
-  { name: 'Mon', present: 95, absent: 5, late: 3 },
-  { name: 'Tue', present: 92, absent: 8, late: 2 },
-  { name: 'Wed', present: 98, absent: 2, late: 1 },
-  { name: 'Thu', present: 94, absent: 6, late: 4 },
-  { name: 'Fri', present: 96, absent: 4, late: 2 },
-];
-
-const performanceData = [
-  { name: 'Math', score: 85, target: 90 },
-  { name: 'Science', score: 88, target: 85 },
-  { name: 'English', score: 92, target: 88 },
-  { name: 'History', score: 78, target: 80 },
-  { name: 'Geography', score: 91, target: 87 },
-];
-
-const subjectDistribution = [
-  { name: 'Mathematics', value: 25, color: '#8884d8' },
-  { name: 'Science', value: 20, color: '#82ca9d' },
-  { name: 'English', value: 18, color: '#ffc658' },
-  { name: 'History', value: 15, color: '#ff7300' },
-  { name: 'Geography', value: 12, color: '#00ff00' },
-  { name: 'Others', value: 10, color: '#ff0000' },
-];
+import studentService from '../services/studentService';
+import classService from '../services/classService';
+import attendanceService from '../services/attendanceService';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -95,6 +72,108 @@ const Dashboard: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [activeTab, setActiveTab] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    attendanceRate: 0
+  });
+  const [attendanceData, setAttendanceData] = useState<Array<{
+    name: string;
+    present: number;
+    absent: number;
+    late: number;
+    halfDay: number;
+  }>>([]);
+  const [classDistribution, setClassDistribution] = useState<Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>>([]);
+  const [recentAttendance, setRecentAttendance] = useState([]);
+
+  // Fetch dashboard data
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch total students
+      const studentsRes = await studentService.getStudents({});
+      const totalStudents = studentsRes.data?.length || 0;
+
+      // Fetch total classes
+      const classesRes = await classService.getClasses();
+      const totalClasses = classesRes.data?.length || 0;
+
+      // Fetch attendance data for the last 7 days
+      const today = new Date();
+      const sevenDaysAgo = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+      const attendanceRes = await attendanceService.getAttendanceRecords({
+        startDate: sevenDaysAgo.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
+      });
+
+      // Process attendance data for charts
+      const attendanceByDate: { [key: string]: { present: number; absent: number; late: number; halfDay: number } } = {};
+      const totalAttendance = { present: 0, absent: 0, late: 0, halfDay: 0 };
+      
+      (attendanceRes.data || []).forEach(record => {
+        const date = new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' });
+        if (!attendanceByDate[date]) {
+          attendanceByDate[date] = { present: 0, absent: 0, late: 0, halfDay: 0 };
+        }
+        // Map 'half-day' to 'halfDay' for consistency
+        const status = record.status === 'half-day' ? 'halfDay' : record.status;
+        if (status in attendanceByDate[date]) {
+          attendanceByDate[date][status as keyof typeof attendanceByDate[string]]++;
+        }
+        if (status in totalAttendance) {
+          totalAttendance[status as keyof typeof totalAttendance]++;
+        }
+      });
+
+      // Convert to chart format
+      const chartData = Object.keys(attendanceByDate).map(date => ({
+        name: date,
+        ...attendanceByDate[date]
+      }));
+      setAttendanceData(chartData);
+
+      // Calculate attendance rate
+      const totalMarked = totalAttendance.present + totalAttendance.absent + totalAttendance.late + totalAttendance.halfDay;
+      const attendanceRate = totalMarked > 0 ? ((totalAttendance.present / totalMarked) * 100).toFixed(1) : '0';
+
+      // Process class distribution
+      const classCounts: { [key: string]: number } = {};
+      (classesRes.data || []).forEach(cls => {
+        const className = cls.name;
+        classCounts[className] = (classCounts[className] || 0) + 1;
+      });
+      
+      const classChartData = Object.keys(classCounts).map(className => ({
+        name: className,
+        value: classCounts[className],
+        color: `#${Math.floor(Math.random()*16777215).toString(16)}`
+      }));
+      setClassDistribution(classChartData);
+
+      // Update stats
+      setStats({
+        totalStudents,
+        totalTeachers: 0, // TODO: Implement teacher service
+        totalClasses,
+        attendanceRate: parseFloat(attendanceRate)
+      });
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   // If user is a teacher, render the specialized TeacherDashboard
   if (user?.role === 'teacher') {
@@ -108,39 +187,39 @@ const Dashboard: React.FC = () => {
         return [
           { 
             title: 'Total Students', 
-            value: '1,234', 
+            value: stats.totalStudents.toLocaleString(), 
             icon: <School />, 
             gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            change: '+12%',
+            change: 'Active',
             changeType: 'positive',
-            progress: 85
+            progress: 100
           },
           { 
             title: 'Total Teachers', 
-            value: '45', 
+            value: stats.totalTeachers.toString(), 
             icon: <People />, 
             gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-            change: '+5%',
+            change: 'Active',
             changeType: 'positive',
-            progress: 92
+            progress: 100
           },
           { 
             title: 'Active Classes', 
-            value: '32', 
+            value: stats.totalClasses.toString(), 
             icon: <Assignment />, 
             gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-            change: '+2',
+            change: 'Active',
             changeType: 'positive',
-            progress: 78
+            progress: 100
           },
           { 
             title: 'Attendance Rate', 
-            value: '94.5%', 
+            value: `${stats.attendanceRate}%`, 
             icon: <TrendingUp />, 
             gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-            change: '+1.2%',
+            change: 'Today',
             changeType: 'positive',
-            progress: 94.5
+            progress: stats.attendanceRate
           },
         ];
       case 'teacher':
@@ -329,24 +408,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const stats = getRoleBasedStats();
-  const activities = getRecentActivities();
-  const quickActions = getQuickActions();
-
-  const getChangeColor = (changeType: string) => {
-    switch (changeType) {
-      case 'positive': return 'success.main';
-      case 'negative': return 'error.main';
-      case 'warning': return 'warning.main';
-      default: return 'text.secondary';
-    }
-  };
-
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
-  };
-
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
@@ -376,27 +437,22 @@ const Dashboard: React.FC = () => {
 
       {/* Enhanced Stats Cards */}
       <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: { xs: 2, md: 4 } }}>
-        {stats.map((stat, index) => (
+        {/* Stats Cards */}
+        {getRoleBasedStats().map((stat, index) => (
           <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card 
-              sx={{ 
-                height: '100%',
-                background: stat.gradient,
-                color: 'white',
-                transition: 'all 0.3s ease-in-out',
-                cursor: 'pointer',
-                '&:hover': {
-                  transform: 'translateY(-8px)',
-                  boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
-                }
-              }}
-            >
-              <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Avatar 
-                    sx={{ 
-                      bgcolor: 'rgba(255,255,255,0.2)', 
-                      color: 'white',
+            <Card sx={{ 
+              background: stat.gradient,
+              color: 'white',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              borderRadius: 3,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <CardContent sx={{ p: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.2)',
                       width: { xs: 40, md: 56 },
                       height: { xs: 40, md: 56 }
                     }}
@@ -414,9 +470,16 @@ const Dashboard: React.FC = () => {
                     }}
                   />
                 </Box>
-                <Typography variant={isMobile ? "h4" : "h3"} component="div" sx={{ fontWeight: 700, mb: 1 }}>
-                  {stat.value}
-                </Typography>
+                {isLoading ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <CircularProgress size={20} sx={{ color: 'white', mr: 1 }} />
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>Loading...</Typography>
+                  </Box>
+                ) : (
+                  <Typography variant={isMobile ? "h4" : "h3"} component="div" sx={{ fontWeight: 700, mb: 1 }}>
+                    {stat.value}
+                  </Typography>
+                )}
                 <Typography variant={isMobile ? "body2" : "body1"} sx={{ opacity: 0.9, fontWeight: 500, mb: 2 }}>
                   {stat.title}
                 </Typography>
@@ -446,65 +509,79 @@ const Dashboard: React.FC = () => {
             scrollButtons={isMobile ? "auto" : false}
           >
             <Tab label="Attendance Trends" icon={<ShowChart />} />
-            <Tab label="Performance Analysis" icon={<BarChart />} />
-            <Tab label="Subject Distribution" icon={<PieChart />} />
+            <Tab label="Class Distribution" icon={<PieChart />} />
           </Tabs>
         </Box>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" color="text.secondary">
+              {activeTab === 0 ? 'Last 7 Days Attendance' : 'Class Distribution'}
+            </Typography>
+            <Button
+              startIcon={<Refresh />}
+              onClick={fetchDashboardData}
+              disabled={isLoading}
+              size="small"
+              variant="outlined"
+            >
+              {isLoading ? <CircularProgress size={16} /> : 'Refresh'}
+            </Button>
+          </Box>
+
           {activeTab === 0 && (
             <Box sx={{ height: { xs: 250, md: 300 } }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={attendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Area type="monotone" dataKey="present" stackId="1" stroke="#8884d8" fill="#8884d8" />
-                  <Area type="monotone" dataKey="absent" stackId="1" stroke="#ff7300" fill="#ff7300" />
-                  <Area type="monotone" dataKey="late" stackId="1" stroke="#ffc658" fill="#ffc658" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {attendanceData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={attendanceData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="present" stackId="1" stroke="#8884d8" fill="#8884d8" />
+                    <Area type="monotone" dataKey="absent" stackId="1" stroke="#ff7300" fill="#ff7300" />
+                    <Area type="monotone" dataKey="late" stackId="1" stroke="#ffc658" fill="#ffc658" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Typography variant="body1" color="text.secondary">
+                    {isLoading ? 'Loading attendance data...' : 'No attendance data available'}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           )}
           
           {activeTab === 1 && (
             <Box sx={{ height: { xs: 250, md: 300 } }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsBarChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <RechartsTooltip />
-                  <Legend />
-                  <Bar dataKey="score" fill="#8884d8" />
-                  <Bar dataKey="target" fill="#82ca9d" />
-                </RechartsBarChart>
-              </ResponsiveContainer>
-            </Box>
-          )}
-          
-          {activeTab === 2 && (
-            <Box sx={{ height: { xs: 250, md: 300 } }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={subjectDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {subjectDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </RechartsPieChart>
-              </ResponsiveContainer>
+              {classDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={classDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {classDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Typography variant="body1" color="text.secondary">
+                    {isLoading ? 'Loading class data...' : 'No class data available'}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           )}
         </CardContent>
@@ -525,7 +602,7 @@ const Dashboard: React.FC = () => {
                 </Typography>
                 <Box>
                   <Tooltip title="Refresh">
-                    <IconButton onClick={handleRefresh} disabled={isLoading}>
+                    <IconButton onClick={fetchDashboardData} disabled={isLoading}>
                       {isLoading ? <CircularProgress size={20} /> : <Refresh />}
                     </IconButton>
                   </Tooltip>
@@ -540,7 +617,7 @@ const Dashboard: React.FC = () => {
                 </Box>
               </Box>
               <List sx={{ p: 0 }}>
-                {activities.map((activity, index) => (
+                {getRecentActivities().map((activity, index) => (
                   <Box key={index}>
                     <ListItem sx={{ px: 0, py: { xs: 1, md: 2 } }}>
                       <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 } }}>
@@ -575,7 +652,7 @@ const Dashboard: React.FC = () => {
                         />
                       </Box>
                     </ListItem>
-                    {index < activities.length - 1 && <Divider />}
+                    {index < getRecentActivities().length - 1 && <Divider />}
                   </Box>
                 ))}
               </List>
@@ -587,7 +664,6 @@ const Dashboard: React.FC = () => {
         <Grid item xs={12} md={4}>
           {/* Quick Actions */}
           <Card sx={{ 
-            mb: 3,
             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
             borderRadius: 3
           }}>
@@ -601,7 +677,7 @@ const Dashboard: React.FC = () => {
                 </Avatar>
               </Box>
               <List sx={{ p: 0 }}>
-                {quickActions.map((action, index) => (
+                {getQuickActions().map((action, index) => (
                   <ListItem 
                     key={index} 
                     button 
@@ -639,7 +715,7 @@ const Dashboard: React.FC = () => {
             <CardContent sx={{ p: { xs: 2, md: 3 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                 <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 600, color: 'primary.main' }}>
-                  Today's Schedule
+                  System Status
                 </Typography>
                 <Avatar sx={{ bgcolor: 'success.main', width: { xs: 28, md: 32 }, height: { xs: 28, md: 32 } }}>
                   <CalendarToday />
@@ -647,44 +723,44 @@ const Dashboard: React.FC = () => {
               </Box>
               <List sx={{ p: 0 }}>
                 <ListItem sx={{ px: 0, py: { xs: 1, md: 1.5 } }}>
-                  <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'warning.main' }}>
-                    <CalendarToday />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
-                        Morning Assembly
-                      </Typography>
-                    }
-                    secondary="8:00 AM - 8:15 AM"
-                  />
-                </ListItem>
-                <Divider />
-                <ListItem sx={{ px: 0, py: { xs: 1, md: 1.5 } }}>
-                  <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'primary.main' }}>
+                  <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'success.main' }}>
                     <School />
                   </ListItemIcon>
                   <ListItemText
                     primary={
                       <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
-                        Regular Classes
+                        Students Active
                       </Typography>
                     }
-                    secondary="8:15 AM - 3:30 PM"
+                    secondary={`${stats.totalStudents} students registered`}
+                  />
+                </ListItem>
+                <Divider />
+                <ListItem sx={{ px: 0, py: { xs: 1, md: 1.5 } }}>
+                  <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'primary.main' }}>
+                    <Assignment />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={
+                      <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
+                        Classes Active
+                      </Typography>
+                    }
+                    secondary={`${stats.totalClasses} classes configured`}
                   />
                 </ListItem>
                 <Divider />
                 <ListItem sx={{ px: 0, py: { xs: 1, md: 1.5 } }}>
                   <ListItemIcon sx={{ minWidth: { xs: 32, md: 40 }, color: 'info.main' }}>
-                    <LocationOn />
+                    <TrendingUp />
                   </ListItemIcon>
                   <ListItemText
                     primary={
                       <Typography variant={isMobile ? "body2" : "body1"} sx={{ fontWeight: 500 }}>
-                        Staff Meeting
+                        Attendance Rate
                       </Typography>
                     }
-                    secondary="4:00 PM - 5:00 PM"
+                    secondary={`${stats.attendanceRate}% current rate`}
                   />
                 </ListItem>
               </List>

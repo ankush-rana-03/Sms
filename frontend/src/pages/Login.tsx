@@ -194,6 +194,14 @@ const Login: React.FC = () => {
             >
               <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+                    <img
+                      src={process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/logo.png` : '/logo.png'}
+                      alt="Logo"
+                      style={{ height: 48, width: 48, objectFit: 'contain', borderRadius: 8 }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </Box>
                   <Typography 
                     component="h1" 
                     variant={isMobile ? "h5" : "h4"} 

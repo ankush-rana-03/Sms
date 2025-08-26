@@ -109,6 +109,14 @@ const Layout: React.FC = () => {
         color: 'white',
         textAlign: 'center'
       }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+          <img
+            src={process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/logo.png` : '/logo.png'}
+            alt="Logo"
+            style={{ height: 40, width: 40, objectFit: 'contain', borderRadius: 6, background: 'rgba(255,255,255,0.15)', padding: 4 }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        </Box>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
           🏫 School Management
         </Typography>
@@ -229,6 +237,16 @@ const Layout: React.FC = () => {
           >
             <MenuIcon />
           </IconButton>
+          
+          {/* Logo (from public/logo.png) */}
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', mr: 2 }}>
+            <img
+              src={process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/logo.png` : '/logo.png'}
+              alt="Logo"
+              style={{ height: 32, width: 32, objectFit: 'contain', borderRadius: 4 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </Box>
           
           <Typography 
             variant={isMobile ? "h6" : "h5"} 

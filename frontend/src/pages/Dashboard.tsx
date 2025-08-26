@@ -65,6 +65,7 @@ import TeacherDashboard from './TeacherDashboard';
 import studentService from '../services/studentService';
 import classService from '../services/classService';
 import attendanceService from '../services/attendanceService';
+import teacherService from '../services/teacherService';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -76,7 +77,8 @@ const Dashboard: React.FC = () => {
     totalStudents: 0,
     totalTeachers: 0,
     totalClasses: 0,
-    attendanceRate: 0
+    attendanceRate: 0,
+    activeTeachers: 0
   });
   const [attendanceData, setAttendanceData] = useState<Array<{
     name: string;
@@ -99,6 +101,10 @@ const Dashboard: React.FC = () => {
       // Fetch total students
       const studentsRes = await studentService.getStudents({});
       const totalStudents = studentsRes.data?.length || 0;
+
+      // Fetch total teachers
+      const teachersRes = await teacherService.getAllTeachers();
+      const totalTeachers = teachersRes.data?.length || 0;
 
       // Fetch total classes
       const classesRes = await classService.getClasses();
@@ -159,9 +165,10 @@ const Dashboard: React.FC = () => {
       // Update stats
       setStats({
         totalStudents,
-        totalTeachers: 0, // TODO: Implement teacher service
+        totalTeachers,
         totalClasses,
-        attendanceRate: parseFloat(attendanceRate)
+        attendanceRate: parseFloat(attendanceRate),
+        activeTeachers: 0 // Placeholder, will be updated based on teacher status
       });
 
     } catch (error) {
@@ -199,9 +206,9 @@ const Dashboard: React.FC = () => {
             value: stats.totalTeachers.toString(), 
             icon: <People />, 
             gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-            change: 'Active',
+            change: stats.totalTeachers > 0 ? 'Active' : 'None',
             changeType: 'positive',
-            progress: 100
+            progress: stats.totalTeachers > 0 ? 100 : 0
           },
           { 
             title: 'Active Classes', 

@@ -44,11 +44,22 @@ import {
   FilterList,
   Download,
   Print,
+  History,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import classService from '../services/classService';
 import studentService from '../services/studentService';
 import attendanceService from '../services/attendanceService';
+import { apiService } from '../services/api';
+
+interface Session {
+  _id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  description?: string;
+}
 
 interface Student {
   id: string;
@@ -80,6 +91,9 @@ const StudentAttendance: React.FC = () => {
   const [selectedClassName, setSelectedClassName] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedSession, setSelectedSession] = useState<string>('');
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,6 +112,64 @@ const StudentAttendance: React.FC = () => {
     message: string;
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
+
+  // Fetch all available sessions
+  const fetchSessions = useCallback(async () => {
+    try {
+      const response = await apiService.get<{ success: boolean; data: Session[] }>('/sessions');
+      if (response.success) {
+        setSessions(response.data);
+        // Set current session as default
+        const activeSession = response.data.find(s => s.isActive);
+        if (activeSession) {
+          setCurrentSession(activeSession);
+          setSelectedSession(activeSession._id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+    }
+  }, []);
+
+  // Handle session change
+  const handleSessionChange = (sessionId: string) => {
+    setSelectedSession(sessionId);
+    // Clear current data when session changes
+    setStudents([]);
+    setAttendanceHistory([]);
+    setSelectedClass('');
+    setSelectedSection('');
+    setSelectedDate(new Date().toISOString().split('T')[0]);
+  };
+
+  // Get session display name
+  const getSessionDisplayName = (sessionId: string) => {
+    const session = sessions.find(s => s._id === sessionId);
+    return session ? session.name : 'Unknown Session';
+  };
+
+  // Check if selected session is current
+  const isCurrentSession = () => {
+    return selectedSession === currentSession?._id;
+  };
+
+  // Fetch classes from the class service
+  const fetchClasses = useCallback(async () => {
+    try {
+      const res = await classService.getClasses();
+      const mapped = (res.data || []).map((c: any) => ({
+        id: c._id,
+        name: c.name,
+        section: c.section,
+        displayName: `${c.name}${c.section ? c.section : ''}`
+      }));
+      setClasses(mapped);
+    } catch (e) {
+      console.error('Failed to load classes', e);
+      setClasses([]);
+    }
+  }, []);
+
   const [rangeMode, setRangeMode] = useState(false);
   const [rangeStart, setRangeStart] = useState(new Date().toISOString().split('T')[0]);
   const [rangeEnd, setRangeEnd] = useState(new Date().toISOString().split('T')[0]);
@@ -117,22 +189,11 @@ const StudentAttendance: React.FC = () => {
   const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
   useEffect(() => {
-    const loadClasses = async () => {
-      try {
-        const res = await classService.getClasses();
-        const mapped = (res.data || []).map((c: any) => ({
-          id: c._id,
-          name: c.name,
-          section: c.section,
-          displayName: `${c.name}${c.section ? c.section : ''}`
-        }));
-        setClasses(mapped);
-      } catch (e) {
-        console.error('Failed to load classes', e);
-      }
-    };
-    loadClasses();
-  }, []);
+    if (user) {
+      fetchClasses();
+      fetchSessions();
+    }
+  }, [user, fetchClasses, fetchSessions]);
 
   // Resolve classId whenever class name/section change
   useEffect(() => {
@@ -291,6 +352,7 @@ const StudentAttendance: React.FC = () => {
           studentId: s.id,
           status: s.status!, // We know status is not undefined here due to filter above
           date: selectedDate,
+          session: selectedSession,
           remarks: ''
         }))
       );
@@ -316,11 +378,11 @@ const StudentAttendance: React.FC = () => {
   };
 
   const fetchAttendanceHistory = useCallback(async () => {
-    if (!selectedClass || !selectedDate) return;
+    if (!selectedClass || !selectedDate || !selectedSession) return;
 
     setLoading(true);
     try {
-      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass, selectedSession);
       const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
         id: r._id,
         student: {
@@ -345,7 +407,7 @@ const StudentAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, allStudents]);
+  }, [selectedClass, selectedDate, selectedSession, allStudents]);
 
   const handleEditAttendance = async () => {
     if (!editingAttendance) return;
@@ -426,7 +488,7 @@ const StudentAttendance: React.FC = () => {
         fetchAttendanceHistory();
       }
     }
-  }, [selectedClass, selectedDate, viewMode, fetchAttendanceHistory]);
+  }, [selectedClass, selectedDate, selectedSession, viewMode, fetchAttendanceHistory]);
 
   const exportViewToCSV = () => {
     if (rangeMode) {
@@ -633,7 +695,33 @@ const StudentAttendance: React.FC = () => {
         <Grid item xs={12} md={12}>
           <Paper sx={{ p: 3 }}>
             {/* Unified Selection Bar */}
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                <strong>📚 Session Selection:</strong> Choose a session to view or mark attendance from different academic periods. 
+                {!isCurrentSession() && (
+                  <span style={{ color: '#1976d2', fontWeight: 'bold' }}>
+                    {' '}Currently viewing: {getSessionDisplayName(selectedSession)}
+                  </span>
+                )}
+              </Typography>
+            </Box>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+              <FormControl sx={{ minWidth: 180 }} size="small">
+                <InputLabel id="session-label">Session</InputLabel>
+                <Select
+                  labelId="session-label"
+                  value={selectedSession}
+                  label="Session"
+                  onChange={(e) => handleSessionChange(e.target.value)}
+                  startAdornment={<History sx={{ mr: 1, color: 'text.secondary' }} />}
+                >
+                  {sessions.map(session => (
+                    <MenuItem key={session._id} value={session._id}>
+                      {session.name} {session.isActive && '(Current)'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <FormControl sx={{ minWidth: 160 }} size="small">
                 <InputLabel id="class-name-label">Class</InputLabel>
                 <Select
@@ -691,6 +779,13 @@ const StudentAttendance: React.FC = () => {
 
             {viewMode === 'mark' ? (
               <>
+                {!isCurrentSession() && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    <strong>⚠️ Historical Session:</strong> You are viewing {getSessionDisplayName(selectedSession)}. 
+                    Attendance marking is typically done for the current session only. 
+                    Use "View Records" to see historical attendance data.
+                  </Alert>
+                )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6">
                     Mark Student Attendance
@@ -699,7 +794,7 @@ const StudentAttendance: React.FC = () => {
                     variant="contained"
                     startIcon={<Save />}
                     onClick={handleSaveAttendance}
-                    disabled={saving || !canMarkAttendance(selectedDate)}
+                    disabled={saving || !canMarkAttendance(selectedDate) || !isCurrentSession()}
                   >
                     {saving ? <CircularProgress size={20} /> : 'Save Attendance'}
                   </Button>

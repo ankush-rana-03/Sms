@@ -55,7 +55,7 @@ interface Student {
   name: string;
   rollNumber: string;
   parentPhone: string;
-  status: 'present' | 'absent' | 'late' | 'half-day';
+  status: 'present' | 'absent' | 'late' | 'half-day' | undefined;
   className?: string;
 }
 
@@ -183,7 +183,7 @@ const StudentAttendance: React.FC = () => {
         name: s.name,
         rollNumber: s.rollNumber,
         parentPhone: s.parentPhone,
-        status: 'present',
+        status: undefined,
         className: `${s.grade}${s.section || ''}`
       }));
       setAllStudents(mapped);
@@ -241,10 +241,12 @@ const StudentAttendance: React.FC = () => {
     refreshForDate();
   }, [selectedDate, selectedClass, allStudents]);
 
-  const handleStatusChange = (studentId: string, status: Student['status']) => {
+  const handleStatusChange = (studentId: string, status: string) => {
+    // Convert empty string to undefined for unmarked students
+    const actualStatus = status === '' ? undefined : (status as Student['status']);
     setStudents(prev =>
       prev.map(student =>
-        student.id === studentId ? { ...student, status } : student
+        student.id === studentId ? { ...student, status: actualStatus } : student
       )
     );
   };
@@ -254,6 +256,18 @@ const StudentAttendance: React.FC = () => {
       setSnackbar({
         open: true,
         message: 'Please select a class and ensure students are loaded',
+        severity: 'error'
+      });
+      return;
+    }
+
+    // Filter students who have been explicitly marked (status is not undefined)
+    const markedStudents = students.filter(s => s.status !== undefined);
+    
+    if (markedStudents.length === 0) {
+      setSnackbar({
+        open: true,
+        message: 'Please mark attendance for at least one student before saving',
         severity: 'error'
       });
       return;
@@ -273,9 +287,9 @@ const StudentAttendance: React.FC = () => {
     setSaving(true);
     try {
       await attendanceService.markBulkAttendance(
-        students.map(s => ({
+        markedStudents.map(s => ({
           studentId: s.id,
-          status: s.status,
+          status: s.status!, // We know status is not undefined here due to filter above
           date: selectedDate,
           remarks: ''
         }))
@@ -610,12 +624,17 @@ const StudentAttendance: React.FC = () => {
                               </Box>
                               
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {getStatusIcon(student.status)}
+                                {student.status ? getStatusIcon(student.status) : null}
                                 <FormControl size="small">
                                   <Select
-                                    value={student.status}
-                                    onChange={(e) => handleStatusChange(student.id, e.target.value as Student['status'])}
+                                    value={student.status || ''}
+                                    onChange={(e) => handleStatusChange(student.id, e.target.value as string)}
+                                    displayEmpty
+                                    renderValue={(value) => value || 'Mark Status'}
                                   >
+                                    <MenuItem value="">
+                                      <em>Select Status</em>
+                                    </MenuItem>
                                     <MenuItem value="present">Present</MenuItem>
                                     <MenuItem value="absent">Absent</MenuItem>
                                     <MenuItem value="late">Late</MenuItem>

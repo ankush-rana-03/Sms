@@ -99,6 +99,11 @@ const StudentAttendance: React.FC = () => {
     severity: 'success' | 'error' | 'info';
   }>({ open: false, message: '', severity: 'info' });
 
+  // Reports state
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportStats, setReportStats] = useState<{ total?: number; present?: number; absent?: number; late?: number; halfDay?: number; percentage?: number }>({});
+
   const [classes, setClasses] = useState<Array<{ id: string; name: string; section: string; displayName: string }>>([]);
   const classNames = Array.from(new Set(classes.map(c => c.name)));
   const sectionsForSelectedClass = classes.filter(c => c.name === selectedClassName).map(c => c.section || '');

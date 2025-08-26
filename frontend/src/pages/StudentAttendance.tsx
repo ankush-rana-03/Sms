@@ -445,7 +445,7 @@ const StudentAttendance: React.FC = () => {
             </Typography>
             
             <Grid container spacing={2}>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
                     <InputLabel id="class-name-label">Class</InputLabel>
                     <Select
@@ -460,7 +460,7 @@ const StudentAttendance: React.FC = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={6}>
                   <FormControl fullWidth disabled={!selectedClassName}>
                     <InputLabel id="section-label">Section</InputLabel>
                     <Select
@@ -480,7 +480,7 @@ const StudentAttendance: React.FC = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="Date"

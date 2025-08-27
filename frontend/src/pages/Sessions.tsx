@@ -577,7 +577,7 @@ const Sessions: React.FC = () => {
                     color="primary"
                     startIcon={<SchoolIcon />}
                     onClick={() => handleAutoCreateClasses(session)}
-                    disabled={!['admin', 'principal'].includes(user?.role || '')}
+                    disabled={!['admin', 'principal'].includes(user?.role || '') || session.status === 'archived'}
                     sx={{ mb: 1 }}
                   >
                     Auto-Create Classes
@@ -591,7 +591,7 @@ const Sessions: React.FC = () => {
                       setRollingOverSessionId(session._id);
                       rolloverMutation.mutate(session._id);
                     }}
-                    disabled={!['admin', 'principal'].includes(user?.role || '') || rolloverMutation.isPending}
+                    disabled={!['admin', 'principal'].includes(user?.role || '') || rolloverMutation.isPending || session.status === 'archived'}
                     sx={{ mb: 1 }}
                   >
                     {rollingOverSessionId === session._id && rolloverMutation.isPending ? 'Rolling Over…' : 'Auto Rollover'}
@@ -607,7 +607,7 @@ const Sessions: React.FC = () => {
                     color="secondary"
                     startIcon={<TrendingUpIcon />}
                     onClick={() => handleCopyClasses(session)}
-                    disabled={!['admin', 'principal'].includes(user?.role || '')}
+                    disabled={!['admin', 'principal'].includes(user?.role || '') || session.status === 'archived'}
                     sx={{ mb: 1 }}
                   >
                     Copy Classes

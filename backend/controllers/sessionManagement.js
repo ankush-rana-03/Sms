@@ -11,7 +11,7 @@ const RolloverRun = require('../models/RolloverRun');
 exports.completeSession = async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { autoPromote = false } = req.body;
+    // autoPromote no longer used; promotion handled exclusively via auto-rollover
 
     const session = await Session.findById(sessionId);
     if (!session) {
@@ -33,37 +33,15 @@ exports.completeSession = async (req, res, next) => {
 
     await session.save();
 
-    // If auto-promote is enabled, trigger promotion evaluation
-    let promotionMessage = '';
-    if (autoPromote) {
-      try {
-        // Import promotion controller dynamically to avoid circular dependency
-        const { evaluatePromotions } = require('./promotion');
-        
-        // Trigger promotion evaluation
-        const promotionResult = await evaluatePromotions({ 
-          params: { sessionId }, 
-          body: { autoPromote: true } 
-        }, res, next);
-
-        if (promotionResult) {
-          promotionMessage = ` and ${promotionResult.data.promoted} students promoted`;
-        }
-      } catch (error) {
-        console.error('Auto-promotion failed:', error);
-        promotionMessage = ' but auto-promotion failed';
-      }
-    }
-
     res.status(200).json({
       success: true,
       data: {
         session: session.name,
         status: session.status,
         endDate: session.endDate,
-        autoPromote
+        autoPromote: false
       },
-      message: `Session ${session.name} completed successfully${promotionMessage}`
+      message: `Session ${session.name} completed successfully`
     });
 
   } catch (err) {
@@ -261,7 +239,8 @@ exports.rolloverSession = async (req, res, next) => {
       }
     }
 
-    // Promote and move eligible students
+    // Promote and move students. Retained students should also move to next session,
+    // staying in same class/section and keeping roll number uniqueness.
     const students = await Student.find({ currentSession: source.name, deletedAt: null });
     const gradeMap = { nursery: 'lkg', lkg: 'ukg', ukg: '1', '1': '2', '2': '3', '3': '4', '4': '5', '5': '6', '6': '7', '7': '8', '8': '9', '9': '10', '10': '11', '11': '12' };
     let promotedCount = 0;
@@ -298,9 +277,39 @@ exports.rolloverSession = async (req, res, next) => {
           promotedCount++;
         }
       } else {
+        // Move retained student to next session in the same grade/section
+        // Ensure roll number uniqueness within (grade, section) in the new session
         student.promotionStatus = 'retained';
         student.promotionNotes = 'Below attendance criteria';
-        // Remain in source session
+        student.previousGrade = student.grade;
+        student.previousSection = student.section;
+        // Keep same grade and section
+        // Assign roll number if conflict exists in new session
+        const hasConflict = await Student.findOne({
+          _id: { $ne: student._id },
+          grade: student.grade,
+          section: student.section,
+          rollNumber: student.rollNumber,
+          currentSession: newSession.name,
+          deletedAt: null
+        });
+        if (hasConflict) {
+          // Find max existing roll number in that class/section for the new session and assign next
+          const classmates = await Student.find({
+            grade: student.grade,
+            section: student.section,
+            currentSession: newSession.name,
+            deletedAt: null
+          }).select('rollNumber');
+          const toNumber = (r) => {
+            const n = parseInt(String(r).replace(/[^0-9]/g, ''), 10);
+            return isNaN(n) ? 0 : n;
+          };
+          const maxRoll = classmates.reduce((max, s) => Math.max(max, toNumber(s.rollNumber)), toNumber(student.rollNumber));
+          const nextRoll = String(maxRoll + 1).padStart(String(student.rollNumber || '001').length, '0');
+          student.rollNumber = nextRoll;
+        }
+        student.currentSession = newSession.name;
         retainedCount++;
       }
       await student.save();

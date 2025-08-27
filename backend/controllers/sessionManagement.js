@@ -318,6 +318,12 @@ exports.rolloverSession = async (req, res, next) => {
     // Deactivate source session classes
     await Class.updateMany({ session: source.name }, { isActiveSession: false, sessionEndDate: new Date() });
 
+    // Archive source session and ensure it is not current
+    source.status = 'archived';
+    source.isCurrent = false;
+    source.endDate = source.endDate || new Date();
+    await source.save();
+
     run.status = 'completed';
     run.targetSessionName = newSession.name;
     run.counts = { classesCopied: createdClasses.length, promoted: promotedCount, retained: retainedCount };

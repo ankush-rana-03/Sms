@@ -100,9 +100,9 @@ const Attendance: React.FC = () => {
   const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
   useEffect(() => {
-    const loadClasses = async () => {
+    const loadClasses = async (sessionName?: string) => {
       try {
-        const res = await classService.getClasses();
+        const res = await classService.getClasses(sessionName ? { session: sessionName } : undefined);
         const mapped = (res.data || []).map((c: any) => ({ id: c._id, name: c.name, section: c.section, displayName: `${c.name}${c.section || ''}` }));
         setAvailableClasses(mapped);
       } catch (e) {
@@ -115,14 +115,37 @@ const Attendance: React.FC = () => {
         const list = resp.success ? resp.data : [];
         setSessions(list);
         const current = list.find((s: any) => s.isCurrent || s.isActive);
-        if (current) setSelectedSessionId(current._id);
+        if (current) {
+          setSelectedSessionId(current._id);
+          await loadClasses(current.name);
+        } else {
+          await loadClasses();
+        }
       } catch (e) {
         console.error('Failed to load sessions', e);
       }
     };
-    loadClasses();
     loadSessions();
   }, []);
+
+  // Reload classes when session changes
+  useEffect(() => {
+    const selectedSessionName = sessions.find(s => s._id === selectedSessionId)?.name;
+    const run = async () => {
+      try {
+        const res = await classService.getClasses(selectedSessionName ? { session: selectedSessionName } : undefined);
+        const mapped = (res.data || []).map((c: any) => ({ id: c._id, name: c.name, section: c.section, displayName: `${c.name}${c.section || ''}` }));
+        setAvailableClasses(mapped);
+        // reset selections to force picking class for this session
+        setSelectedClass('');
+        setSelectedClassName('');
+        setSelectedSection('');
+      } catch (e) {
+        console.error('Failed to reload classes for session', e);
+      }
+    };
+    run();
+  }, [selectedSessionId, sessions]);
 
   // Resolve classId when name/section change
   useEffect(() => {
@@ -158,7 +181,7 @@ const Attendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedDate, allStudents]);
+  }, [selectedClass, selectedDate, allStudents, sessions, selectedSessionId]);
 
   useEffect(() => {
     if (selectedClass && selectedDate) {

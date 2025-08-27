@@ -170,6 +170,25 @@ exports.bulkPromote = async (req, res, next) => {
       return next(new ErrorResponse('Session not found', 404));
     }
 
+    // Check if we need to create a new session for promotions
+    let newSessionCreated = false;
+    let newSessionName = null;
+    
+    if (studentIds && studentIds.length > 0) {
+      // Determine if we need a new session based on promotion logic
+      const sampleStudent = await Student.findById(studentIds[0]);
+      if (sampleStudent) {
+        const gradeOrder = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+        const currentIndex = gradeOrder.indexOf(sampleStudent.grade);
+        
+        if (currentIndex < gradeOrder.length - 1) {
+          // Students will be promoted to next grade, need new session
+          newSessionName = await createNextSessionIfNeeded();
+          newSessionCreated = true;
+        }
+      }
+    }
+
     const results = [];
     const errors = [];
 
@@ -204,10 +223,12 @@ exports.bulkPromote = async (req, res, next) => {
       success: true,
       data: {
         session: session.name,
+        newSession: newSessionName,
+        newSessionCreated,
         promoted: results.length,
         errors: errors.length > 0 ? errors : undefined
       },
-      message: `Bulk promotion completed. ${results.length} students promoted successfully.`
+      message: `Bulk promotion completed. ${results.length} students promoted successfully.${newSessionCreated ? ` New session '${newSessionName}' created automatically.` : ''}`
     });
 
   } catch (err) {
@@ -278,6 +299,7 @@ async function promoteStudent(student, evaluation, nextGrade = null, nextSection
       student.previousSection = student.section;
       student.grade = 'graduated';
       student.section = 'N/A';
+      student.currentSession = null; // Graduated students don't need session
     } else {
       // Promote to next grade
       student.promotionStatus = 'promoted';
@@ -285,6 +307,10 @@ async function promoteStudent(student, evaluation, nextGrade = null, nextSection
       student.previousSection = student.section;
       student.grade = gradeOrder[currentIndex + 1];
       student.section = nextSection || 'A'; // Default to section A
+      
+      // Automatically create next session if it doesn't exist
+      const nextSessionName = await createNextSessionIfNeeded();
+      student.currentSession = nextSessionName;
     }
   } else {
     // Use specified grade and section
@@ -293,11 +319,14 @@ async function promoteStudent(student, evaluation, nextGrade = null, nextSection
     student.previousSection = student.section;
     student.grade = nextGrade;
     student.section = nextSection || 'A';
+    
+    // Automatically create next session if it doesn't exist
+    const nextSessionName = await createNextSessionIfNeeded();
+    student.currentSession = nextSessionName;
   }
 
   student.promotionDate = new Date();
   student.promotionNotes = notes;
-  student.currentSession = null; // Will be set when enrolled in new session
 
   await student.save();
 
@@ -310,6 +339,52 @@ async function promoteStudent(student, evaluation, nextGrade = null, nextSection
     newSection: student.section,
     promotionStatus: student.promotionStatus,
     promotionDate: student.promotionDate,
+    newSession: student.currentSession,
     evaluation
   };
+}
+
+// Helper function to create next session if it doesn't exist
+async function createNextSessionIfNeeded() {
+  try {
+    // Get current active session
+    const currentSession = await Session.findOne({ isActive: true });
+    if (!currentSession) {
+      throw new Error('No active session found');
+    }
+
+    // Extract year from current session name (e.g., "2025-2026" -> 2025)
+    const currentYear = parseInt(currentSession.name.split('-')[0]);
+    const nextYear = currentYear + 1;
+    const nextSessionName = `${nextYear}-${nextYear + 1}`;
+
+    // Check if next session already exists
+    let nextSession = await Session.findOne({ name: nextSessionName });
+    
+    if (!nextSession) {
+      // Create next session automatically
+      console.log(`Creating next session: ${nextSessionName}`);
+      
+      nextSession = await Session.create({
+        name: nextSessionName,
+        startDate: new Date(nextYear, 6, 1), // July 1st of next year
+        endDate: new Date(nextYear + 1, 4, 30), // April 30th of year after next
+        description: `Academic Year ${nextYear}-${nextYear + 1}`,
+        isActive: false, // Will become active when current session ends
+        promotionCriteria: {
+          minimumAttendance: 75, // Default 75% attendance requirement
+          minimumGrade: 'D' // Default minimum grade requirement
+        }
+      });
+      
+      console.log(`Next session created: ${nextSession.name} (${nextSession._id})`);
+    }
+
+    return nextSessionName;
+  } catch (error) {
+    console.error('Error creating next session:', error);
+    // Fallback: return a default session name
+    const nextYear = new Date().getFullYear() + 1;
+    return `${nextYear}-${nextYear + 1}`;
+  }
 }

@@ -88,6 +88,7 @@ const Sessions: React.FC = () => {
   const [openAutoCreateClassesDialog, setOpenAutoCreateClassesDialog] = useState(false);
   const [openCopyClassesDialog, setOpenCopyClassesDialog] = useState(false);
   const [openDeleteClassesDialog, setOpenDeleteClassesDialog] = useState(false);
+  const [openDeleteSessionDialog, setOpenDeleteSessionDialog] = useState(false);
   const [rollingOverSessionId, setRollingOverSessionId] = useState<string | null>(null);
   const [selectedSourceSession, setSelectedSourceSession] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -640,7 +641,7 @@ const Sessions: React.FC = () => {
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => deleteSessionMutation.mutate(session._id)}
+                          onClick={() => { setSelectedSession(session); setOpenDeleteSessionDialog(true); }}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -1095,6 +1096,47 @@ const Sessions: React.FC = () => {
             disabled={deleteClassesMutation.isPending}
           >
             {deleteClassesMutation.isPending ? 'Deleting...' : 'Delete All Classes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Session Dialog (permanent deletion) */}
+      <Dialog open={openDeleteSessionDialog} onClose={() => setOpenDeleteSessionDialog(false)}>
+        <DialogTitle>Delete Session Permanently</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the session "{selectedSession?.name}"?
+          </Typography>
+          <Typography sx={{ mt: 1 }} color="error">
+            This will permanently delete ALL related data and cannot be retrieved back:
+          </Typography>
+          <List sx={{ mt: 1 }}>
+            <ListItem>
+              <ListItemText primary="• The session record" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• All classes under this session" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• All attendance records for this session" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• All results tied to this session" />
+            </ListItem>
+          </List>
+          <Typography sx={{ mt: 1, color: 'error.main', fontWeight: 'bold' }}>
+            This action is irreversible.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteSessionDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() => { if (selectedSession) { deleteSessionMutation.mutate(selectedSession._id); setOpenDeleteSessionDialog(false); } }}
+            variant="contained"
+            color="error"
+            disabled={deleteSessionMutation.isPending}
+          >
+            {deleteSessionMutation.isPending ? 'Deleting…' : 'Yes, Delete Permanently'}
           </Button>
         </DialogActions>
       </Dialog>

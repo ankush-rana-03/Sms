@@ -539,8 +539,31 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       return res.status(400).json({ message: 'Can only delete archived sessions' });
     }
 
+    // Collect classes for this session
+    const classes = await Class.find({ session: session.name });
+    const classIds = classes.map(cls => cls._id);
+
+    // Remove assignments for these classes from all teachers
+    const teachersWithAssignments = await Teacher.find({
+      'assignedClasses.class': { $in: classIds }
+    });
+    for (const teacher of teachersWithAssignments) {
+      teacher.assignedClasses = teacher.assignedClasses.filter(
+        assignment => !classIds.includes(assignment.class.toString())
+      );
+      await teacher.save();
+    }
+
+    // Delete attendance and results tied to this session
+    await Attendance.deleteMany({ session: session.name });
+    await Result.deleteMany({ session: session.name });
+
+    // Delete classes
+    await Class.deleteMany({ session: session.name });
+
+    // Finally delete the session document
     await Session.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Session deleted successfully' });
+    res.json({ message: 'Session, classes, and attendance deleted permanently' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting session', error: error.message });
   }

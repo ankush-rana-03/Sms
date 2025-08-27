@@ -530,7 +530,10 @@ const StudentAttendance: React.FC = () => {
         studentsMap.get(studentKey).attendance[record.date] = record.status;
       });
       
+      const sessionName = getSessionDisplayName(selectedSession);
       const rows = [
+        ['Session', sessionName],
+        [],
         ['Student Name', 'Roll No', 'Class & Section', ...uniqueDates.map(date => 
           new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         )],
@@ -554,7 +557,10 @@ const StudentAttendance: React.FC = () => {
       URL.revokeObjectURL(url);
     } else {
       // Export single day format (existing logic)
+      const sessionName = getSessionDisplayName(selectedSession);
       const rows = [
+        ['Session', sessionName],
+        [],
         ['Student', 'Roll No', 'Class', 'Status', 'Marked By', 'Date'],
         ...filteredAttendanceHistory.map(r => [
           r.student.name,
@@ -601,6 +607,7 @@ const StudentAttendance: React.FC = () => {
       
       const win = window.open('', '_blank');
       if (!win) return;
+      const sessionName = getSessionDisplayName(selectedSession);
       const title = `Attendance Range: ${rangeStart} to ${rangeEnd}`;
       
       const dateHeaders = uniqueDates.map(date => 
@@ -629,6 +636,7 @@ const StudentAttendance: React.FC = () => {
         </style>
       </head><body>
         <h2>${title}</h2>
+        <p><strong>Session:</strong> ${sessionName}</p>
         <p>Class: ${classes.find(c=>c.id===selectedClass)?.displayName || selectedClassName + selectedSection}</p>
         <table>
           <thead><tr><th>Student Name</th><th>Roll No</th><th>Class & Section</th>${dateHeaders}</tr></thead>
@@ -643,6 +651,7 @@ const StudentAttendance: React.FC = () => {
       // Export single day format (existing logic)
       const win = window.open('', '_blank');
       if (!win) return;
+      const sessionName = getSessionDisplayName(selectedSession);
       const title = `Attendance ${selectedDate}`;
       const tableRows = filteredAttendanceHistory.map(r => `<tr>
         <td>${r.student.name}</td>
@@ -661,6 +670,7 @@ const StudentAttendance: React.FC = () => {
         </style>
       </head><body>
         <h2>${title}</h2>
+        <p><strong>Session:</strong> ${sessionName}</p>
         <p>Class: ${classes.find(c=>c.id===selectedClass)?.displayName || ''}</p>
         <table>
           <thead><tr><th>Student</th><th>Roll No</th><th>Class</th><th>Status</th><th>Marked By</th><th>Date</th></tr></thead>

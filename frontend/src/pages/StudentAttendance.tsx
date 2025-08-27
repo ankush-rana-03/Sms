@@ -894,7 +894,8 @@ const StudentAttendance: React.FC = () => {
                           if (!selectedClass) { setSnackbar({ open: true, message: 'Select class first', severity: 'error' }); return; }
                           setLoading(true);
                           try {
-                            const res = await attendanceService.getAttendanceRecords({ startDate: rangeStart, endDate: rangeEnd, classId: selectedClass });
+                            const selectedSessionObj = sessions.find(s => s._id === selectedSession);
+                            const res = await attendanceService.getAttendanceRecords({ startDate: rangeStart, endDate: rangeEnd, classId: selectedClass, session: selectedSessionObj?.name });
                             const history = (res.data || []).map((r: any) => ({
                               id: r._id,
                               student: {

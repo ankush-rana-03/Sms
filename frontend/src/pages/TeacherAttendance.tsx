@@ -49,6 +49,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import teacherService from '../services/teacherService';
 import classService, { ClassWithSections } from '../services/classService';
+import staffAttendanceService from '../services/staffAttendanceService';
 
 const TeacherAttendance: React.FC = () => {
   const { user } = useAuth();
@@ -233,11 +234,13 @@ const TeacherAttendance: React.FC = () => {
 
     setSaving(true);
     try {
-      // In real app, call the API to update attendance
+      // Call the API to update attendance
       console.log('Updating attendance:', editingAttendance.id, editStatus, editRemarks);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await staffAttendanceService.updateAttendance(editingAttendance.id, {
+        status: editStatus,
+        remarks: editRemarks
+      });
       
       // Update local state
       if (viewMode === 'mark') {

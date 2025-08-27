@@ -271,9 +271,10 @@ exports.updateAttendance = async (req, res, next) => {
       return next(new ErrorResponse('Attendance record not found', 404));
     }
 
-    // Only admins can edit
-    if (req.user.role !== 'admin') {
-      return next(new ErrorResponse('Only admins can edit attendance', 403));
+    // Check if user can edit attendance for this date
+    const canEdit = canEditAttendance(attendance.date, req.user.role);
+    if (!canEdit) {
+      return next(new ErrorResponse('You cannot edit attendance for this date', 403));
     }
 
     // Disallow editing if the record's session is not the current session

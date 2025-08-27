@@ -433,14 +433,11 @@ const StudentAttendance: React.FC = () => {
 
     setSaving(true);
     try {
-      // In real app, call the API
-      // await attendanceService.updateAttendance(editingAttendance.id, {
-      //   status: editStatus,
-      //   remarks: editRemarks
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the API to update attendance
+      await attendanceService.updateAttendance(editingAttendance.id, {
+        status: editStatus,
+        remarks: editRemarks
+      });
 
       // Update local state
       setAttendanceHistory(prev =>

@@ -470,17 +470,16 @@ const Sessions: React.FC = () => {
                   <Chip label="Current Session" color="primary" size="small" sx={{ mb: 2 }} />
                 )}
 
-                {session.isCurrent && (
-                  <Box sx={{ mt: 1, p: 2, border: '1px solid', borderColor: 'grey.200', borderRadius: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="subtitle2">Promotion Criteria (Current Session)</Typography>
-                      {!criteriaEditOpen[session._id] && (
-                        <IconButton size="small" onClick={() => setCriteriaEditOpen(prev => ({ ...prev, [session._id]: true }))} disabled={!['admin','principal'].includes(user?.role || '')}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
-                    {criteriaEditOpen[session._id] ? (
+                <Box sx={{ mt: 1, p: 2, border: '1px solid', borderColor: 'grey.200', borderRadius: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="subtitle2">Promotion Criteria{session.isCurrent ? ' (Current Session)' : session.status === 'archived' ? ' (Archived)' : ''}</Typography>
+                    {session.isCurrent && !criteriaEditOpen[session._id] && (
+                      <IconButton size="small" onClick={() => setCriteriaEditOpen(prev => ({ ...prev, [session._id]: true }))} disabled={!['admin','principal'].includes(user?.role || '')}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                  {session.isCurrent && criteriaEditOpen[session._id] ? (
                       <>
                         <Grid container spacing={2}>
                           <Grid item xs={12} md={4}>
@@ -555,21 +554,20 @@ const Sessions: React.FC = () => {
                           </Grid>
                         </Grid>
                       </>
-                    ) : (
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} md={4}>
-                          <Typography variant="body2">Min Attendance: <strong>{session.promotionCriteria.minimumAttendance}%</strong></Typography>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                          <Typography variant="body2">Min Grade: <strong>{session.promotionCriteria.minimumGrade}</strong></Typography>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                          <Typography variant="body2">Require All Subjects: <strong>{session.promotionCriteria.requireAllSubjects ? 'Yes' : 'No'}</strong></Typography>
-                        </Grid>
+                  ) : (
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2">Min Attendance: <strong>{session.promotionCriteria.minimumAttendance}%</strong></Typography>
                       </Grid>
-                    )}
-                  </Box>
-                )}
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2">Min Grade: <strong>{session.promotionCriteria.minimumGrade}</strong></Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2">Require All Subjects: <strong>{session.promotionCriteria.requireAllSubjects ? 'Yes' : 'No'}</strong></Typography>
+                      </Grid>
+                    </Grid>
+                  )}
+                </Box>
 
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {/* Class Creation Options - Show for all sessions */}

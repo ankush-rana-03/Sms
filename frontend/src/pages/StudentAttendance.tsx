@@ -154,10 +154,10 @@ const StudentAttendance: React.FC = () => {
     return selectedSession === currentSession?._id;
   };
 
-  // Fetch classes from the class service
-  const fetchClasses = useCallback(async () => {
+  // Fetch classes for the currently selected session
+  const fetchClasses = useCallback(async (sessionName?: string) => {
     try {
-      const res = await classService.getClasses();
+      const res = await classService.getClasses(sessionName ? { session: sessionName } : undefined);
       const mapped = (res.data || []).map((c: any) => ({
         id: c._id,
         name: c.name,
@@ -191,10 +191,24 @@ const StudentAttendance: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      fetchClasses();
       fetchSessions();
     }
-  }, [user, fetchClasses, fetchSessions]);
+  }, [user, fetchSessions]);
+
+  // When selectedSession changes, reload classes for that session
+  useEffect(() => {
+    const sessionName = sessions.find(s => s._id === selectedSession)?.name;
+    if (sessionName) {
+      fetchClasses(sessionName);
+    } else if (sessions.length === 0) {
+      // fallback initial load if sessions not yet loaded
+      fetchClasses();
+    }
+    // Reset class selections when session changes
+    setSelectedClass('');
+    setSelectedClassName('');
+    setSelectedSection('');
+  }, [selectedSession, sessions, fetchClasses]);
 
   // Resolve classId whenever class name/section change
   useEffect(() => {

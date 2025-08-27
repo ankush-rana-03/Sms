@@ -260,7 +260,7 @@ exports.getStudentAttendance = async (req, res, next) => {
 
 // @desc    Update attendance
 // @route   PUT /api/attendance/:id
-// @access  Private (Teacher, Admin)
+// @access  Private (Admin; only for current session)
 exports.updateAttendance = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -271,9 +271,15 @@ exports.updateAttendance = async (req, res, next) => {
       return next(new ErrorResponse('Attendance record not found', 404));
     }
 
-    // Check if user can edit this attendance
-    if (!canEditAttendance(attendance.date, req.user.role)) {
-      return next(new ErrorResponse('You are not authorized to edit this attendance record', 403));
+    // Only admins can edit
+    if (req.user.role !== 'admin') {
+      return next(new ErrorResponse('Only admins can edit attendance', 403));
+    }
+
+    // Disallow editing if the record's session is not the current session
+    const currentSession = await mongoose.model('Session').findOne({ isCurrent: true });
+    if (!currentSession || attendance.session !== currentSession.name) {
+      return next(new ErrorResponse('Cannot edit attendance for archived or non-current sessions', 400));
     }
 
     // Update attendance

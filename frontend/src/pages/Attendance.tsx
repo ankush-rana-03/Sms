@@ -392,7 +392,7 @@ const Attendance: React.FC = () => {
             color="primary"
             startIcon={<Save />}
             onClick={handleSaveAttendance}
-            disabled={saving || !canMarkAttendance(selectedDate)}
+            disabled={saving || !canMarkAttendance(selectedDate) || !(sessions.find(s=>s.isCurrent)?._id && selectedSessionId === (sessions.find(s=>s.isCurrent)?._id))}
           >
             {saving ? 'Saving...' : 'Save Attendance'}
           </Button>
@@ -485,7 +485,7 @@ const Attendance: React.FC = () => {
                     variant="contained"
                     startIcon={<Save />}
                     onClick={handleSaveAttendance}
-                    disabled={saving || !canMarkAttendance(selectedDate)}
+                    disabled={saving || !canMarkAttendance(selectedDate) || !(sessions.find(s=>s.isCurrent)?._id && selectedSessionId === (sessions.find(s=>s.isCurrent)?._id))}
                   >
                     {saving ? <CircularProgress size={20} /> : 'Save Attendance'}
                   </Button>
@@ -594,7 +594,7 @@ const Attendance: React.FC = () => {
                             </TableCell>
                             <TableCell>{record.markedBy}</TableCell>
                             <TableCell>
-                              {canEditAttendance(record.date) && (
+                              {sessions.find(s=>s._id===selectedSessionId)?.isCurrent && canEditAttendance(record.date) && (
                                 <Tooltip title="Edit Attendance">
                                   <IconButton
                                     size="small"

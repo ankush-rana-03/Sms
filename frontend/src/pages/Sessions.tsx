@@ -17,13 +17,6 @@ import {
   MenuItem,
   Chip,
   IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   LinearProgress,
   List,
   ListItem,
@@ -82,7 +75,7 @@ const Sessions: React.FC = () => {
   const queryClient = useQueryClient();
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openPromotionDialog, setOpenPromotionDialog] = useState(false);
+
   const [openArchiveDialog, setOpenArchiveDialog] = useState(false);
   const [openFreshStartDialog, setOpenFreshStartDialog] = useState(false);
   const [openAutoCreateClassesDialog, setOpenAutoCreateClassesDialog] = useState(false);
@@ -92,9 +85,9 @@ const Sessions: React.FC = () => {
   const [rollingOverSessionId, setRollingOverSessionId] = useState<string | null>(null);
   const [selectedSourceSession, setSelectedSourceSession] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [promotionResults, setPromotionResults] = useState<any[]>([]);
-  const [evaluation, setEvaluation] = useState<{ session?: string; totalStudents?: number; promotionResults?: any[] } | null>(null);
-  const [openConfirmPromoteDialog, setOpenConfirmPromoteDialog] = useState(false);
+
+
+
   const [formData, setFormData] = useState({
     name: '',
     academicYear: '',
@@ -183,33 +176,9 @@ const Sessions: React.FC = () => {
     }
   });
 
-  // Evaluate promotions (preview) mutation
-  const evaluatePromotionsMutation = useMutation({
-    mutationFn: async (sessionId: string) => {
-      const response = await api.post<any>(`/promotion/evaluate/${sessionId}`, { autoPromote: false });
-      return response;
-    },
-    onSuccess: (data) => {
-      setEvaluation({ session: data.data.session, totalStudents: data.data.totalStudents, promotionResults: data.data.promotionResults });
-      setPromotionResults(data.data.promotionResults || []);
-      setOpenPromotionDialog(true);
-    }
-  });
 
-  // Bulk promote mutation (Confirm & Promote)
-  const bulkPromoteMutation = useMutation({
-    mutationFn: async ({ sessionId, studentIds, nextGrade, nextSection, notes }: { sessionId: string; studentIds: string[]; nextGrade?: string; nextSection?: string; notes?: string; }) => {
-      const response = await api.post<any>(`/promotion/bulk-promote`, { sessionId, studentIds, nextGrade, nextSection, notes });
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      setOpenConfirmPromoteDialog(false);
-      setOpenPromotionDialog(false);
-      setEvaluation(null);
-      setPromotionResults([]);
-    }
-  });
+
+
 
   // Archive session mutation
   const archiveSessionMutation = useMutation({
@@ -325,10 +294,7 @@ const Sessions: React.FC = () => {
     });
   };
 
-  const handleProcessPromotions = (session: Session) => {
-    setSelectedSession(session);
-    evaluatePromotionsMutation.mutate(session._id);
-  };
+
 
   const handleArchiveSession = (session: Session) => {
     setSelectedSession(session);
@@ -630,15 +596,6 @@ const Sessions: React.FC = () => {
                       <Button
                         size="small"
                         variant="outlined"
-                        startIcon={<TrendingUpIcon />}
-                        onClick={() => handleProcessPromotions(session)}
-                        disabled={!['admin', 'principal'].includes(user?.role || '')}
-                      >
-                        Process Promotions
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
                         startIcon={<ArchiveIcon />}
                         onClick={() => handleArchiveSession(session)}
                         disabled={!['admin', 'principal'].includes(user?.role || '')}
@@ -876,85 +833,9 @@ const Sessions: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Promotion Results Dialog */}
-      <Dialog open={openPromotionDialog} onClose={() => setOpenPromotionDialog(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Promotion Evaluation</DialogTitle>
-        <DialogContent>
-          {evaluation && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body1">Session: {evaluation.session}</Typography>
-              <Typography variant="body2">Students evaluated: {evaluation.totalStudents}</Typography>
-            </Box>
-          )}
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Student Name</TableCell>
-                  <TableCell>Grade</TableCell>
-                  <TableCell>Section</TableCell>
-                  <TableCell>Attendance %</TableCell>
-                  <TableCell>Eligibility</TableCell>
-                  <TableCell>Notes</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {promotionResults.map((result, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{result.studentName}</TableCell>
-                    <TableCell>{result.grade}</TableCell>
-                    <TableCell>{result.section}</TableCell>
-                    <TableCell>{result.attendancePercentage.toFixed(1)}%</TableCell>
-                    <TableCell>
-                      <Chip label={result.eligible ? 'Eligible' : 'Not Eligible'} color={result.eligible ? 'success' : 'warning'} size="small" />
-                    </TableCell>
-                    <TableCell>{result.reason || result.promotionNotes}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenPromotionDialog(false)}>Close</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={!selectedSession || promotionResults.length === 0 || bulkPromoteMutation.isPending}
-            onClick={() => setOpenConfirmPromoteDialog(true)}
-          >
-            {bulkPromoteMutation.isPending ? 'Promoting...' : 'Confirm & Promote'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
-      {/* Confirm Promote Dialog */}
-      <Dialog open={openConfirmPromoteDialog} onClose={() => setOpenConfirmPromoteDialog(false)}>
-        <DialogTitle>Confirm Promotion</DialogTitle>
-        <DialogContent>
-          <Typography gutterBottom>
-            This will promote all eligible students in session "{selectedSession?.name}" to the next grade/section and update their current session.
-          </Typography>
-          <Typography color="error">This action cannot be undone.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenConfirmPromoteDialog(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => {
-              if (!selectedSession) return;
-              const eligibleIds = (promotionResults || [])
-                .filter((r: any) => r.eligible)
-                .map((r: any) => r.studentId);
-              bulkPromoteMutation.mutate({ sessionId: selectedSession._id, studentIds: eligibleIds });
-            }}
-            disabled={bulkPromoteMutation.isPending}
-          >
-            {bulkPromoteMutation.isPending ? 'Promoting...' : 'Confirm'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+
+
 
       {/* Archive Confirmation Dialog */}
       <Dialog open={openArchiveDialog} onClose={() => setOpenArchiveDialog(false)}>

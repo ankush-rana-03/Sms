@@ -73,7 +73,7 @@ app.use('/api/tests', require('./routes/tests'));
 app.use('/api/results', require('./routes/results'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/sessions', require('./routes/sessions'));
-app.use('/api/promotion', require('./routes/promotion'));
+// Promotion routes removed; all promotions occur via session auto-rollover
 
 // Teacher routes (moved to avoid conflicts)
 app.use('/api/teachers', require('./routes/teachers'));

@@ -88,6 +88,7 @@ const Sessions: React.FC = () => {
   const [openAutoCreateClassesDialog, setOpenAutoCreateClassesDialog] = useState(false);
   const [openCopyClassesDialog, setOpenCopyClassesDialog] = useState(false);
   const [openDeleteClassesDialog, setOpenDeleteClassesDialog] = useState(false);
+  const [openDeleteSessionDialog, setOpenDeleteSessionDialog] = useState(false);
   const [rollingOverSessionId, setRollingOverSessionId] = useState<string | null>(null);
   const [selectedSourceSession, setSelectedSourceSession] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -104,6 +105,16 @@ const Sessions: React.FC = () => {
     minimumGrade: 'D',
     requireAllSubjects: true
   });
+
+  // Local editable criteria state per session card (inline editor)
+  const [criteriaEdits, setCriteriaEdits] = useState<Record<string, { minimumAttendance: number; minimumGrade: string; requireAllSubjects: boolean }>>({});
+  const getCriteriaFor = (session: Session) => criteriaEdits[session._id] || session.promotionCriteria;
+  const setCriteriaFor = (sessionId: string, updater: (prev: { minimumAttendance: number; minimumGrade: string; requireAllSubjects: boolean }) => { minimumAttendance: number; minimumGrade: string; requireAllSubjects: boolean }) => {
+    setCriteriaEdits(prev => ({
+      ...prev,
+      [sessionId]: updater(prev[sessionId] || { minimumAttendance: 75, minimumGrade: 'D', requireAllSubjects: true })
+    }));
+  };
 
   // Fetch sessions
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
@@ -446,6 +457,76 @@ const Sessions: React.FC = () => {
                   <Chip label="Current Session" color="primary" size="small" sx={{ mb: 2 }} />
                 )}
 
+                {session.isCurrent && (
+                  <Box sx={{ mt: 1, p: 2, border: '1px solid', borderColor: 'grey.200', borderRadius: 1 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>Promotion Criteria (Current Session)</Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          type="number"
+                          label="Min Attendance (%)"
+                          value={getCriteriaFor(session).minimumAttendance}
+                          inputProps={{ min: 0, max: 100 }}
+                          onChange={(e) => setCriteriaFor(session._id, (prev) => ({
+                            ...prev,
+                            minimumAttendance: Number(e.target.value)
+                          }))}
+                          disabled={!['admin','principal'].includes(user?.role || '')}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <FormControl fullWidth>
+                          <InputLabel>Minimum Grade</InputLabel>
+                          <Select
+                            label="Minimum Grade"
+                            value={getCriteriaFor(session).minimumGrade}
+                            onChange={(e) => setCriteriaFor(session._id, (prev) => ({
+                              ...prev,
+                              minimumGrade: String(e.target.value)
+                            }))}
+                            disabled={!['admin','principal'].includes(user?.role || '')}
+                          >
+                            <MenuItem value="F">F</MenuItem>
+                            <MenuItem value="E">E</MenuItem>
+                            <MenuItem value="D">D</MenuItem>
+                            <MenuItem value="C">C</MenuItem>
+                            <MenuItem value="B">B</MenuItem>
+                            <MenuItem value="A">A</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <FormControl fullWidth>
+                          <InputLabel>Require All Subjects</InputLabel>
+                          <Select
+                            label="Require All Subjects"
+                            value={String(getCriteriaFor(session).requireAllSubjects)}
+                            onChange={(e) => setCriteriaFor(session._id, (prev) => ({
+                              ...prev,
+                              requireAllSubjects: e.target.value === 'true'
+                            }))}
+                            disabled={!['admin','principal'].includes(user?.role || '')}
+                          >
+                            <MenuItem value="true">Yes</MenuItem>
+                            <MenuItem value="false">No</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => updateSessionMutation.mutate({ id: session._id, data: { promotionCriteria: getCriteriaFor(session) } })}
+                          disabled={!['admin','principal'].includes(user?.role || '') || updateSessionMutation.isPending}
+                        >
+                          {updateSessionMutation.isPending ? 'Saving…' : 'Save Criteria'}
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {/* Class Creation Options - Show for all sessions */}
                   <Button
@@ -560,7 +641,7 @@ const Sessions: React.FC = () => {
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => deleteSessionMutation.mutate(session._id)}
+                          onClick={() => { setSelectedSession(session); setOpenDeleteSessionDialog(true); }}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -1015,6 +1096,47 @@ const Sessions: React.FC = () => {
             disabled={deleteClassesMutation.isPending}
           >
             {deleteClassesMutation.isPending ? 'Deleting...' : 'Delete All Classes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Session Dialog (permanent deletion) */}
+      <Dialog open={openDeleteSessionDialog} onClose={() => setOpenDeleteSessionDialog(false)}>
+        <DialogTitle>Delete Session Permanently</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the session "{selectedSession?.name}"?
+          </Typography>
+          <Typography sx={{ mt: 1 }} color="error">
+            This will permanently delete ALL related data and cannot be retrieved back:
+          </Typography>
+          <List sx={{ mt: 1 }}>
+            <ListItem>
+              <ListItemText primary="• The session record" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• All classes under this session" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• All attendance records for this session" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="• All results tied to this session" />
+            </ListItem>
+          </List>
+          <Typography sx={{ mt: 1, color: 'error.main', fontWeight: 'bold' }}>
+            This action is irreversible.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteSessionDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() => { if (selectedSession) { deleteSessionMutation.mutate(selectedSession._id); setOpenDeleteSessionDialog(false); } }}
+            variant="contained"
+            color="error"
+            disabled={deleteSessionMutation.isPending}
+          >
+            {deleteSessionMutation.isPending ? 'Deleting…' : 'Yes, Delete Permanently'}
           </Button>
         </DialogActions>
       </Dialog>

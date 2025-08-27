@@ -1009,7 +1009,7 @@ const StudentAttendance: React.FC = () => {
                               </TableCell>
                               <TableCell>{record.markedBy}</TableCell>
                               <TableCell>
-                                {canEditAttendance(record.date) && (
+                                {isCurrentSession() && canEditAttendance(record.date) && (
                                   <Tooltip title="Edit Attendance">
                                     <IconButton
                                       size="small"

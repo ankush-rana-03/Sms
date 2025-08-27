@@ -41,6 +41,7 @@ import {
 
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/api';
 import classService from '../services/classService';
 import studentService from '../services/studentService';
 import attendanceService from '../services/attendanceService';
@@ -73,6 +74,8 @@ const Attendance: React.FC = () => {
   const [selectedClassName, setSelectedClassName] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [sessions, setSessions] = useState<Array<{ _id: string; name: string; isCurrent?: boolean }>>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [students, setStudents] = useState<Student[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,7 +109,19 @@ const Attendance: React.FC = () => {
         console.error('Failed to load classes', e);
       }
     };
+    const loadSessions = async () => {
+      try {
+        const resp = await apiService.get<{ success: boolean; data: any[] }>('/sessions');
+        const list = resp.success ? resp.data : [];
+        setSessions(list);
+        const current = list.find((s: any) => s.isCurrent || s.isActive);
+        if (current) setSelectedSessionId(current._id);
+      } catch (e) {
+        console.error('Failed to load sessions', e);
+      }
+    };
     loadClasses();
+    loadSessions();
   }, []);
 
   // Resolve classId when name/section change
@@ -120,7 +135,8 @@ const Attendance: React.FC = () => {
 
     setLoading(true);
     try {
-      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      const selectedSessionName = sessions.find(s => s._id === selectedSessionId)?.name;
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass, selectedSessionName);
       const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
         id: r._id,
         student: {
@@ -155,7 +171,8 @@ const Attendance: React.FC = () => {
   useEffect(() => {
     const refreshForDate = async () => {
       if (!selectedClass) return;
-      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      const selectedSessionName = sessions.find(s => s._id === selectedSessionId)?.name;
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass, selectedSessionName);
       const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
       setStudents(allStudents.filter(s => !markedIds.has(String(s.id))));
       const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
@@ -174,7 +191,7 @@ const Attendance: React.FC = () => {
       setAttendanceHistory(history);
     };
     refreshForDate();
-  }, [selectedDate, selectedClass, allStudents]);
+  }, [selectedDate, selectedClass, allStudents, sessions, selectedSessionId]);
 
   // Check if user can mark attendance for selected date
   const canMarkAttendance = (date: string) => {
@@ -222,7 +239,8 @@ const Attendance: React.FC = () => {
         status: 'present'
       }));
       setAllStudents(mapped);
-      const result = await attendanceService.getAttendanceByDate(selectedDate, classId);
+      const selectedSessionName = sessions.find(s => s._id === selectedSessionId)?.name;
+      const result = await attendanceService.getAttendanceByDate(selectedDate, classId, selectedSessionName);
       const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
       setStudents(mapped.filter(s => !markedIds.has(String(s.id))));
       const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
@@ -374,7 +392,7 @@ const Attendance: React.FC = () => {
             color="primary"
             startIcon={<Save />}
             onClick={handleSaveAttendance}
-            disabled={saving || !canMarkAttendance(selectedDate)}
+            disabled={saving || !canMarkAttendance(selectedDate) || !(sessions.find(s=>s.isCurrent)?._id && selectedSessionId === (sessions.find(s=>s.isCurrent)?._id))}
           >
             {saving ? 'Saving...' : 'Save Attendance'}
           </Button>
@@ -467,7 +485,7 @@ const Attendance: React.FC = () => {
                     variant="contained"
                     startIcon={<Save />}
                     onClick={handleSaveAttendance}
-                    disabled={saving || !canMarkAttendance(selectedDate)}
+                    disabled={saving || !canMarkAttendance(selectedDate) || !(sessions.find(s=>s.isCurrent)?._id && selectedSessionId === (sessions.find(s=>s.isCurrent)?._id))}
                   >
                     {saving ? <CircularProgress size={20} /> : 'Save Attendance'}
                   </Button>
@@ -521,6 +539,21 @@ const Attendance: React.FC = () => {
               </>
             ) : (
               <>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+                  <FormControl size="small" sx={{ minWidth: 180 }}>
+                    <InputLabel id="session-dropdown-label">Session</InputLabel>
+                    <Select
+                      labelId="session-dropdown-label"
+                      value={selectedSessionId}
+                      label="Session"
+                      onChange={(e) => setSelectedSessionId(e.target.value)}
+                    >
+                      {sessions.map(s => (
+                        <MenuItem key={s._id} value={s._id}>{s.name}{s.isCurrent ? ' (Current)' : ''}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6">
                     Attendance Records
@@ -561,7 +594,7 @@ const Attendance: React.FC = () => {
                             </TableCell>
                             <TableCell>{record.markedBy}</TableCell>
                             <TableCell>
-                              {canEditAttendance(record.date) && (
+                              {sessions.find(s=>s._id===selectedSessionId)?.isCurrent && canEditAttendance(record.date) && (
                                 <Tooltip title="Edit Attendance">
                                   <IconButton
                                     size="small"

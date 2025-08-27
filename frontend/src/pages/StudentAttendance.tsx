@@ -116,15 +116,16 @@ const StudentAttendance: React.FC = () => {
   // Fetch all available sessions
   const fetchSessions = useCallback(async () => {
     try {
-      const response = await apiService.get<{ success: boolean; data: Session[] }>('/sessions');
-      if (response.success) {
-        setSessions(response.data);
-        // Set current session as default
-        const activeSession = response.data.find(s => s.isActive);
-        if (activeSession) {
-          setCurrentSession(activeSession);
-          setSelectedSession(activeSession._id);
-        }
+      const response = await apiService.get<Session[]>('/sessions');
+      const list: Session[] = Array.isArray(response) ? response : [];
+      setSessions(list);
+      // Set current session as default
+      const current = list.find(s => (s as any).isCurrent);
+      if (current) {
+        setCurrentSession(current);
+        setSelectedSession(current._id);
+      } else if (list.length > 0) {
+        setSelectedSession(list[0]._id);
       }
     } catch (error) {
       console.error('Error fetching sessions:', error);

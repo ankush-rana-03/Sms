@@ -250,7 +250,8 @@ const StudentAttendance: React.FC = () => {
       }));
       setAllStudents(mapped);
       // Fetch existing attendance for this date/class and filter unmarked for mark view
-      const result = await attendanceService.getAttendanceByDate(selectedDate, classId);
+      const selectedSessionObj = sessions.find(s => s._id === selectedSession);
+      const result = await attendanceService.getAttendanceByDate(selectedDate, classId, selectedSessionObj?.name);
       const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
       const unmarked = mapped.filter(s => !markedIds.has(String(s.id)));
       setStudents(unmarked);
@@ -280,7 +281,8 @@ const StudentAttendance: React.FC = () => {
   useEffect(() => {
     const refreshForDate = async () => {
       if (!selectedClass) return;
-      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass);
+      const selectedSessionObj = sessions.find(s => s._id === selectedSession);
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass, selectedSessionObj?.name);
       const markedIds = new Set((result.data || []).map((r: any) => String(r.studentId?._id)));
       const unmarked = allStudents.filter(s => !markedIds.has(String(s.id)));
       setStudents(unmarked);
@@ -348,12 +350,13 @@ const StudentAttendance: React.FC = () => {
 
     setSaving(true);
     try {
+      const selectedSessionObj = sessions.find(s => s._id === selectedSession);
       await attendanceService.markBulkAttendance(
         markedStudents.map(s => ({
           studentId: s.id,
           status: s.status!, // We know status is not undefined here due to filter above
           date: selectedDate,
-          session: selectedSession,
+          session: selectedSessionObj?.name,
           remarks: ''
         }))
       );
@@ -383,7 +386,8 @@ const StudentAttendance: React.FC = () => {
 
     setLoading(true);
     try {
-      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass, selectedSession);
+      const selectedSessionObj = sessions.find(s => s._id === selectedSession);
+      const result = await attendanceService.getAttendanceByDate(selectedDate, selectedClass, selectedSessionObj?.name);
       const history: AttendanceRecord[] = (result.data || []).map((r: any) => ({
         id: r._id,
         student: {

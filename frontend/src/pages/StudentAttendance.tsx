@@ -208,16 +208,6 @@ const StudentAttendance: React.FC = () => {
     setSelectedClass('');
     setSelectedClassName('');
     setSelectedSection('');
-
-    // Align selected date to the selected session window if needed
-    const selectedSessionObj = sessions.find(s => s._id === selectedSession);
-    if (selectedSessionObj) {
-      const start = new Date(selectedSessionObj.startDate).toISOString().split('T')[0];
-      const end = new Date(selectedSessionObj.endDate).toISOString().split('T')[0];
-      if (selectedDate < start || selectedDate > end) {
-        setSelectedDate(start);
-      }
-    }
   }, [selectedSession, sessions, fetchClasses]);
 
   // Resolve classId whenever class name/section change

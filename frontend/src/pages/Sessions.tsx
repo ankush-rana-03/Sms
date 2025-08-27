@@ -116,6 +116,9 @@ const Sessions: React.FC = () => {
     }));
   };
 
+  // Track whether inline criteria editor is open per session
+  const [criteriaEditOpen, setCriteriaEditOpen] = useState<Record<string, boolean>>({});
+
   // Fetch sessions
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
     queryKey: ['sessions'],
@@ -163,10 +166,20 @@ const Sessions: React.FC = () => {
       const response = await api.put<Session>(`/sessions/${id}`, data);
       return response;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       setOpenEditDialog(false);
       setSelectedSession(null);
+      // If this update was for inline promotionCriteria, close the editor for that session
+      if ((variables?.data || {}).promotionCriteria) {
+        setCriteriaEditOpen(prev => ({ ...prev, [variables.id]: false }));
+        // Clear local edits so newly fetched values reflect in UI
+        setCriteriaEdits(prev => {
+          const copy = { ...prev } as any;
+          delete copy[variables.id];
+          return copy;
+        });
+      }
     }
   });
 
@@ -459,71 +472,102 @@ const Sessions: React.FC = () => {
 
                 {session.isCurrent && (
                   <Box sx={{ mt: 1, p: 2, border: '1px solid', borderColor: 'grey.200', borderRadius: 1 }}>
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>Promotion Criteria (Current Session)</Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={4}>
-                        <TextField
-                          fullWidth
-                          type="number"
-                          label="Min Attendance (%)"
-                          value={getCriteriaFor(session).minimumAttendance}
-                          inputProps={{ min: 0, max: 100 }}
-                          onChange={(e) => setCriteriaFor(session._id, (prev) => ({
-                            ...prev,
-                            minimumAttendance: Number(e.target.value)
-                          }))}
-                          disabled={!['admin','principal'].includes(user?.role || '')}
-                        />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="subtitle2">Promotion Criteria (Current Session)</Typography>
+                      {!criteriaEditOpen[session._id] && (
+                        <IconButton size="small" onClick={() => setCriteriaEditOpen(prev => ({ ...prev, [session._id]: true }))} disabled={!['admin','principal'].includes(user?.role || '')}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
+                    {criteriaEditOpen[session._id] ? (
+                      <>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              type="number"
+                              label="Min Attendance (%)"
+                              value={getCriteriaFor(session).minimumAttendance}
+                              inputProps={{ min: 0, max: 100 }}
+                              onChange={(e) => setCriteriaFor(session._id, (prev) => ({
+                                ...prev,
+                                minimumAttendance: Number(e.target.value)
+                              }))}
+                              disabled={!['admin','principal'].includes(user?.role || '')}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <FormControl fullWidth>
+                              <InputLabel>Minimum Grade</InputLabel>
+                              <Select
+                                label="Minimum Grade"
+                                value={getCriteriaFor(session).minimumGrade}
+                                onChange={(e) => setCriteriaFor(session._id, (prev) => ({
+                                  ...prev,
+                                  minimumGrade: String(e.target.value)
+                                }))}
+                                disabled={!['admin','principal'].includes(user?.role || '')}
+                              >
+                                <MenuItem value="F">F</MenuItem>
+                                <MenuItem value="E">E</MenuItem>
+                                <MenuItem value="D">D</MenuItem>
+                                <MenuItem value="C">C</MenuItem>
+                                <MenuItem value="B">B</MenuItem>
+                                <MenuItem value="A">A</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <FormControl fullWidth>
+                              <InputLabel>Require All Subjects</InputLabel>
+                              <Select
+                                label="Require All Subjects"
+                                value={String(getCriteriaFor(session).requireAllSubjects)}
+                                onChange={(e) => setCriteriaFor(session._id, (prev) => ({
+                                  ...prev,
+                                  requireAllSubjects: e.target.value === 'true'
+                                }))}
+                                disabled={!['admin','principal'].includes(user?.role || '')}
+                              >
+                                <MenuItem value="true">Yes</MenuItem>
+                                <MenuItem value="false">No</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                          <Grid item xs={12} sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() => updateSessionMutation.mutate({ id: session._id, data: { promotionCriteria: getCriteriaFor(session) } })}
+                              disabled={!['admin','principal'].includes(user?.role || '') || updateSessionMutation.isPending}
+                            >
+                              {updateSessionMutation.isPending ? 'Saving…' : 'Save'}
+                            </Button>
+                            <Button
+                              variant="text"
+                              size="small"
+                              onClick={() => { setCriteriaEditOpen(prev => ({ ...prev, [session._id]: false })); setCriteriaEdits(prev => { const copy = { ...prev } as any; delete copy[session._id]; return copy; }); }}
+                              disabled={updateSessionMutation.isPending}
+                            >
+                              Cancel
+                            </Button>
+                          </Grid>
+                        </Grid>
+                      </>
+                    ) : (
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <Typography variant="body2">Min Attendance: <strong>{session.promotionCriteria.minimumAttendance}%</strong></Typography>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Typography variant="body2">Min Grade: <strong>{session.promotionCriteria.minimumGrade}</strong></Typography>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Typography variant="body2">Require All Subjects: <strong>{session.promotionCriteria.requireAllSubjects ? 'Yes' : 'No'}</strong></Typography>
+                        </Grid>
                       </Grid>
-                      <Grid item xs={12} md={4}>
-                        <FormControl fullWidth>
-                          <InputLabel>Minimum Grade</InputLabel>
-                          <Select
-                            label="Minimum Grade"
-                            value={getCriteriaFor(session).minimumGrade}
-                            onChange={(e) => setCriteriaFor(session._id, (prev) => ({
-                              ...prev,
-                              minimumGrade: String(e.target.value)
-                            }))}
-                            disabled={!['admin','principal'].includes(user?.role || '')}
-                          >
-                            <MenuItem value="F">F</MenuItem>
-                            <MenuItem value="E">E</MenuItem>
-                            <MenuItem value="D">D</MenuItem>
-                            <MenuItem value="C">C</MenuItem>
-                            <MenuItem value="B">B</MenuItem>
-                            <MenuItem value="A">A</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} md={4}>
-                        <FormControl fullWidth>
-                          <InputLabel>Require All Subjects</InputLabel>
-                          <Select
-                            label="Require All Subjects"
-                            value={String(getCriteriaFor(session).requireAllSubjects)}
-                            onChange={(e) => setCriteriaFor(session._id, (prev) => ({
-                              ...prev,
-                              requireAllSubjects: e.target.value === 'true'
-                            }))}
-                            disabled={!['admin','principal'].includes(user?.role || '')}
-                          >
-                            <MenuItem value="true">Yes</MenuItem>
-                            <MenuItem value="false">No</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => updateSessionMutation.mutate({ id: session._id, data: { promotionCriteria: getCriteriaFor(session) } })}
-                          disabled={!['admin','principal'].includes(user?.role || '') || updateSessionMutation.isPending}
-                        >
-                          {updateSessionMutation.isPending ? 'Saving…' : 'Save Criteria'}
-                        </Button>
-                      </Grid>
-                    </Grid>
+                    )}
                   </Box>
                 )}
 

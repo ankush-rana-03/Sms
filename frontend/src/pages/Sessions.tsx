@@ -630,15 +630,6 @@ const Sessions: React.FC = () => {
                       <Button
                         size="small"
                         variant="outlined"
-                        startIcon={<TrendingUpIcon />}
-                        onClick={() => handleProcessPromotions(session)}
-                        disabled={!['admin', 'principal'].includes(user?.role || '')}
-                      >
-                        Process Promotions
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
                         startIcon={<ArchiveIcon />}
                         onClick={() => handleArchiveSession(session)}
                         disabled={!['admin', 'principal'].includes(user?.role || '')}

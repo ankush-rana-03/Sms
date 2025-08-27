@@ -627,15 +627,17 @@ const Sessions: React.FC = () => {
                   {/* Session Management Options */}
                   {session.status === 'active' && (
                     <>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<TrendingUpIcon />}
-                        onClick={() => handleProcessPromotions(session)}
-                        disabled={!['admin', 'principal'].includes(user?.role || '')}
-                      >
-                        Process Promotions
-                      </Button>
+                      {!session.isCurrent && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<TrendingUpIcon />}
+                          onClick={() => handleProcessPromotions(session)}
+                          disabled={!['admin', 'principal'].includes(user?.role || '')}
+                        >
+                          Process Promotions
+                        </Button>
+                      )}
                       <Button
                         size="small"
                         variant="outlined"

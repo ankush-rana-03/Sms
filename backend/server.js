@@ -47,19 +47,40 @@ app.use(logoutLogger);
 // Static files
 app.use('/uploads', express.static('uploads'));
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/school_management', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // 30 seconds
-  socketTimeoutMS: 45000, // 45 seconds
-  maxPoolSize: 10, // Maintain up to 10 socket connections
-  minPoolSize: 2, // Maintain at least 2 socket connections
-  maxIdleTimeMS: 30000, // Close idle connections after 30 seconds
-  connectTimeoutMS: 30000, // Give up initial connection after 30 seconds
-})
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
+// Database connection (supports in-memory MongoDB for development)
+const useInMemoryDb = process.env.USE_IN_MEMORY_DB === 'true';
+let inMemoryServer = null;
+
+async function connectDatabase() {
+  try {
+    if (useInMemoryDb) {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      inMemoryServer = await MongoMemoryServer.create();
+      const uri = inMemoryServer.getUri();
+      await mongoose.connect(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log('Connected to in-memory MongoDB');
+    } else {
+      await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/school_management', {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+        maxPoolSize: 10,
+        minPoolSize: 2,
+        maxIdleTimeMS: 30000,
+        connectTimeoutMS: 30000,
+      });
+      console.log('Connected to MongoDB');
+    }
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+  }
+}
+
+connectDatabase();
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -102,11 +123,13 @@ app.listen(PORT, async () => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
+  try { if (inMemoryServer) { await inMemoryServer.stop(); } } catch (e) {}
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down gracefully');
+  try { if (inMemoryServer) { await inMemoryServer.stop(); } } catch (e) {}
   process.exit(0);
 });
 

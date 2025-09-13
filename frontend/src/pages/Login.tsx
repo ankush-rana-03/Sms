@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Paper,
   TextField,
   Button,
   Typography,
@@ -128,24 +127,7 @@ const Login: React.FC = () => {
     }
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'admin': return <Security />;
-      case 'principal': return <School />;
-      case 'teacher': return <People />;
-      case 'parent': return <Person />;
-      default: return <Person />;
-    }
-  };
-
-  const getRoleDescription = (role: string) => {
-    switch (role) {
-      case 'admin': return 'Full system access and management';
-      case 'teacher': return 'Class management and attendance';
-      case 'parent': return 'Student progress monitoring';
-      default: return '';
-    }
-  };
+  // Removed unused helper functions
 
   return (
     <Box

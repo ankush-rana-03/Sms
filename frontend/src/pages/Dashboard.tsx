@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Paper,
   List,
   ListItem,
   ListItemText,
@@ -29,27 +28,17 @@ import {
   Assignment,
   Assessment,
   TrendingUp,
-  Notifications,
   CalendarToday,
-  LocationOn,
   Add,
   Visibility,
-  Edit,
   BarChart,
   PieChart,
   ShowChart,
   Refresh,
-  Download,
-  FilterList,
-  MoreVert,
 } from '@mui/icons-material';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
-  BarChart as RechartsBarChart,
-  Bar,
   PieChart as RechartsPieChart,
   Pie,
   Cell,
@@ -92,7 +81,7 @@ const Dashboard: React.FC = () => {
     value: number;
     color: string;
   }>>([]);
-  const [recentAttendance, setRecentAttendance] = useState([]);
+  // Removed unused recentAttendance state
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {

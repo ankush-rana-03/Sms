@@ -18,11 +18,8 @@ import {
   MenuItem,
   Tabs,
   Tab,
-  FormControl,
-  InputLabel,
-  Select,
 } from '@mui/material';
-import { Add, Person, Edit, Delete, Restore, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Add, Person, Edit, Delete, Restore } from '@mui/icons-material';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import studentService from '../services/studentService';
 import classService, { ClassWithSections } from '../services/classService';

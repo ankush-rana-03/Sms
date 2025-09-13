@@ -28,8 +28,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Tabs,
-  Tab,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -41,7 +39,6 @@ import {
   Edit,
   Visibility,
   Search,
-  FilterList,
   Download,
   Print,
   History,
@@ -101,7 +98,7 @@ const StudentAttendance: React.FC = () => {
   const [viewMode, setViewMode] = useState<'mark' | 'view' | 'reports'>('mark');
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<string>('');
+  // Removed unused selectedStudent state
 
   const [editingAttendance, setEditingAttendance] = useState<AttendanceRecord | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -182,10 +179,7 @@ const StudentAttendance: React.FC = () => {
   const [classes, setClasses] = useState<Array<{ id: string; name: string; section: string; displayName: string }>>([]);
   const classNames = Array.from(new Set(classes.map(c => c.name)));
   const sectionsForSelectedClass = classes.filter(c => c.name === selectedClassName).map(c => c.section || '');
-  const reportClassNames = Array.from(new Set(classes.map(c => c.name)));
-  const reportSections = classes.filter(c => c.name === selectedClassName).map(c => c.section || '');
-  const reportClassMatch = classes.find(c => c.name === selectedClassName && c.section === selectedSection);
-  const reportClassId = reportClassMatch ? reportClassMatch.id : '';
+  // Removed unused report state
 
   const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 

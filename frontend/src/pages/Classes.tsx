@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Box, 
   Typography, 
@@ -16,8 +16,6 @@ import {
   Snackbar, 
   Alert, 
   CircularProgress,
-  Chip,
-  Divider,
   IconButton,
   Tooltip
 } from '@mui/material';
@@ -113,7 +111,7 @@ const Classes: React.FC = () => {
     }
   };
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = useCallback(async () => {
     try {
       const res = await apiService.get<{ success: boolean; data: any[]; count?: number }>('/admin/teachers');
       const allTeachers = (res as any).data?.map((t: any) => ({ _id: t._id, name: t.name, email: t.email, isActive: t.isActive })) || [];
@@ -143,7 +141,7 @@ const Classes: React.FC = () => {
       
       setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     }
-  };
+  }, [classes]);
 
   useEffect(() => {
     fetchClasses();
@@ -153,7 +151,7 @@ const Classes: React.FC = () => {
     if (openAssign) {
       fetchTeachers();
     }
-  }, [openAssign, classes]);
+  }, [openAssign, fetchTeachers]);
 
   const handleOpenAssign = (cls: ClassItem) => {
     setSelectedClass(cls);

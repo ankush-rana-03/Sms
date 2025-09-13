@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -6,9 +6,7 @@ import {
   Card,
   CardContent,
   Grid,
-  Paper,
   Chip,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -29,29 +27,20 @@ import {
   Snackbar,
   Tabs,
   Tab,
-  Divider,
-  Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar
+  Avatar
 } from '@mui/material';
 import {
   Login,
   Logout,
   Schedule,
-  People,
   Person,
-  Save,
-  Edit,
-  Visibility,
   CheckCircle,
   Cancel,
   Warning,
   AccessTime,
-  CalendarToday,
   TrendingUp,
-  Dashboard
+  Dashboard,
+  Edit
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import staffAttendanceService, { StaffAttendance as StaffAttendanceRecord, StaffAttendanceStatistics, StaffAttendanceDashboard } from '../services/staffAttendanceService';
@@ -102,7 +91,7 @@ const StaffAttendance: React.FC = () => {
   // Admin states
   const [markAttendanceDialog, setMarkAttendanceDialog] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState('');
-  const [staffList, setStaffList] = useState<any[]>([]);
+  const [staffList] = useState<any[]>([]);
   const [markAttendanceData, setMarkAttendanceData] = useState({
     status: 'present',
     date: new Date().toISOString().split('T')[0],
@@ -113,6 +102,27 @@ const StaffAttendance: React.FC = () => {
     remarks: ''
   });
 
+  const fetchDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await staffAttendanceService.getDashboard(selectedDate);
+      setDashboard(response.data);
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.message, severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDate]);
+
+  const fetchAttendanceByDate = useCallback(async () => {
+    try {
+      const response = await staffAttendanceService.getAttendanceByDate(selectedDate);
+      setAttendanceData(response.data);
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.message, severity: 'error' });
+    }
+  }, [selectedDate]);
+
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'principal') {
       fetchDashboard();
@@ -120,7 +130,7 @@ const StaffAttendance: React.FC = () => {
     } else {
       fetchMyAttendance();
     }
-  }, [user, selectedDate]);
+  }, [user, selectedDate, fetchDashboard, fetchAttendanceByDate]);
 
   const fetchMyAttendance = async () => {
     try {
@@ -138,26 +148,7 @@ const StaffAttendance: React.FC = () => {
     }
   };
 
-  const fetchDashboard = async () => {
-    try {
-      setLoading(true);
-      const response = await staffAttendanceService.getDashboard(selectedDate);
-      setDashboard(response.data);
-    } catch (error: any) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAttendanceByDate = async () => {
-    try {
-      const response = await staffAttendanceService.getAttendanceByDate(selectedDate);
-      setAttendanceData(response.data);
-    } catch (error: any) {
-      setSnackbar({ open: true, message: error.message, severity: 'error' });
-    }
-  };
+  // definitions moved above to satisfy TS hoisting rules
 
   const handleCheckIn = async () => {
     try {

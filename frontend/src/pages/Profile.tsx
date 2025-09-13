@@ -9,14 +9,9 @@ import {
   Grid,
   TextField,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Alert,
   Snackbar,
   Chip,
-  Paper,
 } from '@mui/material';
 import {
   Person,
@@ -26,8 +21,6 @@ import {
   Edit,
   Save,
   Cancel,
-  School,
-  Work,
   Lock,
   Visibility,
   VisibilityOff,

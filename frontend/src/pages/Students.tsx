@@ -48,7 +48,8 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const Students: React.FC = () => {
-  const { user } = useAuth();
+  // Removed unused user variable
+  useAuth();
   const [students, setStudents] = useState<any[]>([]);
   const [deletedStudents, setDeletedStudents] = useState<any[]>([]);
   const [openRegistration, setOpenRegistration] = useState(false);
@@ -119,7 +120,7 @@ const Students: React.FC = () => {
     if (tabValue === 1) {
       fetchDeletedStudents();
     }
-  }, [tabValue]);
+  }, [tabValue, deletedSearch, deletedGradeFilter, deletedSectionFilter]);
 
   const fetchAvailableClasses = async () => {
     try {

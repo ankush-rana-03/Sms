@@ -311,7 +311,7 @@ const StudentAttendance: React.FC = () => {
       setAttendanceHistory(history);
     };
     refreshForDate();
-  }, [selectedDate, selectedClass, allStudents]);
+  }, [selectedDate, selectedClass, allStudents, sessions, selectedSession]);
 
   const handleStatusChange = (studentId: string, status: string) => {
     // Convert empty string to undefined for unmarked students

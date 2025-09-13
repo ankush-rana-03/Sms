@@ -26,11 +26,6 @@ import {
   FormControlLabel,
   Radio,
   RadioGroup,
-  TextareaAutosize,
-  ToggleButton,
-  ToggleButtonGroup,
-  Card,
-  CardContent,
   Avatar,
   IconButton,
   Tooltip
@@ -43,8 +38,7 @@ import {
   Cancel,
   Schedule,
   Person,
-  Visibility,
-  VisibilityOff
+  
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import teacherService from '../services/teacherService';
@@ -56,7 +50,7 @@ const TeacherAttendance: React.FC = () => {
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [viewMode, setViewMode] = useState<'mark' | 'view'>('mark');
+  const [viewMode] = useState<'mark' | 'view'>('mark');
   const [students, setStudents] = useState<any[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);

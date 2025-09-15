@@ -165,7 +165,7 @@ exports.rolloverSession = async (req, res, next) => {
     }
 
     // Prevent concurrent runs for the same source session
-    const existingActive = await RolloverRun.findOne({ sourceSessionName: source.name, status: 'running' });
+    const existingActive = await RolloverRun.findOne({ sourceSessionName: source.name, status: 'running' }).lean();
     if (existingActive) {
       return next(new ErrorResponse('A rollover is already running for this session', 409));
     }
@@ -221,7 +221,7 @@ exports.rolloverSession = async (req, res, next) => {
     await Session.updateMany({ _id: { $ne: newSession._id } }, { isCurrent: false });
 
     // Copy classes from source session into new session
-    const sourceClasses = await Class.find({ session: source.name });
+    const sourceClasses = await Class.find({ session: source.name }).lean();
     const createdClasses = [];
     for (const sc of sourceClasses) {
       const exists = await Class.findOne({ name: sc.name, section: sc.section, session: newSession.name });
@@ -242,14 +242,25 @@ exports.rolloverSession = async (req, res, next) => {
     // Promote and move students. Retained students should also move to next session,
     // staying in same class/section and keeping roll number uniqueness.
     const students = await Student.find({ currentSession: source.name, deletedAt: null });
+    // Precompute attendance totals and present counts per student for the source session
+    const attendanceStats = await Attendance.aggregate([
+      { $match: { session: source.name } },
+      { $group: {
+          _id: '$studentId',
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } }
+        }
+      }
+    ]);
+    const attendanceByStudentId = new Map(attendanceStats.map(s => [String(s._id), { total: s.total, present: s.present }]));
     const gradeMap = { nursery: 'lkg', lkg: 'ukg', ukg: '1', '1': '2', '2': '3', '3': '4', '4': '5', '5': '6', '6': '7', '7': '8', '8': '9', '9': '10', '10': '11', '11': '12' };
     let promotedCount = 0;
     let retainedCount = 0;
     for (const student of students) {
-      // Attendance-based eligibility
-      const attendance = await Attendance.find({ studentId: student._id, session: source.name });
-      const total = attendance.length;
-      const present = attendance.filter(a => a.status === 'present').length;
+      // Attendance-based eligibility using precomputed stats
+      const stats = attendanceByStudentId.get(String(student._id)) || { total: 0, present: 0 };
+      const total = stats.total;
+      const present = stats.present;
       const percentage = total > 0 ? (present / total) * 100 : 0;
       const eligible = percentage >= (source.promotionCriteria?.minimumAttendance || 0);
 
@@ -345,7 +356,7 @@ exports.rolloverSession = async (req, res, next) => {
     try {
       // Best-effort mark run as failed
       const { sessionId } = req.params;
-      const source = await Session.findById(sessionId);
+      const source = await Session.findById(sessionId).lean();
       if (source) {
         const run = await RolloverRun.findOne({ sourceSessionName: source.name, status: 'running' });
         if (run) {

@@ -179,7 +179,8 @@ exports.getAttendanceRecords = async (req, res, next) => {
       .populate('studentId', 'name rollNumber')
       .populate('classId', 'name section')
       .populate('markedBy', 'name')
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .lean();
 
     res.status(200).json({ success: true, count: records.length, data: records });
   } catch (err) {
@@ -199,7 +200,7 @@ exports.getAttendanceReport = async (req, res, next) => {
     const day = new Date(date); day.setHours(0,0,0,0);
     const nextDay = new Date(day.getTime() + 24*60*60*1000);
 
-    const records = await Attendance.find({ session, classId, date: { $gte: day, $lt: nextDay } });
+    const records = await Attendance.find({ session, classId, date: { $gte: day, $lt: nextDay } }).lean();
     const total = records.length;
     const present = records.filter(r=>r.status==='present').length;
     const absent = records.filter(r=>r.status==='absent').length;
@@ -231,7 +232,8 @@ exports.getStudentAttendance = async (req, res, next) => {
     const attendance = await Attendance.find(query)
       .populate('classId', 'name section')
       .populate('markedBy', 'name')
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .lean();
 
     // Calculate statistics
     const totalDays = attendance.length;
@@ -451,36 +453,45 @@ exports.getClassAttendanceStatistics = async (req, res, next) => {
       return next(new ErrorResponse('Class not found', 404));
     }
 
-    // Attendance records for the day for this class
+    // Use aggregation for better performance
     const dayEnd = new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000);
-    const attendance = await Attendance.find({
-      classId: classId,
-      date: { $gte: attendanceDate, $lt: dayEnd }
-    })
-      .select('status')
-      .lean();
+    const [attendanceStats, totalStudents] = await Promise.all([
+      Attendance.aggregate([
+        {
+          $match: {
+            classId: classId,
+            date: { $gte: attendanceDate, $lt: dayEnd }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            presentCount: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+            absentCount: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
+            lateCount: { $sum: { $cond: [{ $eq: ['$status', 'late'] }, 1, 0] } },
+            halfDayCount: { $sum: { $cond: [{ $eq: ['$status', 'half-day'] }, 1, 0] } }
+          }
+        }
+      ]),
+      Student.countDocuments({
+        grade: cls.name,
+        section: cls.section,
+        currentSession: cls.session,
+        deletedAt: null
+      })
+    ]);
 
-    // Total students in this class for this session
-    const totalStudents = await Student.countDocuments({
-      grade: cls.name,
-      section: cls.section,
-      currentSession: cls.session,
-      deletedAt: null
-    });
-    const presentCount = attendance.filter(a => a.status === 'present').length;
-    const absentCount = attendance.filter(a => a.status === 'absent').length;
-    const lateCount = attendance.filter(a => a.status === 'late').length;
-    const halfDayCount = attendance.filter(a => a.status === 'half-day').length;
-    const attendancePercentage = totalStudents > 0 ? ((presentCount + lateCount + halfDayCount) / totalStudents) * 100 : 0;
+    const stats = attendanceStats[0] || { presentCount: 0, absentCount: 0, lateCount: 0, halfDayCount: 0 };
+    const attendancePercentage = totalStudents > 0 ? ((stats.presentCount + stats.lateCount + stats.halfDayCount) / totalStudents) * 100 : 0;
 
     res.status(200).json({
       success: true,
       data: {
         totalStudents,
-        presentCount,
-        absentCount,
-        lateCount,
-        halfDayCount,
+        presentCount: stats.presentCount,
+        absentCount: stats.absentCount,
+        lateCount: stats.lateCount,
+        halfDayCount: stats.halfDayCount,
         attendancePercentage: Math.round(attendancePercentage * 100) / 100
       }
     });
@@ -512,7 +523,8 @@ exports.getAttendanceDashboard = async (req, res, next) => {
     const attendance = await Attendance.find(query)
       .populate('student', 'name rollNumber')
       .populate('class', 'name section')
-      .populate('markedBy', 'name');
+      .populate('markedBy', 'name')
+      .lean();
 
     const totalStudents = classId 
       ? await Student.countDocuments({ class: classId })
@@ -569,7 +581,8 @@ exports.sendAttendanceNotifications = async (req, res, next) => {
 
     const attendance = await Attendance.find(query)
       .populate('student', 'name parentPhone')
-      .populate('class', 'name section');
+      .populate('class', 'name section')
+      .lean();
 
     const notifications = [];
     let sentCount = 0;
@@ -624,38 +637,73 @@ exports.getAttendanceStatsBySession = async (req, res, next) => {
 
     const attendance = await Attendance.find(query)
       .populate('studentId', 'name rollNumber')
-      .populate('classId', 'name section');
+      .populate('classId', 'name section')
+      .lean();
 
-    // Calculate comprehensive statistics
-    const totalRecords = attendance.length;
-    const presentCount = attendance.filter(a => a.status === 'present').length;
-    const absentCount = attendance.filter(a => a.status === 'absent').length;
-    const lateCount = attendance.filter(a => a.status === 'late').length;
-    const halfDayCount = attendance.filter(a => a.status === 'half-day').length;
-    
-    const attendancePercentage = totalRecords > 0 ? (presentCount / totalRecords) * 100 : 0;
-
-    // Group by class
-    const classStats = {};
-    attendance.forEach(record => {
-      const className = `${record.classId.name}-${record.classId.section}`;
-      if (!classStats[className]) {
-        classStats[className] = {
-          total: 0,
-          present: 0,
-          absent: 0,
-          late: 0,
-          halfDay: 0
-        };
+    // Use aggregation for better performance on large datasets
+    const statsAggregation = await Attendance.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalRecords: { $sum: 1 },
+          presentCount: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+          absentCount: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
+          lateCount: { $sum: { $cond: [{ $eq: ['$status', 'late'] }, 1, 0] } },
+          halfDayCount: { $sum: { $cond: [{ $eq: ['$status', 'half-day'] }, 1, 0] } }
+        }
       }
-      classStats[className].total++;
-      classStats[className][record.status]++;
-    });
+    ]);
 
-    // Calculate class-wise percentages
-    Object.keys(classStats).forEach(className => {
-      const stats = classStats[className];
-      stats.percentage = stats.total > 0 ? (stats.present / stats.total) * 100 : 0;
+    const classStatsAggregation = await Attendance.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: 'classes',
+          localField: 'classId',
+          foreignField: '_id',
+          as: 'classInfo'
+        }
+      },
+      { $unwind: '$classInfo' },
+      {
+        $group: {
+          _id: { name: '$classInfo.name', section: '$classInfo.section' },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+          absent: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
+          late: { $sum: { $cond: [{ $eq: ['$status', 'late'] }, 1, 0] } },
+          halfDay: { $sum: { $cond: [{ $eq: ['$status', 'half-day'] }, 1, 0] } }
+        }
+      },
+      {
+        $addFields: {
+          percentage: {
+            $cond: [
+              { $gt: ['$total', 0] },
+              { $multiply: [{ $divide: ['$present', '$total'] }, 100] },
+              0
+            ]
+          }
+        }
+      }
+    ]);
+
+    const stats = statsAggregation[0] || { totalRecords: 0, presentCount: 0, absentCount: 0, lateCount: 0, halfDayCount: 0 };
+    const attendancePercentage = stats.totalRecords > 0 ? (stats.presentCount / stats.totalRecords) * 100 : 0;
+
+    // Convert aggregation results to expected format
+    const classStats = {};
+    classStatsAggregation.forEach(item => {
+      const className = `${item._id.name}-${item._id.section}`;
+      classStats[className] = {
+        total: item.total,
+        present: item.present,
+        absent: item.absent,
+        late: item.late,
+        halfDay: item.halfDay,
+        percentage: Math.round(item.percentage * 100) / 100
+      };
     });
 
     res.status(200).json({
@@ -663,11 +711,11 @@ exports.getAttendanceStatsBySession = async (req, res, next) => {
       data: {
         session,
         overallStats: {
-          totalRecords,
-          presentCount,
-          absentCount,
-          lateCount,
-          halfDayCount,
+          totalRecords: stats.totalRecords,
+          presentCount: stats.presentCount,
+          absentCount: stats.absentCount,
+          lateCount: stats.lateCount,
+          halfDayCount: stats.halfDayCount,
           attendancePercentage: Math.round(attendancePercentage * 100) / 100
         },
         classStats,

@@ -136,4 +136,11 @@ studentSchema.index({ deletedAt: 1 });
 // Add compound index for active students (deletedAt: null)
 studentSchema.index({ deletedAt: 1, grade: 1, section: 1, rollNumber: 1 }, { unique: true, partialFilterExpression: { deletedAt: null } });
 
+// Add indexes for common query patterns
+studentSchema.index({ currentSession: 1, deletedAt: 1 });
+studentSchema.index({ grade: 1, section: 1, deletedAt: 1 });
+studentSchema.index({ email: 1 });
+studentSchema.index({ name: 1 });
+studentSchema.index({ rollNumber: 1 });
+
 module.exports = mongoose.model('Student', studentSchema);

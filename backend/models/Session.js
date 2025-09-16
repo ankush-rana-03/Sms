@@ -79,6 +79,11 @@ const sessionSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Add indexes for common query patterns
+sessionSchema.index({ isCurrent: 1 });
+sessionSchema.index({ name: 1 });
+sessionSchema.index({ status: 1 });
+
 // Ensure only one session is current at a time
 sessionSchema.pre('save', async function(next) {
   if (this.isCurrent) {

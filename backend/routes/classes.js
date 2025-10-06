@@ -482,7 +482,13 @@ router.delete('/:classId/class-teacher', protect, authorize('admin', 'principal'
       await cls.save();
     }
 
-    res.status(200).json({ success: true, message: 'Class teacher unassigned' });
+    // Return the updated class data
+    const updatedClass = await Class.findById(classId).populate('classTeacher', 'name email');
+    res.status(200).json({ 
+      success: true, 
+      message: 'Class teacher unassigned successfully',
+      data: updatedClass
+    });
   } catch (error) {
     console.error('Error unassigning class teacher:', error);
     res.status(500).json({ success: false, message: 'Error unassigning class teacher', error: error.message });

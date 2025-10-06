@@ -59,6 +59,7 @@ const Classes: React.FC = () => {
   const [teachers, setTeachers] = useState<TeacherLite[]>([]);
   const [teacherId, setTeacherId] = useState('');
   const [snackbar, setSnackbar] = useState<{open: boolean; message: string; severity: 'success'|'error'}>({open:false, message:'', severity:'success'});
+  const [unassigning, setUnassigning] = useState<string | null>(null);
   
   // Add Class form state
   const [newClass, setNewClass] = useState({
@@ -198,10 +199,21 @@ const Classes: React.FC = () => {
   };
 
   const handleUnassign = async (cls: ClassItem) => {
+    if (unassigning === cls._id) return; // Prevent multiple clicks
+    
     try {
+      setUnassigning(cls._id);
+      console.log('Unassigning teacher for class:', cls._id);
       const res = await apiService.delete<{ success: boolean; message: string; data: ClassItem }>(`/classes/${cls._id}/class-teacher`);
+      console.log('Unassign response:', res);
+      
       if ((res as any).success) {
-        setClasses(prev => prev.map(c => c._id === cls._id ? (res as any).data : c));
+        // Update the class in the state with the returned data
+        setClasses(prev => prev.map(c => 
+          c._id === cls._id 
+            ? { ...c, classTeacher: null } // Clear the class teacher
+            : c
+        ));
         setSnackbar({ open: true, message: 'Class teacher unassigned successfully', severity: 'success' });
       } else {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to unassign class teacher', severity: 'error' });
@@ -223,6 +235,8 @@ const Classes: React.FC = () => {
       }
       
       setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    } finally {
+      setUnassigning(null);
     }
   };
 
@@ -506,9 +520,14 @@ const Classes: React.FC = () => {
                         size="small"
                         color="warning" 
                         onClick={() => handleUnassign(cls)}
+                        disabled={unassigning === cls._id}
                         sx={{ borderRadius: 2, textTransform: 'none' }}
                       >
-                        Unassign
+                        {unassigning === cls._id ? (
+                          <CircularProgress size={16} color="warning" />
+                        ) : (
+                          'Unassign'
+                        )}
                       </Button>
                     )}
                     

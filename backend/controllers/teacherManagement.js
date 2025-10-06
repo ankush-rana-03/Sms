@@ -134,7 +134,11 @@ exports.createTeacher = async (req, res) => {
       experience,
       salary,
       emergencyContact,
-      joiningDate
+      joiningDate,
+      address,
+      subject,
+      qualification: qual,
+      experience: exp
     } = req.body;
 
     // Validate required fields
@@ -144,6 +148,30 @@ exports.createTeacher = async (req, res) => {
         message: 'Name, email, phone, and designation are required'
       });
     }
+
+    // Map designation to valid enum values
+    const designationMap = {
+      'Mathematics Teacher': 'TGT',
+      'Science Teacher': 'TGT',
+      'English Teacher': 'TGT',
+      'Hindi Teacher': 'TGT',
+      'Social Studies Teacher': 'TGT',
+      'Physical Education Teacher': 'TGT',
+      'Computer Teacher': 'TGT',
+      'Art Teacher': 'TGT',
+      'Music Teacher': 'TGT',
+      'Principal': 'PGT',
+      'Vice Principal': 'PGT',
+      'Head Teacher': 'PGT',
+      'Senior Teacher': 'PGT',
+      'Junior Teacher': 'JBT',
+      'Nursery Teacher': 'NTT'
+    };
+
+    const validDesignation = designationMap[designation] || 'TGT';
+    
+    console.log('Original designation:', designation);
+    console.log('Mapped designation:', validDesignation);
 
     // Check if teacher already exists
     const existingTeacher = await Teacher.findOne({ email });
@@ -194,15 +222,19 @@ exports.createTeacher = async (req, res) => {
       name,
       email,
       phone,
-      designation,
-      subjects: subjects || [],
+      designation: validDesignation,
+      subjects: subjects || (subject ? [subject] : []),
       assignedClasses: assignedClasses || [],
-      qualification: qualification || {},
-      experience: experience || { years: 0, previousSchools: [] },
+      qualification: qualification || (qual ? { degree: qual } : {}),
+      experience: experience || (exp ? { years: parseInt(exp) || 0, previousSchools: [] } : { years: 0, previousSchools: [] }),
       salary: salary || 0,
       joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
       contactInfo: {
-        emergencyContact: emergencyContact || {}
+        emergencyContact: {
+          name: emergencyContact?.name || 'Emergency Contact',
+          phone: emergencyContact?.phone || phone,
+          relationship: emergencyContact?.relationship || 'Family'
+        }
       },
       passwordResetRequired: true
     };

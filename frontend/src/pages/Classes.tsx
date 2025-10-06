@@ -117,20 +117,14 @@ const Classes: React.FC = () => {
     }
   };
 
+  const [allTeachers, setAllTeachers] = useState<TeacherLite[]>([]);
+
   const fetchTeachers = async () => {
     try {
       const res = await apiService.get<{ success: boolean; data: any[]; count?: number }>('/admin/teachers');
-      const allTeachers = (res as any).data?.map((t: any) => ({ _id: t._id, name: t.name, email: t.email, isActive: t.isActive })) || [];
-      
-      // Filter out teachers who are already assigned as class teachers
-      const availableTeachers = allTeachers.filter((teacher: { _id: string; name: string; email: string; isActive: boolean }) => {
-        // Check if this teacher is already assigned to any class
-        const isAlreadyAssigned = classes.some(cls => cls.classTeacher?._id === teacher._id);
-        return !isAlreadyAssigned && teacher.isActive;
-      });
-      
-      setTeachers(availableTeachers);
-      console.log('Available teachers for assignment:', availableTeachers);
+      const teachers = (res as any).data?.map((t: any) => ({ _id: t._id, name: t.name, email: t.email, isActive: t.isActive })) || [];
+      setAllTeachers(teachers);
+      filterAvailableTeachers(teachers);
     } catch (e: any) { 
       console.error('Error fetching teachers:', e);
       let errorMessage = 'Failed to fetch teachers';
@@ -149,6 +143,19 @@ const Classes: React.FC = () => {
     }
   };
 
+  const filterAvailableTeachers = (teachersList: TeacherLite[] = allTeachers) => {
+    // Filter out teachers who are already assigned as class teachers
+    const availableTeachers = teachersList.filter((teacher: TeacherLite) => {
+      // Check if this teacher is already assigned to any class
+      const isAlreadyAssigned = classes.some(cls => cls.classTeacher?._id === teacher._id);
+      return !isAlreadyAssigned && teacher.isActive;
+    });
+    
+    setTeachers(availableTeachers);
+    console.log('Available teachers for assignment:', availableTeachers);
+    console.log('Current classes state:', classes);
+  };
+
   useEffect(() => {
     if (!authLoading && user) {
       fetchClasses();
@@ -160,6 +167,13 @@ const Classes: React.FC = () => {
       fetchTeachers();
     }
   }, [openAssign]);
+
+  // Filter teachers whenever classes state changes
+  useEffect(() => {
+    if (allTeachers.length > 0) {
+      filterAvailableTeachers();
+    }
+  }, [classes]);
 
   const handleOpenAssign = (cls: ClassItem) => {
     setSelectedClass(cls);
@@ -177,8 +191,8 @@ const Classes: React.FC = () => {
         // Update classes state immediately
         setClasses(prev => prev.map(c => c._id === selectedClass._id ? (res as any).data : c));
         
-        // Remove the assigned teacher from available teachers list immediately
-        setTeachers(prev => prev.filter(teacher => teacher._id !== teacherId));
+        // Filter available teachers immediately
+        filterAvailableTeachers();
         
         setSnackbar({ open: true, message: 'Class teacher assigned successfully', severity: 'success' });
         setOpenAssign(false);
@@ -228,21 +242,8 @@ const Classes: React.FC = () => {
             : c
         ));
         
-        // Add the unassigned teacher back to available teachers list
-        if (cls.classTeacher) {
-          setTeachers(prev => {
-            const isAlreadyInList = prev.some(teacher => teacher._id === cls.classTeacher?._id);
-            if (!isAlreadyInList) {
-              return [...prev, {
-                _id: cls.classTeacher._id,
-                name: cls.classTeacher.name,
-                email: cls.classTeacher.email,
-                isActive: true
-              }];
-            }
-            return prev;
-          });
-        }
+        // Filter available teachers to include the unassigned teacher
+        filterAvailableTeachers();
         
         setSnackbar({ open: true, message: 'Class teacher unassigned successfully', severity: 'success' });
       } else {

@@ -60,6 +60,7 @@ const Classes: React.FC = () => {
   const [teacherId, setTeacherId] = useState('');
   const [snackbar, setSnackbar] = useState<{open: boolean; message: string; severity: 'success'|'error'}>({open:false, message:'', severity:'success'});
   const [unassigning, setUnassigning] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
   
   // Add Class form state
   const [newClass, setNewClass] = useState({
@@ -163,12 +164,18 @@ const Classes: React.FC = () => {
   };
 
   const handleAssignTeacher = async () => {
-    if (!selectedClass || !teacherId) return;
+    if (!selectedClass || !teacherId || assigning) return;
     
     try {
+      setAssigning(true);
       const res = await apiService.put<{ success: boolean; message: string; data: ClassItem }>(`/classes/${selectedClass._id}/class-teacher`, { teacherId });
       if ((res as any).success) {
+        // Update classes state immediately
         setClasses(prev => prev.map(c => c._id === selectedClass._id ? (res as any).data : c));
+        
+        // Remove the assigned teacher from available teachers list immediately
+        setTeachers(prev => prev.filter(teacher => teacher._id !== teacherId));
+        
         setSnackbar({ open: true, message: 'Class teacher assigned successfully', severity: 'success' });
         setOpenAssign(false);
         setSelectedClass(null);
@@ -195,6 +202,8 @@ const Classes: React.FC = () => {
       }
       
       setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -214,6 +223,23 @@ const Classes: React.FC = () => {
             ? { ...c, classTeacher: null } // Clear the class teacher
             : c
         ));
+        
+        // Add the unassigned teacher back to available teachers list
+        if (cls.classTeacher) {
+          setTeachers(prev => {
+            const isAlreadyInList = prev.some(teacher => teacher._id === cls.classTeacher?._id);
+            if (!isAlreadyInList) {
+              return [...prev, {
+                _id: cls.classTeacher._id,
+                name: cls.classTeacher.name,
+                email: cls.classTeacher.email,
+                isActive: true
+              }];
+            }
+            return prev;
+          });
+        }
+        
         setSnackbar({ open: true, message: 'Class teacher unassigned successfully', severity: 'success' });
       } else {
         setSnackbar({ open: true, message: (res as any).message || 'Failed to unassign class teacher', severity: 'error' });
@@ -768,7 +794,7 @@ const Classes: React.FC = () => {
           <Button
             onClick={handleAssignTeacher}
             variant="contained"
-            disabled={!teacherId}
+            disabled={!teacherId || assigning}
             size="large"
             sx={{
               px: 4,
@@ -784,7 +810,14 @@ const Classes: React.FC = () => {
               transition: 'all 0.2s ease-in-out'
             }}
           >
-            Assign Teacher
+            {assigning ? (
+              <>
+                <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                Assigning...
+              </>
+            ) : (
+              'Assign Teacher'
+            )}
           </Button>
         </DialogActions>
       </Dialog>

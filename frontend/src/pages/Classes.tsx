@@ -34,6 +34,7 @@ import {
   Person
 } from '@mui/icons-material';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ClassItem {
   _id: string;
@@ -50,6 +51,7 @@ interface ClassItem {
 interface TeacherLite { _id: string; name: string; email: string; isActive: boolean }
 
 const Classes: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [openAssign, setOpenAssign] = useState(false);
@@ -148,14 +150,16 @@ const Classes: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchClasses();
-  }, []);
+    if (!authLoading && user) {
+      fetchClasses();
+    }
+  }, [authLoading, user]);
 
   useEffect(() => {
     if (openAssign) {
       fetchTeachers();
     }
-  }, [openAssign, classes]);
+  }, [openAssign]);
 
   const handleOpenAssign = (cls: ClassItem) => {
     setSelectedClass(cls);

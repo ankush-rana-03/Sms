@@ -48,8 +48,10 @@ exports.getTodayAttendance = async (req, res) => {
       return {
         studentId: s._id,
         name: s.name,
+        email: s.email,
         grade: s.grade,
         section: s.section,
+        rollNumber: s.rollNumber,
         todayStatus: record ? record.status : 'not_marked',
         markedAt: record ? record.markedAt : null
       };

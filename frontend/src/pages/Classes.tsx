@@ -159,14 +159,11 @@ const Classes: React.FC = () => {
   useEffect(() => {
     if (!authLoading && user) {
       fetchClasses();
+      fetchTeachers(); // Fetch teachers on component load
     }
   }, [authLoading, user]);
 
-  useEffect(() => {
-    if (openAssign) {
-      fetchTeachers();
-    }
-  }, [openAssign]);
+  // Remove duplicate fetchTeachers call since we fetch on component load
 
   // Filter teachers whenever classes state changes
   useEffect(() => {
@@ -183,7 +180,13 @@ const Classes: React.FC = () => {
 
   const hasAvailableTeachers = () => {
     // Check if there are any teachers available for assignment
-    return teachers.length > 0;
+    // Use allTeachers to check availability before dialog opens
+    if (allTeachers.length === 0) return false;
+    
+    return allTeachers.some(teacher => {
+      const isAlreadyAssigned = classes.some(cls => cls.classTeacher?._id === teacher._id);
+      return !isAlreadyAssigned && teacher.isActive;
+    });
   };
 
   const handleAssignTeacher = async () => {

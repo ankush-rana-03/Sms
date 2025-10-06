@@ -181,6 +181,13 @@ const Classes: React.FC = () => {
     setOpenAssign(true);
   };
 
+  const hasAvailableTeachers = () => {
+    return allTeachers.some(teacher => {
+      const isAlreadyAssigned = classes.some(cls => cls.classTeacher?._id === teacher._id);
+      return !isAlreadyAssigned && teacher.isActive;
+    });
+  };
+
   const handleAssignTeacher = async () => {
     if (!selectedClass || !teacherId || assigning) return;
     
@@ -541,19 +548,27 @@ const Classes: React.FC = () => {
 
                   {/* Action Buttons */}
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    <Button 
-                      variant="contained" 
-                      size="small"
-                      onClick={() => handleOpenAssign(cls)}
-                      startIcon={cls.classTeacher ? <Edit /> : <Assignment />}
-                      sx={{ 
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 600
-                      }}
+                    <Tooltip 
+                      title={!hasAvailableTeachers() && !cls.classTeacher ? "All teachers are assigned" : ""}
+                      arrow
                     >
-                      {cls.classTeacher ? 'Reassign' : 'Assign'}
-                    </Button>
+                      <span>
+                        <Button 
+                          variant="contained" 
+                          size="small"
+                          onClick={() => handleOpenAssign(cls)}
+                          startIcon={cls.classTeacher ? <Edit /> : <Assignment />}
+                          disabled={!hasAvailableTeachers() && !cls.classTeacher}
+                          sx={{ 
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600
+                          }}
+                        >
+                          {cls.classTeacher ? 'Reassign' : 'Assign'}
+                        </Button>
+                      </span>
+                    </Tooltip>
                     
                     {cls.classTeacher && (
                       <Button 
@@ -781,22 +796,42 @@ const Classes: React.FC = () => {
              `Class ${selectedClass?.name}`} - Section {selectedClass?.section}
           </Typography>
           
-          <TextField
-            fullWidth
-            select
-            label="Select Teacher"
-            value={teacherId}
-            onChange={(e) => setTeacherId(e.target.value)}
-            size="small"
-            required
-            placeholder="Choose a teacher"
-          >
-            {teachers.map((teacher) => (
-              <MenuItem key={teacher._id} value={teacher._id}>
-                {teacher.name} ({teacher.email})
-              </MenuItem>
-            ))}
-          </TextField>
+          {teachers.length === 0 ? (
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 4,
+              border: '2px dashed #e0e0e0',
+              borderRadius: 2,
+              backgroundColor: '#fafafa'
+            }}>
+              <Typography variant="h6" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                All Teachers Assigned
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                All available teachers have been assigned to other classes.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                To assign a teacher to this class, first unassign a teacher from another class.
+              </Typography>
+            </Box>
+          ) : (
+            <TextField
+              fullWidth
+              select
+              label="Select Teacher"
+              value={teacherId}
+              onChange={(e) => setTeacherId(e.target.value)}
+              size="small"
+              required
+              placeholder="Choose a teacher"
+            >
+              {teachers.map((teacher) => (
+                <MenuItem key={teacher._id} value={teacher._id}>
+                  {teacher.name} ({teacher.email})
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2, justifyContent: 'center' }}>
           <Button 
@@ -806,34 +841,36 @@ const Classes: React.FC = () => {
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleAssignTeacher}
-            variant="contained"
-            disabled={!teacherId || assigning}
-            size="large"
-            sx={{
-              px: 4,
-              py: 1.5,
-              fontSize: '1.1rem',
-              fontWeight: 600,
-              borderRadius: 2,
-              boxShadow: 2,
-              '&:hover': {
-                boxShadow: 4,
-                transform: 'translateY(-1px)',
-              },
-              transition: 'all 0.2s ease-in-out'
-            }}
-          >
-            {assigning ? (
-              <>
-                <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
-                Assigning...
-              </>
-            ) : (
-              'Assign Teacher'
-            )}
-          </Button>
+          {teachers.length > 0 && (
+            <Button
+              onClick={handleAssignTeacher}
+              variant="contained"
+              disabled={!teacherId || assigning}
+              size="large"
+              sx={{
+                px: 4,
+                py: 1.5,
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                borderRadius: 2,
+                boxShadow: 2,
+                '&:hover': {
+                  boxShadow: 4,
+                  transform: 'translateY(-1px)',
+                },
+                transition: 'all 0.2s ease-in-out'
+              }}
+            >
+              {assigning ? (
+                <>
+                  <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                  Assigning...
+                </>
+              ) : (
+                'Assign Teacher'
+              )}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 

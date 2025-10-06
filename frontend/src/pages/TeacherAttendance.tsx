@@ -162,8 +162,12 @@ const TeacherAttendance: React.FC = () => {
       // In real app, call the API
       // const result = await attendanceService.getAttendanceByDate(selectedDate, selectedGrade);
       
+      // Get fresh students data
+      const result = await teacherService.getStudentsByClass(selectedGrade, selectedSection);
+      const currentStudents = result.data;
+      
       // Mock data
-      const mockHistory = students.map(student => ({
+      const mockHistory = currentStudents.map(student => ({
         id: `att_${student.id}_${selectedDate}`,
         student: {
           id: student.id,
@@ -184,7 +188,7 @@ const TeacherAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedGrade, selectedDate, students, user?.name]);
+  }, [selectedGrade, selectedSection, selectedDate, user?.name]);
 
   // Fetch data when selections change
   useEffect(() => {
@@ -192,7 +196,7 @@ const TeacherAttendance: React.FC = () => {
       fetchStudents();
       fetchTodayAttendance();
     }
-  }, [selectedGrade, selectedSection, selectedDate, viewMode, fetchStudents, fetchTodayAttendance, fetchAttendanceHistory]);
+  }, [selectedGrade, selectedSection, selectedDate, viewMode]);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

@@ -500,20 +500,75 @@ router.get('/available-for-registration', protect, async (req, res) => {
   try {
     // Get current session
     const Session = require('../models/Session');
-    const currentSession = await Session.findOne({ isCurrent: true });
+    let currentSession = await Session.findOne({ isCurrent: true });
     
     if (!currentSession) {
-      return res.status(400).json({
-        success: false,
-        message: 'No active session found. Please create or activate a session first.'
+      // Create a default session if none exists
+      console.log('No current session found, creating default session...');
+      currentSession = new Session({
+        name: '2024-25',
+        academicYear: '2024-25',
+        startDate: new Date('2024-04-01'),
+        endDate: new Date('2025-03-31'),
+        description: 'Academic Year 2024-25',
+        promotionCriteria: {
+          minimumAttendance: 75,
+          minimumGrade: 'D'
+        },
+        isCurrent: true,
+        status: 'active'
       });
+      
+      await currentSession.save();
+      console.log('Default session created:', currentSession.name);
     }
 
     // Get all active classes from current session
-    const classes = await Class.find({ 
+    let classes = await Class.find({ 
       session: currentSession.name,
       isActive: true 
     }).select('name section');
+
+    // If no classes exist, create default classes
+    if (classes.length === 0) {
+      console.log('No classes found, creating default classes...');
+      const defaultClasses = [
+        { name: 'nursery', sections: ['A', 'B', 'C'] },
+        { name: 'lkg', sections: ['A', 'B', 'C'] },
+        { name: 'ukg', sections: ['A', 'B', 'C'] },
+        { name: '1', sections: ['A', 'B'] },
+        { name: '2', sections: ['A', 'B'] },
+        { name: '3', sections: ['A', 'B'] },
+        { name: '4', sections: ['A', 'B'] },
+        { name: '5', sections: ['A', 'B'] },
+        { name: '6', sections: ['A', 'B'] },
+        { name: '7', sections: ['A', 'B'] },
+        { name: '8', sections: ['A', 'B'] },
+        { name: '9', sections: ['A', 'B'] },
+        { name: '10', sections: ['A', 'B'] },
+        { name: '11', sections: ['A', 'B'] },
+        { name: '12', sections: ['A', 'B'] }
+      ];
+
+      const createdClasses = [];
+      for (const classConfig of defaultClasses) {
+        for (const section of classConfig.sections) {
+          const newClass = await Class.create({
+            name: classConfig.name,
+            section: section,
+            academicYear: currentSession.academicYear,
+            session: currentSession.name,
+            capacity: 30,
+            roomNumber: `${classConfig.name.toUpperCase()}${section}`,
+            isActive: true
+          });
+          createdClasses.push(newClass);
+        }
+      }
+      
+      classes = createdClasses;
+      console.log(`Created ${createdClasses.length} default classes`);
+    }
 
     // Extract unique class names and sections
     const classNames = [...new Set(classes.map(cls => cls.name))].sort((a, b) => {

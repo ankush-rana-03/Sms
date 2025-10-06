@@ -38,7 +38,7 @@ router.get('/current', protect, async (req, res) => {
 });
 
 // Create new session
-router.post('/', async (req, res) => {
+router.post('/', protect, authorize('admin', 'principal'), async (req, res) => {
   try {
     const { name, academicYear, startDate, endDate, description, promotionCriteria } = req.body;
 

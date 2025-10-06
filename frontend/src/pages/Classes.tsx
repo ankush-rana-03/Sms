@@ -182,10 +182,8 @@ const Classes: React.FC = () => {
   };
 
   const hasAvailableTeachers = () => {
-    return allTeachers.some(teacher => {
-      const isAlreadyAssigned = classes.some(cls => cls.classTeacher?._id === teacher._id);
-      return !isAlreadyAssigned && teacher.isActive;
-    });
+    // Check if there are any teachers available for assignment
+    return teachers.length > 0;
   };
 
   const handleAssignTeacher = async () => {

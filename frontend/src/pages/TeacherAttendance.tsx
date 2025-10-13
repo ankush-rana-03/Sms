@@ -4,10 +4,6 @@ import {
   Paper,
   Typography,
   Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   TextField,
   Button,
   Table,
@@ -26,11 +22,8 @@ import {
   FormControlLabel,
   Radio,
   RadioGroup,
-  TextareaAutosize,
   ToggleButton,
   ToggleButtonGroup,
-  Card,
-  CardContent,
   Avatar,
   IconButton,
   Tooltip
@@ -43,8 +36,6 @@ import {
   Cancel,
   Schedule,
   Person,
-  Visibility,
-  VisibilityOff,
   School
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';

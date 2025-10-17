@@ -1,139 +1,173 @@
-import React from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent, Chip, Avatar } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, Grid, Card, CardContent, Chip, Avatar, CircularProgress, Alert } from '@mui/material';
 import { Add, Assignment, CheckCircle, Warning } from '@mui/icons-material';
+import HomeworkForm from '../components/HomeworkForm';
+import { homeworkService, Homework } from '../services/homeworkService';
 
 const Homework: React.FC = () => {
-  const mockHomework = [
-    {
-      id: '1',
-      title: 'Mathematics Chapter 5 Problems',
-      subject: 'Mathematics',
-      class: '10A',
-      dueDate: '2024-01-15',
-      status: 'assigned',
-      submissions: 28,
-      totalStudents: 35
-    },
-    {
-      id: '2',
-      title: 'English Essay Writing',
-      subject: 'English',
-      class: '10B',
-      dueDate: '2024-01-12',
-      status: 'due',
-      submissions: 30,
-      totalStudents: 32
-    },
-    {
-      id: '3',
-      title: 'Physics Lab Report',
-      subject: 'Physics',
-      class: '10A',
-      dueDate: '2024-01-10',
-      status: 'overdue',
-      submissions: 25,
-      totalStudents: 35
-    },
-  ];
+  const [homework, setHomework] = useState<Homework[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'assigned': return 'primary';
-      case 'due': return 'warning';
-      case 'overdue': return 'error';
-      case 'completed': return 'success';
-      default: return 'default';
+  useEffect(() => {
+    fetchHomework();
+  }, []);
+
+  const fetchHomework = async () => {
+    try {
+      setLoading(true);
+      const response = await homeworkService.getAllHomework();
+      setHomework(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch homework');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'assigned': return <Assignment color="primary" />;
-      case 'due': return <Warning color="warning" />;
-      case 'overdue': return <Warning color="error" />;
-      case 'completed': return <CheckCircle color="success" />;
-      default: return <Assignment />;
-    }
+  const handleFormSuccess = () => {
+    fetchHomework(); // Refresh the list
   };
+
+  const getStatusColor = (homework: Homework) => {
+    const dueDate = new Date(homework.dueDate);
+    const now = new Date();
+    const diffTime = dueDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'error'; // overdue
+    if (diffDays <= 1) return 'warning'; // due soon
+    return 'primary'; // assigned
+  };
+
+  const getStatusText = (homework: Homework) => {
+    const dueDate = new Date(homework.dueDate);
+    const now = new Date();
+    const diffTime = dueDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'Overdue';
+    if (diffDays <= 1) return 'Due Soon';
+    return 'Assigned';
+  };
+
+  const getStatusIcon = (homework: Homework) => {
+    const dueDate = new Date(homework.dueDate);
+    const now = new Date();
+    const diffTime = dueDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return <Warning color="error" />;
+    if (diffDays <= 1) return <Warning color="warning" />;
+    return <Assignment color="primary" />;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Homework Management</Typography>
-        <Button variant="contained" startIcon={<Add />}>
+        <Button 
+          variant="contained" 
+          startIcon={<Add />}
+          onClick={() => setFormOpen(true)}
+        >
           Assign Homework
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        {mockHomework.map((homework) => (
-          <Grid item xs={12} md={6} lg={4} key={homework.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                    <Assignment />
-                  </Avatar>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6">{homework.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {homework.subject} - {homework.class}
-                    </Typography>
-                  </Box>
-                  {getStatusIcon(homework.status)}
-                </Box>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Due Date: {homework.dueDate}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    Submissions: {homework.submissions}/{homework.totalStudents}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: 8,
-                        bgcolor: 'grey.200',
-                        borderRadius: 1,
-                        overflow: 'hidden'
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: `${(homework.submissions / homework.totalStudents) * 100}%`,
-                          height: '100%',
-                          bgcolor: 'primary.main'
-                        }}
-                      />
+      {homework.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h6" color="text.secondary">
+            No homework assignments found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Click "Assign Homework" to create your first assignment
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {homework.map((hw) => (
+            <Grid item xs={12} md={6} lg={4} key={hw._id}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+                      <Assignment />
+                    </Avatar>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="h6">{hw.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {hw.subject} - Class {hw.class}
+                      </Typography>
                     </Box>
-                    <Typography variant="caption" sx={{ ml: 1 }}>
-                      {Math.round((homework.submissions / homework.totalStudents) * 100)}%
-                    </Typography>
+                    {getStatusIcon(hw)}
                   </Box>
-                </Box>
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Chip
-                    label={homework.status}
-                    color={getStatusColor(homework.status)}
-                    size="small"
-                  />
-                  <Chip
-                    label={homework.subject}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Due Date: {formatDate(hw.dueDate)}
+                    </Typography>
+                    {hw.instructions && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Instructions: {hw.instructions}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2">
+                      Submissions: {hw.submissions?.length || 0}
+                    </Typography>
+                    {hw.totalMarks && hw.totalMarks > 0 && (
+                      <Typography variant="body2" color="text.secondary">
+                        Total Marks: {hw.totalMarks}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip
+                      label={getStatusText(hw)}
+                      color={getStatusColor(hw)}
+                      size="small"
+                    />
+                    <Chip
+                      label={hw.subject}
+                      variant="outlined"
+                      size="small"
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      <HomeworkForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSuccess={handleFormSuccess}
+      />
     </Box>
   );
 };

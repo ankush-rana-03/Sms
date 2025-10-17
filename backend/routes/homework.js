@@ -16,6 +16,8 @@ router.get('/', protect, authorize('teacher', 'admin', 'principal', 'parent'), a
 // Create new homework
 router.post('/', protect, authorize('teacher', 'admin', 'principal'), async (req, res) => {
   try {
+    // Add the assignedBy field from the authenticated user
+    req.body.assignedBy = req.user.id;
     const homework = new Homework(req.body);
     await homework.save();
     res.status(201).json({ success: true, data: homework });

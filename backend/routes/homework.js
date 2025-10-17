@@ -6,7 +6,10 @@ const { protect, authorize } = require('../middleware/auth');
 // Get all homework
 router.get('/', protect, authorize('teacher', 'admin', 'principal', 'parent'), async (req, res) => {
   try {
-    const homework = await Homework.find().sort({ createdAt: -1 });
+    const homework = await Homework.find()
+      .populate('class', 'name section')
+      .populate('assignedBy', 'name email')
+      .sort({ createdAt: -1 });
     res.json({ success: true, data: homework });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching homework', error: error.message });

@@ -117,7 +117,7 @@ const Homework: React.FC = () => {
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="h6">{hw.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {hw.subject} - Class {hw.class} {hw.section ? `Section ${hw.section}` : ''}
+                        {hw.subject} - {typeof hw.class === 'object' ? `Class ${hw.class.name}` : `Class ${hw.class}`} {hw.section ? `Section ${hw.section}` : ''}
                       </Typography>
                     </Box>
                     {getStatusIcon(hw)}
@@ -143,6 +143,9 @@ const Homework: React.FC = () => {
                         Total Marks: {hw.totalMarks}
                       </Typography>
                     )}
+                    <Typography variant="body2" color="text.secondary">
+                      Assigned by: {typeof hw.assignedBy === 'object' ? hw.assignedBy.name : 'Unknown'}
+                    </Typography>
                   </Box>
 
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>

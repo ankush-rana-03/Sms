@@ -5,9 +5,9 @@ export interface Homework {
   title: string;
   description: string;
   subject: string;
-  class: string;
+  class: string | { _id: string; name: string; section: string };
   section?: string;
-  assignedBy: string;
+  assignedBy: string | { _id: string; name: string; email: string };
   assignedDate?: Date;
   dueDate: Date;
   attachments?: Array<{

@@ -11,13 +11,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Box,
-  Typography,
   Alert
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+// import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+// import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { homeworkService, CreateHomeworkRequest } from '../services/homeworkService';
 
 interface HomeworkFormProps {
@@ -83,8 +81,7 @@ const HomeworkForm: React.FC<HomeworkFormProps> = ({ open, onClose, onSuccess })
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>Assign New Homework</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
@@ -161,16 +158,16 @@ const HomeworkForm: React.FC<HomeworkFormProps> = ({ open, onClose, onSuccess })
               </Grid>
               
               <Grid item xs={12} sm={6}>
-                <DatePicker
+                <TextField
+                  fullWidth
                   label="Due Date"
-                  value={formData.dueDate ? new Date(formData.dueDate) : null}
-                  onChange={(date) => handleChange('dueDate')(date ? date.toISOString() : '')}
+                  type="datetime-local"
+                  value={formData.dueDate ? new Date(formData.dueDate).toISOString().slice(0, 16) : ''}
+                  onChange={(e) => handleChange('dueDate')(e.target.value ? new Date(e.target.value).toISOString() : '')}
+                  required
                   disabled={loading}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      required: true
-                    }
+                  InputLabelProps={{
+                    shrink: true,
                   }}
                 />
               </Grid>
@@ -216,7 +213,6 @@ const HomeworkForm: React.FC<HomeworkFormProps> = ({ open, onClose, onSuccess })
           </DialogActions>
         </form>
       </Dialog>
-    </LocalizationProvider>
   );
 };
 

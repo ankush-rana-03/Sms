@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Grid, Card, CardContent, Chip, Avatar, CircularProgress, Alert } from '@mui/material';
-import { Add, Assignment, CheckCircle, Warning } from '@mui/icons-material';
+import { Add, Assignment, Warning } from '@mui/icons-material';
 import HomeworkForm from '../components/HomeworkForm';
-import { homeworkService, Homework } from '../services/homeworkService';
+import { homeworkService, Homework as HomeworkType } from '../services/homeworkService';
 
 const Homework: React.FC = () => {
-  const [homework, setHomework] = useState<Homework[]>([]);
+  const [homework, setHomework] = useState<HomeworkType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -30,7 +30,7 @@ const Homework: React.FC = () => {
     fetchHomework(); // Refresh the list
   };
 
-  const getStatusColor = (homework: Homework) => {
+  const getStatusColor = (homework: HomeworkType) => {
     const dueDate = new Date(homework.dueDate);
     const now = new Date();
     const diffTime = dueDate.getTime() - now.getTime();
@@ -41,7 +41,7 @@ const Homework: React.FC = () => {
     return 'primary'; // assigned
   };
 
-  const getStatusText = (homework: Homework) => {
+  const getStatusText = (homework: HomeworkType) => {
     const dueDate = new Date(homework.dueDate);
     const now = new Date();
     const diffTime = dueDate.getTime() - now.getTime();
@@ -52,7 +52,7 @@ const Homework: React.FC = () => {
     return 'Assigned';
   };
 
-  const getStatusIcon = (homework: Homework) => {
+  const getStatusIcon = (homework: HomeworkType) => {
     const dueDate = new Date(homework.dueDate);
     const now = new Date();
     const diffTime = dueDate.getTime() - now.getTime();
@@ -63,8 +63,9 @@ const Homework: React.FC = () => {
     return <Assignment color="primary" />;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const formatDate = (dateString: string | Date) => {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return date.toLocaleDateString();
   };
 
   if (loading) {

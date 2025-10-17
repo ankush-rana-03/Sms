@@ -117,7 +117,7 @@ const Homework: React.FC = () => {
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="h6">{hw.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {hw.subject} - Class {hw.class}
+                        {hw.subject} - Class {hw.class} {hw.section ? `Section ${hw.section}` : ''}
                       </Typography>
                     </Box>
                     {getStatusIcon(hw)}

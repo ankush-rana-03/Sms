@@ -18,6 +18,40 @@ router.post('/', protect, authorize('teacher', 'admin', 'principal'), async (req
   try {
     // Add the assignedBy field from the authenticated user
     req.body.assignedBy = req.user.id;
+    
+    // If class and section are provided as strings, find the actual class ID
+    if (req.body.class && req.body.section) {
+      const Class = require('../models/Class');
+      const Session = require('../models/Session');
+      
+      // Get current session
+      const currentSession = await Session.findOne({ isCurrent: true });
+      if (!currentSession) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No active session found' 
+        });
+      }
+      
+      // Find the class by name and section
+      const classDoc = await Class.findOne({
+        name: req.body.class,
+        section: req.body.section,
+        session: currentSession.name,
+        isActive: true
+      });
+      
+      if (!classDoc) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Class ${req.body.class} Section ${req.body.section} not found` 
+        });
+      }
+      
+      // Replace class name with actual class ID
+      req.body.class = classDoc._id;
+    }
+    
     const homework = new Homework(req.body);
     await homework.save();
     res.status(201).json({ success: true, data: homework });

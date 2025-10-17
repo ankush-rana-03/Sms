@@ -6,6 +6,7 @@ export interface Homework {
   description: string;
   subject: string;
   class: string;
+  section?: string;
   assignedBy: string;
   assignedDate?: Date;
   dueDate: Date;
@@ -41,6 +42,7 @@ export interface CreateHomeworkRequest {
   description: string;
   subject: string;
   class: string;
+  section?: string;
   dueDate: string;
   instructions?: string;
   totalMarks?: number;

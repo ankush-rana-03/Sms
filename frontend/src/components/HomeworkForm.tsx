@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,12 +11,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 // import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 // import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 // import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { homeworkService, CreateHomeworkRequest } from '../services/homeworkService';
+import classService, { ClassWithSections } from '../services/classService';
 
 interface HomeworkFormProps {
   open: boolean;
@@ -30,12 +32,46 @@ const HomeworkForm: React.FC<HomeworkFormProps> = ({ open, onClose, onSuccess })
     description: '',
     subject: '',
     class: '',
+    section: '',
     dueDate: '',
     instructions: '',
     totalMarks: 0
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [classes, setClasses] = useState<ClassWithSections[]>([]);
+  const [availableSections, setAvailableSections] = useState<string[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      fetchClasses();
+    }
+  }, [open]);
+
+  const fetchClasses = async () => {
+    try {
+      setLoadingClasses(true);
+      const response = await classService.getAvailableClassesForRegistration();
+      setClasses(response.data.classes);
+    } catch (err: any) {
+      setError('Failed to load classes');
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  const handleClassChange = (classId: string) => {
+    const selectedClass = classes.find(c => c.name === classId);
+    if (selectedClass) {
+      setAvailableSections(selectedClass.sections);
+      setFormData(prev => ({
+        ...prev,
+        class: classId,
+        section: '' // Reset section when class changes
+      }));
+    }
+  };
 
   const handleChange = (field: keyof CreateHomeworkRequest) => (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any
@@ -62,10 +98,12 @@ const HomeworkForm: React.FC<HomeworkFormProps> = ({ open, onClose, onSuccess })
         description: '',
         subject: '',
         class: '',
+        section: '',
         dueDate: '',
         instructions: '',
         totalMarks: 0
       });
+      setAvailableSections([]);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create homework');
     } finally {
@@ -140,19 +178,42 @@ const HomeworkForm: React.FC<HomeworkFormProps> = ({ open, onClose, onSuccess })
               </Grid>
               
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required disabled={loading}>
+                <FormControl fullWidth required disabled={loading || loadingClasses}>
                   <InputLabel>Class</InputLabel>
                   <Select
                     value={formData.class}
-                    onChange={handleChange('class')}
+                    onChange={(e) => handleClassChange(e.target.value)}
                     label="Class"
                   >
-                    <MenuItem value="68b04606cdb6905050d1c270">Class 10A</MenuItem>
-                    <MenuItem value="68b04606cdb6905050d1c271">Class 10B</MenuItem>
-                    <MenuItem value="68b04606cdb6905050d1c272">Class 11A</MenuItem>
-                    <MenuItem value="68b04606cdb6905050d1c273">Class 11B</MenuItem>
-                    <MenuItem value="68b04606cdb6905050d1c274">Class 12A</MenuItem>
-                    <MenuItem value="68b04606cdb6905050d1c275">Class 12B</MenuItem>
+                    {loadingClasses ? (
+                      <MenuItem disabled>
+                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                        Loading classes...
+                      </MenuItem>
+                    ) : (
+                      classes.map((cls) => (
+                        <MenuItem key={cls.name} value={cls.name}>
+                          {cls.displayName}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required disabled={loading || !formData.class}>
+                  <InputLabel>Section</InputLabel>
+                  <Select
+                    value={formData.section || ''}
+                    onChange={handleChange('section')}
+                    label="Section"
+                  >
+                    {availableSections.map((section) => (
+                      <MenuItem key={section} value={section}>
+                        Section {section}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>

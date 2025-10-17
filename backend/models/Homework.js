@@ -18,6 +18,10 @@ const homeworkSchema = new mongoose.Schema({
     ref: 'Class',
     required: true
   },
+  section: {
+    type: String,
+    required: true
+  },
   assignedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

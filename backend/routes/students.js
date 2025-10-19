@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
+const { filterParentData, checkParentStudentAccess } = require('../middleware/parentAccess');
 const {
   createStudent,
   getStudents,
@@ -19,7 +20,7 @@ router.get('/test/all', getAllStudentsTest);
 
 // Student routes
 router.post('/', protect, authorize('admin', 'principal', 'teacher'), createStudent);
-router.get('/', protect, authorize('admin', 'principal', 'teacher'), getStudents);
+router.get('/', protect, authorize('admin', 'principal', 'teacher', 'parent'), filterParentData, getStudents);
 router.put('/:studentId', protect, authorize('admin', 'principal'), updateStudent);
 router.delete('/:studentId', protect, authorize('admin', 'principal'), deleteStudent);
 router.put('/:studentId/approve', protect, authorize('admin', 'principal'), approveStudent);
@@ -30,6 +31,6 @@ router.put('/:studentId/restore', protect, authorize('admin', 'principal'), rest
 router.delete('/:studentId/permanent', protect, authorize('admin', 'principal'), permanentlyDeleteStudent);
 
 // Attendance routes
-router.get('/:studentId/attendance', protect, authorize('teacher', 'admin'), getStudentAttendance);
+router.get('/:studentId/attendance', protect, authorize('teacher', 'admin', 'parent'), filterParentData, checkParentStudentAccess, getStudentAttendance);
 
 module.exports = router;

@@ -168,6 +168,24 @@ exports.getStudents = async (req, res) => {
   try {
     const { page = 1, limit = 20, search = '', grade = '', section = '', session = '' } = req.query;
     const query = { deletedAt: null }; // Only get active (non-deleted) students
+    
+    // Parent-specific filtering: only show their children
+    if (req.user.role === 'parent' && req.parentChildrenIds) {
+      if (req.parentChildrenIds.length === 0) {
+        // Parent has no children, return empty result
+        return res.status(200).json({
+          success: true,
+          count: 0,
+          total: 0,
+          page: Number(page),
+          totalPages: 0,
+          data: [],
+          message: 'No children found for this parent account'
+        });
+      }
+      query._id = { $in: req.parentChildrenIds };
+    }
+    
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },

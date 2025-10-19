@@ -25,6 +25,7 @@ import LoginDebug from './components/LoginDebug';
 
 import TeacherAttendance from './pages/TeacherAttendance';
 import TeacherManagement from './pages/TeacherManagement';
+import ParentDashboard from './pages/ParentDashboard';
 
 // Import custom theme
 import theme from './theme';
@@ -105,6 +106,11 @@ const App: React.FC = () => {
                 <Route path="tests" element={<Tests />} />
                 <Route path="results" element={<Results />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="parent-dashboard" element={
+                  <RoleBasedRoute allowedRoles={['parent']}>
+                    <ParentDashboard />
+                  </RoleBasedRoute>
+                } />
                 <Route path="teacher-attendance" element={
                   <RoleBasedRoute allowedRoles={['teacher', 'admin']}>
                     <TeacherAttendance />

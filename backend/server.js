@@ -63,6 +63,7 @@ app.use('/api/homework', require('./routes/homework'));
 app.use('/api/tests', require('./routes/tests'));
 app.use('/api/results', require('./routes/results'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/parent', require('./routes/parent'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

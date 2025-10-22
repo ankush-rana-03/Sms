@@ -88,6 +88,8 @@ const ParentDashboard: React.FC = () => {
   });
 
   useEffect(() => {
+    console.log('ParentDashboard useEffect - isLoggedIn:', isLoggedIn, 'parent:', parent);
+    
     if (!isLoggedIn) {
       console.log('Parent not logged in, redirecting to login');
       window.location.href = '/parent-login';
@@ -98,6 +100,8 @@ const ParentDashboard: React.FC = () => {
       setSelectedChild(parent.children[0]._id);
       console.log('Fetching data...');
       fetchData();
+    } else {
+      console.log('No parent data or no children found');
     }
   }, [isLoggedIn, parent]);
 
@@ -250,6 +254,8 @@ const ParentDashboard: React.FC = () => {
     );
   }
 
+  console.log('ParentDashboard render - parent:', parent, 'isLoggedIn:', isLoggedIn, 'loading:', loading);
+
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -258,7 +264,7 @@ const ParentDashboard: React.FC = () => {
             Parent Dashboard
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Welcome, {parent?.name}
+            Welcome, {parent?.name || 'Loading...'}
           </Typography>
         </Box>
         <Button
@@ -333,7 +339,7 @@ const ParentDashboard: React.FC = () => {
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab label="All Homework" />
             <Tab label="Attendance" />
-            {parent?.children.map((child) => (
+            {parent?.children?.map((child) => (
               <Tab key={child._id} label={`${child.name} (Class ${child.grade}-${child.section})`} />
             ))}
           </Tabs>

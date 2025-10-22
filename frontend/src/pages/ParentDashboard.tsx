@@ -34,8 +34,8 @@ import {
   AccessTime
 } from '@mui/icons-material';
 import { parentHomeworkService, ParentHomework, HomeworkStatistics } from '../services/parentHomeworkService';
-import { parentAuthService, Parent } from '../services/parentAuthService';
 import { parentAttendanceService, StudentAttendance, AttendanceSummary } from '../services/parentAttendanceService';
+import { useParentAuth } from '../contexts/ParentAuthContext';
 
 interface TabPanelProps {
   children?: React.ReactNode;

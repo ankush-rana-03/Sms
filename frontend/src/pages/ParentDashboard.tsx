@@ -399,7 +399,7 @@ const ParentDashboard: React.FC = () => {
         </TabPanel>
 
         {parent?.children.map((child, index) => (
-          <TabPanel key={child._id} value={tabValue} index={index + 1}>
+          <TabPanel key={child._id} value={tabValue} index={index + 2}>
             <Grid container spacing={3}>
               {homework
                 .filter(hw => hw.childrenCompletion.some(comp => comp.studentId === child._id))

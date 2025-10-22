@@ -101,20 +101,37 @@ const ParentDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [homeworkResponse, statsResponse, attendanceResponse] = await Promise.all([
-        parentHomeworkService.getParentHomework(),
-        parentHomeworkService.getHomeworkStatistics(),
-        parentAttendanceService.getCurrentMonthAttendance()
-      ]);
+      setError(null);
       
-      setHomework(homeworkResponse.data);
-      setStatistics(statsResponse.data);
+      // Fetch homework data
+      try {
+        const [homeworkResponse, statsResponse] = await Promise.all([
+          parentHomeworkService.getParentHomework(),
+          parentHomeworkService.getHomeworkStatistics()
+        ]);
+        
+        setHomework(homeworkResponse.data);
+        setStatistics(statsResponse.data);
+      } catch (err: any) {
+        console.error('Error fetching homework data:', err);
+        setError('Failed to fetch homework data. Please try again.');
+        return;
+      }
       
-      // Process attendance data
-      if (attendanceResponse.data.children.length > 0) {
-        const firstChild = attendanceResponse.data.children[0];
-        setAttendance(firstChild.attendance);
-        setAttendanceSummary(firstChild.summary);
+      // Fetch attendance data separately
+      try {
+        const attendanceResponse = await parentAttendanceService.getCurrentMonthAttendance();
+        
+        // Process attendance data
+        if (attendanceResponse.data.children.length > 0) {
+          const firstChild = attendanceResponse.data.children[0];
+          setAttendance(firstChild.attendance);
+          setAttendanceSummary(firstChild.summary);
+        }
+      } catch (err: any) {
+        console.error('Error fetching attendance data:', err);
+        // Don't set error for attendance data failure, just log it
+        // This allows the dashboard to still show with homework data
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch data');
@@ -372,72 +389,6 @@ const ParentDashboard: React.FC = () => {
           </Grid>
         </TabPanel>
 
-        {parent?.children.map((child, index) => (
-          <TabPanel key={child._id} value={tabValue} index={index + 1}>
-            <Grid container spacing={3}>
-              {homework
-                .filter(hw => hw.childrenCompletion.some(comp => comp.studentId === child._id))
-                .map((hw) => {
-                  const childComp = hw.childrenCompletion.find(comp => comp.studentId === child._id);
-                  return (
-                    <Grid item xs={12} md={6} lg={4} key={hw._id}>
-                      <Card>
-                        <CardContent>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                              <Assignment />
-                            </Avatar>
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Typography variant="h6">{hw.title}</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {hw.subject}
-                              </Typography>
-                            </Box>
-                          </Box>
-
-                          <Typography variant="body2" sx={{ mb: 2 }}>
-                            Due: {formatDate(hw.dueDate)}
-                          </Typography>
-
-                          {hw.instructions && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                              {hw.instructions}
-                            </Typography>
-                          )}
-
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            {getStatusIcon(childComp?.completionStatus || 'not_started')}
-                            <Typography variant="body2" sx={{ ml: 1, flexGrow: 1 }}>
-                              Status: {getStatusText(childComp?.completionStatus || 'not_started')}
-                            </Typography>
-                            <Chip
-                              label={getStatusText(childComp?.completionStatus || 'not_started')}
-                              color={getStatusColor(childComp?.completionStatus || 'not_started') as any}
-                              size="small"
-                              onClick={() => handleCompletionClick(
-                                hw._id,
-                                child._id,
-                                childComp?.completionStatus || 'not_started',
-                                childComp?.parentComments || ''
-                              )}
-                              sx={{ cursor: 'pointer' }}
-                            />
-                          </Box>
-
-                          {childComp?.parentComments && (
-                            <Typography variant="body2" color="text.secondary">
-                              Your comments: {childComp.parentComments}
-                            </Typography>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  );
-                })}
-            </Grid>
-          </TabPanel>
-        ))}
-
         {/* Attendance Tab */}
         <TabPanel value={tabValue} index={1}>
           <Box sx={{ mb: 3 }}>
@@ -460,6 +411,12 @@ const ParentDashboard: React.FC = () => {
               </FormControl>
             )}
           </Box>
+
+          {!attendanceSummary && !loading && (
+            <Alert severity="info" sx={{ mb: 3 }}>
+              No attendance data available for the current month. Please contact the school administration if you need attendance information.
+            </Alert>
+          )}
 
           {/* Attendance Summary */}
           {attendanceSummary && (
@@ -544,7 +501,11 @@ const ParentDashboard: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Recent Attendance Records
               </Typography>
-              {attendance.length === 0 ? (
+              {!attendanceSummary ? (
+                <Typography variant="body2" color="text.secondary">
+                  No attendance data available. Please contact the school administration for attendance information.
+                </Typography>
+              ) : attendance.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   No attendance records found for the selected period.
                 </Typography>
@@ -590,6 +551,72 @@ const ParentDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </TabPanel>
+
+        {parent?.children.map((child, index) => (
+          <TabPanel value={tabValue} index={index + 2}>
+            <Grid container spacing={3}>
+              {homework
+                .filter(hw => hw.childrenCompletion.some(comp => comp.studentId === child._id))
+                .map((hw) => {
+                  const childComp = hw.childrenCompletion.find(comp => comp.studentId === child._id);
+                  return (
+                    <Grid item xs={12} md={6} lg={4} key={hw._id}>
+                      <Card>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+                              <Assignment />
+                            </Avatar>
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Typography variant="h6">{hw.title}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {hw.subject}
+                              </Typography>
+                            </Box>
+                          </Box>
+
+                          <Typography variant="body2" sx={{ mb: 2 }}>
+                            Due: {formatDate(hw.dueDate)}
+                          </Typography>
+
+                          {hw.instructions && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                              {hw.instructions}
+                            </Typography>
+                          )}
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            {getStatusIcon(childComp?.completionStatus || 'not_started')}
+                            <Typography variant="body2" sx={{ ml: 1, flexGrow: 1 }}>
+                              Status: {getStatusText(childComp?.completionStatus || 'not_started')}
+                            </Typography>
+                            <Chip
+                              label={getStatusText(childComp?.completionStatus || 'not_started')}
+                              color={getStatusColor(childComp?.completionStatus || 'not_started') as any}
+                              size="small"
+                              onClick={() => handleCompletionClick(
+                                hw._id,
+                                child._id,
+                                childComp?.completionStatus || 'not_started',
+                                childComp?.parentComments || ''
+                              )}
+                              sx={{ cursor: 'pointer' }}
+                            />
+                          </Box>
+
+                          {childComp?.parentComments && (
+                            <Typography variant="body2" color="text.secondary">
+                              Your comments: {childComp.parentComments}
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+            </Grid>
+          </TabPanel>
+        ))}
       </Card>
 
       {/* Completion Dialog */}

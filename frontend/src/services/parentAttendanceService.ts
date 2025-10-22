@@ -1,4 +1,4 @@
-import { apiService } from './api';
+import { parentApiService } from './parentApi';
 
 export interface StudentAttendance {
   _id: string;
@@ -45,7 +45,7 @@ class ParentAttendanceService {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     
-    return apiService.get(`/parents/attendance/${studentId}?${params.toString()}`);
+    return parentApiService.get(`/parents/attendance/${studentId}?${params.toString()}`);
   }
 
   // Get attendance summary for a student
@@ -57,7 +57,7 @@ class ParentAttendanceService {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     
-    return apiService.get(`/parents/attendance/${studentId}/summary?${params.toString()}`);
+    return parentApiService.get(`/parents/attendance/${studentId}/summary?${params.toString()}`);
   }
 
   // Get monthly attendance for a student
@@ -65,7 +65,7 @@ class ParentAttendanceService {
     success: boolean;
     data: MonthlyAttendance;
   }> {
-    return apiService.get(`/parents/attendance/${studentId}/monthly?month=${month}&year=${year}`);
+    return parentApiService.get(`/parents/attendance/${studentId}/monthly?month=${month}&year=${year}`);
   }
 
   // Get current month attendance for all children
@@ -85,7 +85,7 @@ class ParentAttendanceService {
       }>;
     };
   }> {
-    return apiService.get('/parents/attendance/current-month');
+    return parentApiService.get('/parents/attendance/current-month');
   }
 }
 

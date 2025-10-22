@@ -1,4 +1,4 @@
-import { apiService } from './api';
+import { parentApiService } from './parentApi';
 
 export interface Parent {
   id: string;
@@ -44,27 +44,27 @@ export interface ChangePasswordRequest {
 
 class ParentAuthService {
   async loginParent(credentials: LoginRequest): Promise<LoginResponse> {
-    return apiService.post('/parents/login', credentials);
+    return parentApiService.post('/parents/login', credentials);
   }
 
   async getParentProfile(): Promise<{ success: boolean; data: Parent }> {
-    return apiService.get('/parents/profile');
+    return parentApiService.get('/parents/profile');
   }
 
   async updateParentProfile(profile: UpdateProfileRequest): Promise<{ success: boolean; data: Parent }> {
-    return apiService.put('/parents/profile', profile);
+    return parentApiService.put('/parents/profile', profile);
   }
 
   async changePassword(passwordData: ChangePasswordRequest): Promise<{ success: boolean; message: string }> {
-    return apiService.put('/parents/change-password', passwordData);
+    return parentApiService.put('/parents/change-password', passwordData);
   }
 
   async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
-    return apiService.post('/parents/forgot-password', { email });
+    return parentApiService.post('/parents/forgot-password', { email });
   }
 
   async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
-    return apiService.put(`/parents/reset-password/${token}`, { password });
+    return parentApiService.put(`/parents/reset-password/${token}`, { password });
   }
 
   // Helper method to check if parent is logged in

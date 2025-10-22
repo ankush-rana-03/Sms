@@ -576,10 +576,10 @@ exports.getCurrentMonthAttendance = async (req, res) => {
     for (const child of parent.children) {
       // Get attendance for this child
       const attendance = await Attendance.find({
-        student: child._id,
+        studentId: child._id,
         date: { $gte: startDate, $lte: endDate }
       })
-        .populate('student', 'name rollNumber grade section')
+        .populate('studentId', 'name rollNumber grade section')
         .populate('markedBy', 'name')
         .sort({ date: -1 });
 

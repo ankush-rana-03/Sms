@@ -36,16 +36,28 @@ class ApiService {
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
+        console.log('API Error:', error.response?.status, error.response?.data);
+        
         if (error.response?.status === 401) {
-          // Check if it's a parent request and redirect accordingly
-          const parentToken = localStorage.getItem('parentToken');
-          if (parentToken) {
-            localStorage.removeItem('parentToken');
-            localStorage.removeItem('parentData');
-            window.location.href = '/parent-login';
+          // Only logout if it's a genuine authentication error
+          const errorMessage = error.response?.data?.message || '';
+          if (errorMessage.includes('Not authorized') || 
+              errorMessage.includes('token') ||
+              errorMessage.includes('expired') ||
+              errorMessage.includes('invalid')) {
+            console.log('Authentication error detected, logging out...');
+            // Check if it's a parent request and redirect accordingly
+            const parentToken = localStorage.getItem('parentToken');
+            if (parentToken) {
+              localStorage.removeItem('parentToken');
+              localStorage.removeItem('parentData');
+              window.location.href = '/parent-login';
+            } else {
+              localStorage.removeItem('token');
+              window.location.href = '/login';
+            }
           } else {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+            console.log('401 error but not authentication related, not logging out');
           }
         }
         return Promise.reject(error);

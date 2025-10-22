@@ -89,32 +89,43 @@ const ParentDashboard: React.FC = () => {
 
   useEffect(() => {
     // Check if parent is logged in
-    if (!parentAuthService.isParentLoggedIn()) {
+    const isLoggedIn = parentAuthService.isParentLoggedIn();
+    console.log('Parent logged in:', isLoggedIn);
+    
+    if (!isLoggedIn) {
+      console.log('Parent not logged in, redirecting to login');
       window.location.href = '/parent-login';
       return;
     }
 
     const parentData = parentAuthService.getParentData();
+    console.log('Parent data:', parentData);
+    
     if (parentData) {
       setParent(parentData);
       if (parentData.children.length > 0) {
         setSelectedChild(parentData.children[0]._id);
       }
       // Only fetch data if we have valid parent data
+      console.log('Fetching data...');
       fetchData();
     } else {
       // If no parent data, redirect to login
+      console.log('No parent data, redirecting to login');
       window.location.href = '/parent-login';
     }
   }, []);
 
   const fetchData = async () => {
     try {
+      console.log('Starting fetchData...');
       setLoading(true);
       
       // Fetch data individually to handle errors gracefully
       try {
+        console.log('Fetching homework...');
         const homeworkResponse = await parentHomeworkService.getParentHomework();
+        console.log('Homework response:', homeworkResponse);
         setHomework(homeworkResponse.data);
       } catch (err: any) {
         console.error('Homework fetch error:', err);
@@ -122,7 +133,9 @@ const ParentDashboard: React.FC = () => {
       }
 
       try {
+        console.log('Fetching statistics...');
         const statsResponse = await parentHomeworkService.getHomeworkStatistics();
+        console.log('Statistics response:', statsResponse);
         setStatistics(statsResponse.data);
       } catch (err: any) {
         console.error('Statistics fetch error:', err);
@@ -130,7 +143,9 @@ const ParentDashboard: React.FC = () => {
       }
 
       try {
+        console.log('Fetching attendance...');
         const attendanceResponse = await parentAttendanceService.getCurrentMonthAttendance();
+        console.log('Attendance response:', attendanceResponse);
         // Process attendance data
         if (attendanceResponse.data.children.length > 0) {
           const firstChild = attendanceResponse.data.children[0];
@@ -145,6 +160,7 @@ const ParentDashboard: React.FC = () => {
       console.error('General fetch error:', err);
       setError('Failed to fetch data');
     } finally {
+      console.log('FetchData completed');
       setLoading(false);
     }
   };

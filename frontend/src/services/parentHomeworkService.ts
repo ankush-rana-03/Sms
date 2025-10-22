@@ -1,4 +1,4 @@
-import { apiService } from './api';
+import { parentApiService } from './parentApi';
 
 export interface ParentHomework {
   _id: string;
@@ -63,11 +63,11 @@ export interface UpdateCompletionRequest {
 
 class ParentHomeworkService {
   async getParentHomework(): Promise<{ success: boolean; data: ParentHomework[] }> {
-    return apiService.get('/parents/homework');
+    return parentApiService.get('/parents/homework');
   }
 
   async getChildHomeworkDetails(homeworkId: string, childId: string): Promise<{ success: boolean; data: ParentHomework }> {
-    return apiService.get(`/parents/homework/${homeworkId}/child/${childId}`);
+    return parentApiService.get(`/parents/homework/${homeworkId}/child/${childId}`);
   }
 
   async updateHomeworkCompletion(
@@ -75,11 +75,11 @@ class ParentHomeworkService {
     childId: string, 
     completionData: UpdateCompletionRequest
   ): Promise<{ success: boolean; message: string; data: any }> {
-    return apiService.put(`/parents/homework/${homeworkId}/child/${childId}/complete`, completionData);
+    return parentApiService.put(`/parents/homework/${homeworkId}/child/${childId}/complete`, completionData);
   }
 
   async getHomeworkStatistics(): Promise<{ success: boolean; data: HomeworkStatistics }> {
-    return apiService.get('/parents/homework/statistics');
+    return parentApiService.get('/parents/homework/statistics');
   }
 }
 

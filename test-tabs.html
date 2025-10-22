@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tab Test</title>
+    <style>
+        .tab { display: inline-block; padding: 10px; margin: 5px; border: 1px solid #ccc; cursor: pointer; }
+        .tab.active { background-color: #007bff; color: white; }
+        .tabpanel { display: none; padding: 20px; border: 1px solid #ccc; margin-top: 10px; }
+        .tabpanel.active { display: block; }
+    </style>
+</head>
+<body>
+    <h1>Parent Dashboard Tab Test</h1>
+    
+    <div class="tabs">
+        <div class="tab active" data-index="0">All Homework</div>
+        <div class="tab" data-index="1">Attendance</div>
+        <div class="tab" data-index="2">Child 1 (Class 5-A)</div>
+        <div class="tab" data-index="3">Child 2 (Class 3-B)</div>
+    </div>
+    
+    <div class="tabpanels">
+        <div class="tabpanel active" data-index="0">
+            <h3>All Homework Tab</h3>
+            <p>This is the all homework content.</p>
+        </div>
+        <div class="tabpanel" data-index="1">
+            <h3>Attendance Tab</h3>
+            <p>This is the attendance content. This should be visible when you click the Attendance tab.</p>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 5px;">
+                <h4>Attendance Summary</h4>
+                <p>Present Days: 20</p>
+                <p>Absent Days: 2</p>
+                <p>Attendance Rate: 90.9%</p>
+            </div>
+        </div>
+        <div class="tabpanel" data-index="2">
+            <h3>Child 1 Homework</h3>
+            <p>This is Child 1's homework content.</p>
+        </div>
+        <div class="tabpanel" data-index="3">
+            <h3>Child 2 Homework</h3>
+            <p>This is Child 2's homework content.</p>
+        </div>
+    </div>
+    
+    <script>
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const index = this.dataset.index;
+                
+                // Remove active class from all tabs and panels
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding panel
+                this.classList.add('active');
+                document.querySelector(`.tabpanel[data-index="${index}"]`).classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

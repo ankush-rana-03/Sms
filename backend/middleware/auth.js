@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Parent = require('../models/Parent');
 
 // Protect routes
 exports.protect = async (req, res, next) => {
@@ -21,7 +22,20 @@ exports.protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = await User.findById(decoded.id);
+    // Check if it's a parent token
+    if (decoded.role === 'parent') {
+      req.user = await Parent.findById(decoded.id);
+    } else {
+      req.user = await User.findById(decoded.id);
+    }
+    
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
     next();
   } catch (err) {
     return res.status(401).json({

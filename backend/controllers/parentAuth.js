@@ -554,6 +554,9 @@ exports.getMonthlyAttendance = async (req, res) => {
 // @access  Private (Parent only)
 exports.getCurrentMonthAttendance = async (req, res) => {
   try {
+    console.log('getCurrentMonthAttendance - req.user:', req.user);
+    console.log('getCurrentMonthAttendance - req.user.id:', req.user?.id);
+    
     const parent = await Parent.findById(req.user.id).populate('children', 'name rollNumber grade section');
     
     if (!parent) {

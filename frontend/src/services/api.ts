@@ -16,8 +16,13 @@ class ApiService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
+        // Check for parent token first, then regular token
+        const parentToken = localStorage.getItem('parentToken');
         const token = localStorage.getItem('token');
-        if (token) {
+        
+        if (parentToken) {
+          config.headers.Authorization = `Bearer ${parentToken}`;
+        } else if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
@@ -32,8 +37,16 @@ class ApiService {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
+          // Check if it's a parent request and redirect accordingly
+          const parentToken = localStorage.getItem('parentToken');
+          if (parentToken) {
+            localStorage.removeItem('parentToken');
+            localStorage.removeItem('parentData');
+            window.location.href = '/parent-login';
+          } else {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }

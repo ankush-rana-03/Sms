@@ -13,6 +13,7 @@ export interface StudentFormData {
   bloodGroup: string;
   parentName: string;
   parentPhone: string;
+  parentEmail: string;
 }
 
 export interface Student {
@@ -29,6 +30,7 @@ export interface Student {
   bloodGroup: string;
   parentName: string;
   parentPhone: string;
+  parentEmail: string;
   attendance?: AttendanceRecord[];
   createdAt: string;
   updatedAt: string;

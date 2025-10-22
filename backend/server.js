@@ -60,6 +60,8 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/staff-attendance', require('./routes/staffAttendance'));
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/homework', require('./routes/homework'));
+app.use('/api/parents', require('./routes/parentAuth'));
+app.use('/api/parents/homework', require('./routes/parentHomework'));
 app.use('/api/tests', require('./routes/tests'));
 app.use('/api/results', require('./routes/results'));
 app.use('/api/admin', require('./routes/admin'));

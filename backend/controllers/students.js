@@ -1,5 +1,7 @@
 const Student = require('../models/Student');
 const User = require('../models/User');
+const Parent = require('../models/Parent');
+const { sendEmail } = require('../utils/sendEmail');
 
 // Test route to get all students with full details (for debugging)
 exports.getAllStudentsTest = async (req, res) => {
@@ -65,7 +67,8 @@ exports.createStudent = async (req, res) => {
       gender,
       bloodGroup,
       parentName,
-      parentPhone
+      parentPhone,
+      parentEmail
     } = req.body;
 
     // Role-based restriction: if teacher, must be class teacher of this grade/section
@@ -137,12 +140,89 @@ exports.createStudent = async (req, res) => {
       bloodGroup,
       parentName: parentName?.trim(),
       parentPhone: parentPhone?.trim(),
+      parentEmail: parentEmail?.trim().toLowerCase(),
       pendingApproval,
       currentSession: currentSession.name,
       createdBy: req.user?._id || null
     });
 
     console.log('Student created successfully:', student._id);
+
+    // Generate parent credentials if parent email is provided
+    if (parentEmail && !pendingApproval) {
+      try {
+        // Check if parent already exists
+        let parent = await Parent.findOne({ email: parentEmail });
+        
+        if (parent) {
+          // If parent exists, add student to their children list
+          if (!parent.children.includes(student._id)) {
+            parent.children.push(student._id);
+            await parent.save();
+          }
+          
+          // Update student with parent reference
+          student.parent = parent._id;
+          await student.save();
+          
+          console.log('Student added to existing parent account:', parent._id);
+        } else {
+          // Generate unique credentials
+          const { parentId, password } = Parent.generateCredentials();
+
+          // Create new parent
+          parent = new Parent({
+            name: parentName,
+            email: parentEmail,
+            password: password,
+            phone: parentPhone,
+            address: address,
+            children: [student._id],
+            credentialsGenerated: true,
+            credentialsGeneratedAt: new Date()
+          });
+
+          await parent.save();
+
+          // Update student with parent reference
+          student.parent = parent._id;
+          await student.save();
+
+          // Send credentials email
+          const emailSubject = 'Parent Portal Access Credentials';
+          const emailBody = `
+            <h2>Welcome to the School Parent Portal</h2>
+            <p>Dear ${parentName},</p>
+            <p>Your child ${name} has been enrolled in our school. A parent portal account has been created for you to access your child's academic information and homework assignments.</p>
+            
+            <h3>Login Credentials:</h3>
+            <p><strong>Email:</strong> ${parentEmail}</p>
+            <p><strong>Password:</strong> ${password}</p>
+            
+            <p><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
+            
+            <p>You can access the parent portal at: <a href="${process.env.FRONTEND_URL}/parent-login">Parent Portal Login</a></p>
+            
+            <p>Best regards,<br>School Administration</p>
+          `;
+
+          try {
+            await sendEmail({
+              email: parentEmail,
+              subject: emailSubject,
+              message: emailBody
+            });
+            console.log('Parent credentials sent via email to:', parentEmail);
+          } catch (emailError) {
+            console.error('Email sending failed:', emailError);
+            // Don't fail the student creation if email fails
+          }
+        }
+      } catch (parentError) {
+        console.error('Error creating parent account:', parentError);
+        // Don't fail the student creation if parent creation fails
+      }
+    }
     
     res.status(201).json({
       success: true,

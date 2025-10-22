@@ -40,6 +40,7 @@ const schema = yup.object().shape({
   bloodGroup: yup.string().required('Blood group is required'),
   parentName: yup.string().required('Parent name is required'),
   parentPhone: yup.string().required('Parent phone is required'),
+  parentEmail: yup.string().email('Invalid parent email').required('Parent email is required'),
 });
 
 interface StudentFormData {
@@ -55,6 +56,7 @@ interface StudentFormData {
   bloodGroup: string;
   parentName: string;
   parentPhone: string;
+  parentEmail: string;
 }
 
 interface StudentRegistrationFormProps {
@@ -136,6 +138,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
         grade: data.grade,
         parentName: data.parentName,
         parentPhone: data.parentPhone,
+        parentEmail: data.parentEmail,
         section: data.section,
         rollNumber: data.rollNumber,
         gender: data.gender,
@@ -439,6 +442,21 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({
                   required
                   InputProps={{
                     startAdornment: <Phone sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Parent Email"
+                  {...register('parentEmail')}
+                  error={!!errors.parentEmail}
+                  helperText={errors.parentEmail?.message || "Enter parent/guardian email"}
+                  size="small"
+                  placeholder="parent@example.com"
+                  required
+                  InputProps={{
+                    startAdornment: <ContactMail sx={{ mr: 1, color: 'action.disabled' }} fontSize="small" />,
                   }}
                 />
               </Grid>

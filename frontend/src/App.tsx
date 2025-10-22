@@ -25,6 +25,8 @@ import LoginDebug from './components/LoginDebug';
 
 import TeacherAttendance from './pages/TeacherAttendance';
 import TeacherManagement from './pages/TeacherManagement';
+import ParentLogin from './pages/ParentLogin';
+import ParentDashboard from './pages/ParentDashboard';
 
 // Import custom theme
 import theme from './theme';
@@ -56,6 +58,8 @@ const App: React.FC = () => {
 
               <Route path="/debug" element={<LoginDebug />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/parent-login" element={<ParentLogin />} />
+              <Route path="/parent-dashboard" element={<ParentDashboard />} />
               <Route
                 path="/"
                 element={

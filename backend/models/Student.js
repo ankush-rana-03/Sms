@@ -53,6 +53,15 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  parentEmail: {
+    type: String,
+    required: true
+  },
+  parent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Parent',
+    default: null
+  },
   pendingApproval: {
     type: Boolean,
     default: false

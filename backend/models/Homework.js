@@ -69,6 +69,31 @@ const homeworkSchema = new mongoose.Schema({
       default: false
     }
   }],
+  // Parent completion tracking
+  parentCompletions: [{
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Student'
+    },
+    parent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Parent'
+    },
+    completionStatus: {
+      type: String,
+      enum: ['not_started', 'half_complete', 'fully_complete'],
+      default: 'not_started'
+    },
+    completedAt: {
+      type: Date,
+      default: null
+    },
+    parentComments: String,
+    lastUpdated: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   isActive: {
     type: Boolean,
     default: true

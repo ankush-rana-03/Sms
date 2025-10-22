@@ -28,7 +28,7 @@ import {
   Person, 
   CheckCircle, 
   RadioButtonUnchecked,
-  HalfCircle
+  Pending
 } from '@mui/icons-material';
 import { parentHomeworkService, ParentHomework, HomeworkStatistics } from '../services/parentHomeworkService';
 import { parentAuthService, Parent } from '../services/parentAuthService';
@@ -146,7 +146,7 @@ const ParentDashboard: React.FC = () => {
       case 'fully_complete':
         return <CheckCircle color="success" />;
       case 'half_complete':
-        return <HalfCircle color="warning" />;
+        return <Pending color="warning" />;
       default:
         return <RadioButtonUnchecked color="disabled" />;
     }

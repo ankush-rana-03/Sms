@@ -225,7 +225,7 @@ const Students: React.FC = () => {
             showToastMessage('Parent password updated successfully!', 'success');
           } catch (passwordError: any) {
             console.error('Error updating parent password:', passwordError);
-            showToastMessage('Student updated but parent password update failed', 'warning');
+            showToastMessage('Student updated but parent password update failed', 'error');
           }
         }
         

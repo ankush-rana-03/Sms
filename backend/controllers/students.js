@@ -151,10 +151,10 @@ exports.createStudent = async (req, res) => {
 
     // Generate parent email and create parent account
     const { generateParentEmail } = require('../utils/parentCredentials');
-    const parentEmail = generateParentEmail(parentName, parentPhone, student._id);
+    const generatedParentEmail = generateParentEmail(parentName, parentPhone, student._id);
     
     // Update student with parent email
-    student.parentEmail = parentEmail;
+    student.parentEmail = generatedParentEmail;
     await student.save();
 
     // Create parent account (only if not pending approval)
@@ -184,7 +184,7 @@ exports.createStudent = async (req, res) => {
       message: pendingApproval ? 'Student submitted for approval' : 'Student created successfully',
       data: {
         ...student.toObject(),
-        parentEmail,
+        parentEmail: generatedParentEmail,
         parentAccountCreated: !!parentAccountId
       }
     });

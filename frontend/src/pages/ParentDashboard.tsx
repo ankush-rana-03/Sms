@@ -94,7 +94,10 @@ const ParentDashboard: React.FC = () => {
     
     if (!isLoggedIn) {
       console.log('Parent not logged in, redirecting to login');
-      window.location.href = '/parent-login';
+      // Add a small delay to prevent immediate redirect
+      setTimeout(() => {
+        window.location.href = '/parent-login';
+      }, 100);
       return;
     }
 
@@ -112,7 +115,9 @@ const ParentDashboard: React.FC = () => {
     } else {
       // If no parent data, redirect to login
       console.log('No parent data, redirecting to login');
-      window.location.href = '/parent-login';
+      setTimeout(() => {
+        window.location.href = '/parent-login';
+      }, 100);
     }
   }, []);
 

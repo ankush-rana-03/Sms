@@ -70,14 +70,41 @@ class ParentAuthService {
   // Helper method to check if parent is logged in
   isParentLoggedIn(): boolean {
     const token = localStorage.getItem('parentToken');
+    console.log('Checking parent login status, token exists:', !!token);
+    
     if (!token) return false;
     
     try {
       // Decode JWT token to check expiration
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.log('Invalid token format');
+        localStorage.removeItem('parentToken');
+        localStorage.removeItem('parentData');
+        return false;
+      }
+      
+      const payload = JSON.parse(atob(parts[1]));
       const currentTime = Math.floor(Date.now() / 1000);
-      return payload.exp > currentTime;
+      const isExpired = payload.exp <= currentTime;
+      
+      console.log('Token expiration check:', {
+        exp: payload.exp,
+        currentTime,
+        isExpired,
+        expiresAt: new Date(payload.exp * 1000).toISOString()
+      });
+      
+      if (isExpired) {
+        console.log('Token expired, removing from storage');
+        localStorage.removeItem('parentToken');
+        localStorage.removeItem('parentData');
+        return false;
+      }
+      
+      return true;
     } catch (error) {
+      console.log('Token validation error:', error);
       // If token is malformed, remove it
       localStorage.removeItem('parentToken');
       localStorage.removeItem('parentData');

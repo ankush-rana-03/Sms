@@ -88,36 +88,62 @@ const ParentDashboard: React.FC = () => {
   });
 
   useEffect(() => {
+    // Check if parent is logged in
+    if (!parentAuthService.isParentLoggedIn()) {
+      window.location.href = '/parent-login';
+      return;
+    }
+
     const parentData = parentAuthService.getParentData();
     if (parentData) {
       setParent(parentData);
       if (parentData.children.length > 0) {
         setSelectedChild(parentData.children[0]._id);
       }
+      // Only fetch data if we have valid parent data
+      fetchData();
+    } else {
+      // If no parent data, redirect to login
+      window.location.href = '/parent-login';
     }
-    fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [homeworkResponse, statsResponse, attendanceResponse] = await Promise.all([
-        parentHomeworkService.getParentHomework(),
-        parentHomeworkService.getHomeworkStatistics(),
-        parentAttendanceService.getCurrentMonthAttendance()
-      ]);
       
-      setHomework(homeworkResponse.data);
-      setStatistics(statsResponse.data);
-      
-      // Process attendance data
-      if (attendanceResponse.data.children.length > 0) {
-        const firstChild = attendanceResponse.data.children[0];
-        setAttendance(firstChild.attendance);
-        setAttendanceSummary(firstChild.summary);
+      // Fetch data individually to handle errors gracefully
+      try {
+        const homeworkResponse = await parentHomeworkService.getParentHomework();
+        setHomework(homeworkResponse.data);
+      } catch (err: any) {
+        console.error('Homework fetch error:', err);
+        setError('Failed to fetch homework data');
+      }
+
+      try {
+        const statsResponse = await parentHomeworkService.getHomeworkStatistics();
+        setStatistics(statsResponse.data);
+      } catch (err: any) {
+        console.error('Statistics fetch error:', err);
+        // Don't set error for statistics as it's not critical
+      }
+
+      try {
+        const attendanceResponse = await parentAttendanceService.getCurrentMonthAttendance();
+        // Process attendance data
+        if (attendanceResponse.data.children.length > 0) {
+          const firstChild = attendanceResponse.data.children[0];
+          setAttendance(firstChild.attendance);
+          setAttendanceSummary(firstChild.summary);
+        }
+      } catch (err: any) {
+        console.error('Attendance fetch error:', err);
+        setError('Failed to fetch attendance data');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch data');
+      console.error('General fetch error:', err);
+      setError('Failed to fetch data');
     } finally {
       setLoading(false);
     }

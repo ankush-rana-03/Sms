@@ -41,9 +41,8 @@ async function migrateExistingStudents() {
         console.log(`\n👤 Processing student: ${student.name} (${student.email})`);
 
         // Generate simple parent email
-        const studentName = student.name.toLowerCase().replace(/[^a-z0-9]/g, '');
         const parentName = student.parentName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        parentEmail = `${parentName}${studentName}@parent.com`;
+        parentEmail = `${parentName}@gmail.com`;
 
         console.log(`   📧 Generated parent email: ${parentEmail}`);
 

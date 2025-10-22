@@ -11,9 +11,11 @@ const {
   getStudentAttendance,
   getAttendanceSummary,
   getMonthlyAttendance,
-  getCurrentMonthAttendance
+  getCurrentMonthAttendance,
+  validateToken,
+  createSampleAttendance
 } = require('../controllers/parentAuth');
-const { protect } = require('../middleware/auth');
+const { protectParent } = require('../middleware/parentAuth');
 
 // Public routes
 router.post('/register', registerParent);
@@ -22,14 +24,16 @@ router.post('/forgot-password', forgotPassword);
 router.put('/reset-password/:resettoken', resetPassword);
 
 // Protected routes
-router.get('/profile', protect, getParentProfile);
-router.put('/profile', protect, updateParentProfile);
-router.put('/change-password', protect, changePassword);
+router.get('/validate-token', protectParent, validateToken);
+router.get('/profile', protectParent, getParentProfile);
+router.put('/profile', protectParent, updateParentProfile);
+router.put('/change-password', protectParent, changePassword);
+router.post('/create-sample-attendance', protectParent, createSampleAttendance);
 
 // Attendance routes
-router.get('/attendance/current-month', protect, getCurrentMonthAttendance);
-router.get('/attendance/:studentId', protect, getStudentAttendance);
-router.get('/attendance/:studentId/summary', protect, getAttendanceSummary);
-router.get('/attendance/:studentId/monthly', protect, getMonthlyAttendance);
+router.get('/attendance/current-month', protectParent, getCurrentMonthAttendance);
+router.get('/attendance/:studentId', protectParent, getStudentAttendance);
+router.get('/attendance/:studentId/summary', protectParent, getAttendanceSummary);
+router.get('/attendance/:studentId/monthly', protectParent, getMonthlyAttendance);
 
 module.exports = router;

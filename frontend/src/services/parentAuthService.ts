@@ -67,6 +67,14 @@ class ParentAuthService {
     return apiService.put(`/parents/reset-password/${token}`, { password });
   }
 
+  async validateToken(): Promise<{ success: boolean; message: string; data: any }> {
+    return apiService.get('/parents/validate-token');
+  }
+
+  async createSampleAttendance(): Promise<{ success: boolean; message: string; data: any }> {
+    return apiService.post('/parents/create-sample-attendance');
+  }
+
   // Helper method to check if parent is logged in
   isParentLoggedIn(): boolean {
     const token = localStorage.getItem('parentToken');
@@ -92,8 +100,17 @@ class ParentAuthService {
         exp: payload.exp,
         currentTime,
         isExpired,
-        expiresAt: new Date(payload.exp * 1000).toISOString()
+        expiresAt: new Date(payload.exp * 1000).toISOString(),
+        role: payload.role
       });
+      
+      // Check if token is for parent role
+      if (payload.role !== 'parent') {
+        console.log('Token is not for parent role, removing from storage');
+        localStorage.removeItem('parentToken');
+        localStorage.removeItem('parentData');
+        return false;
+      }
       
       if (isExpired) {
         console.log('Token expired, removing from storage');

@@ -168,6 +168,8 @@ exports.loginParent = async (req, res) => {
 // @access  Private (Parent)
 exports.getParentProfile = async (req, res) => {
   try {
+    console.log('getParentProfile - req.user:', req.user);
+    
     const parent = await Parent.findById(req.user.id)
       .populate('children', 'name grade section rollNumber parentName parentPhone parentEmail');
 
@@ -177,6 +179,13 @@ exports.getParentProfile = async (req, res) => {
         message: 'Parent not found'
       });
     }
+
+    console.log('Parent profile found:', {
+      id: parent._id,
+      name: parent.name,
+      email: parent.email,
+      childrenCount: parent.children.length
+    });
 
     res.status(200).json({
       success: true,
@@ -549,6 +558,95 @@ exports.getMonthlyAttendance = async (req, res) => {
   }
 };
 
+// @desc    Validate parent token
+// @route   GET /api/parents/validate-token
+// @access  Private (Parent)
+exports.validateToken = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      message: 'Token is valid',
+      data: {
+        parentId: req.user.id,
+        role: 'parent'
+      }
+    });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error validating token',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Create sample attendance data for testing
+// @route   POST /api/parents/create-sample-attendance
+// @access  Private (Parent)
+exports.createSampleAttendance = async (req, res) => {
+  try {
+    const parent = await Parent.findById(req.user.id).populate('children');
+    
+    if (!parent || parent.children.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No children found for this parent'
+      });
+    }
+
+    const child = parent.children[0];
+    const today = new Date();
+    const sampleAttendance = [];
+
+    // Create attendance for the last 7 days
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+
+      // Check if attendance already exists
+      const existing = await Attendance.findOne({
+        studentId: child._id,
+        date: {
+          $gte: date,
+          $lt: new Date(date.getTime() + 24 * 60 * 60 * 1000)
+        }
+      });
+
+      if (!existing) {
+        const statuses = ['present', 'absent', 'late'];
+        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        
+        const attendance = await Attendance.create({
+          studentId: child._id,
+          classId: child.grade, // This might need to be a proper class ID
+          session: '2024-25', // This should be the current session
+          date: date,
+          status: randomStatus,
+          markedBy: req.user.id,
+          remarks: `Sample attendance for testing - ${randomStatus}`
+        });
+        
+        sampleAttendance.push(attendance);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Created ${sampleAttendance.length} sample attendance records`,
+      data: sampleAttendance
+    });
+  } catch (error) {
+    console.error('Create sample attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating sample attendance',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get current month attendance for all children
 // @route   GET /api/parents/attendance/current-month
 // @access  Private (Parent only)
@@ -566,14 +664,20 @@ exports.getCurrentMonthAttendance = async (req, res) => {
       });
     }
 
+    console.log('Parent children:', parent.children);
+
     // Get current month date range
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
+    console.log('Date range:', { startDate, endDate });
+
     const childrenAttendance = [];
 
     for (const child of parent.children) {
+      console.log(`Fetching attendance for child: ${child._id}`);
+      
       // Get attendance for this child
       const attendance = await Attendance.find({
         studentId: child._id,
@@ -582,6 +686,13 @@ exports.getCurrentMonthAttendance = async (req, res) => {
         .populate('studentId', 'name rollNumber grade section')
         .populate('markedBy', 'name')
         .sort({ date: -1 });
+
+      console.log(`Found ${attendance.length} attendance records for child ${child._id}`);
+      console.log('Attendance records:', attendance.map(a => ({
+        date: a.date,
+        status: a.status,
+        studentId: a.studentId
+      })));
 
       // Calculate summary
       const totalDays = attendance.length;
@@ -602,6 +713,8 @@ exports.getCurrentMonthAttendance = async (req, res) => {
         }
       });
     }
+
+    console.log('Final childrenAttendance:', childrenAttendance);
 
     res.status(200).json({
       success: true,

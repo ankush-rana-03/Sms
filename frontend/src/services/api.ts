@@ -44,17 +44,25 @@ class ApiService {
           if (errorMessage.includes('Not authorized') || 
               errorMessage.includes('token') ||
               errorMessage.includes('expired') ||
-              errorMessage.includes('invalid')) {
+              errorMessage.includes('invalid') ||
+              errorMessage.includes('jwt') ||
+              errorMessage.includes('malformed')) {
             console.log('Authentication error detected, logging out...');
             // Check if it's a parent request and redirect accordingly
             const parentToken = localStorage.getItem('parentToken');
             if (parentToken) {
+              console.log('Clearing parent authentication data');
               localStorage.removeItem('parentToken');
               localStorage.removeItem('parentData');
-              window.location.href = '/parent-login';
+              // Use a small delay to prevent race conditions
+              setTimeout(() => {
+                window.location.href = '/parent-login';
+              }, 100);
             } else {
               localStorage.removeItem('token');
-              window.location.href = '/login';
+              setTimeout(() => {
+                window.location.href = '/login';
+              }, 100);
             }
           } else {
             console.log('401 error but not authentication related, not logging out');

@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { parentHomeworkService, ParentHomework, HomeworkStatistics } from '../services/parentHomeworkService';
 import { parentAttendanceService, StudentAttendance, AttendanceSummary } from '../services/parentAttendanceService';
+import { parentAuthService } from '../services/parentAuthService';
 import { useParentAuth } from '../contexts/ParentAuthContext';
 
 interface TabPanelProps {
@@ -96,12 +97,15 @@ const ParentDashboard: React.FC = () => {
       return;
     }
 
-    if (parent && parent.children.length > 0) {
+    if (parent && parent.children && parent.children.length > 0) {
       setSelectedChild(parent.children[0]._id);
       console.log('Fetching data...');
       fetchData();
+    } else if (parent && (!parent.children || parent.children.length === 0)) {
+      console.log('No children found for parent');
+      setError('No children found in your account. Please contact the administrator.');
     } else {
-      console.log('No parent data or no children found');
+      console.log('Parent data not loaded yet');
     }
   }, [isLoggedIn, parent]);
 
@@ -136,14 +140,19 @@ const ParentDashboard: React.FC = () => {
         const attendanceResponse = await parentAttendanceService.getCurrentMonthAttendance();
         console.log('Attendance response:', attendanceResponse);
         // Process attendance data
-        if (attendanceResponse.data.children.length > 0) {
+        if (attendanceResponse.data && attendanceResponse.data.children && attendanceResponse.data.children.length > 0) {
           const firstChild = attendanceResponse.data.children[0];
-          setAttendance(firstChild.attendance);
-          setAttendanceSummary(firstChild.summary);
+          console.log('First child attendance data:', firstChild);
+          setAttendance(firstChild.attendance || []);
+          setAttendanceSummary(firstChild.summary || null);
+        } else {
+          console.log('No attendance data found for current month');
+          setAttendance([]);
+          setAttendanceSummary(null);
         }
       } catch (err: any) {
         console.error('Attendance fetch error:', err);
-        setError('Failed to fetch attendance data');
+        setError('Failed to fetch attendance data: ' + (err.response?.data?.message || err.message));
       }
     } catch (err: any) {
       console.error('General fetch error:', err);
@@ -267,16 +276,61 @@ const ParentDashboard: React.FC = () => {
             Welcome, {parent?.name || 'Loading...'}
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            logout();
-            window.location.href = '/parent-login';
-          }}
-        >
-          Logout
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={async () => {
+              try {
+                await parentAuthService.validateToken();
+                alert('Token is valid!');
+              } catch (error) {
+                alert('Token validation failed: ' + error);
+              }
+            }}
+          >
+            Test Token
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={async () => {
+              try {
+                const result = await parentAuthService.createSampleAttendance();
+                alert('Sample attendance created: ' + result.message);
+                fetchData(); // Refresh data
+              } catch (error) {
+                alert('Failed to create sample data: ' + error);
+              }
+            }}
+          >
+            Create Sample Data
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              logout();
+              window.location.href = '/parent-login';
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
       </Box>
+
+      {/* Debug Information */}
+      <Card sx={{ mb: 3, bgcolor: 'grey.50' }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>Debug Information</Typography>
+          <Typography variant="body2">
+            <strong>Parent ID:</strong> {parent?.id}<br/>
+            <strong>Children Count:</strong> {parent?.children?.length || 0}<br/>
+            <strong>Selected Child:</strong> {selectedChild}<br/>
+            <strong>Attendance Records:</strong> {attendance.length}<br/>
+            <strong>Attendance Summary:</strong> {attendanceSummary ? 'Available' : 'Not Available'}<br/>
+            <strong>Loading:</strong> {loading ? 'Yes' : 'No'}<br/>
+            <strong>Error:</strong> {error || 'None'}
+          </Typography>
+        </CardContent>
+      </Card>
 
       {/* Statistics Cards */}
       {statistics && (

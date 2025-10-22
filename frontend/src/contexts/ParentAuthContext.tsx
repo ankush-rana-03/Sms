@@ -40,8 +40,16 @@ export const ParentAuthProvider: React.FC<ParentAuthProviderProps> = ({ children
           const parentData = parentAuthService.getParentData();
           console.log('Parent data found:', parentData);
           if (parentData) {
-            setParent(parentData);
-            setIsLoggedIn(true);
+            // Verify token is still valid by making a test API call
+            try {
+              await parentAuthService.getParentProfile();
+              setParent(parentData);
+              setIsLoggedIn(true);
+            } catch (error) {
+              console.log('Token validation failed, logging out:', error);
+              parentAuthService.logoutParent();
+              setIsLoggedIn(false);
+            }
           } else {
             console.log('No parent data found, logging out');
             parentAuthService.logoutParent();

@@ -55,11 +55,11 @@ const studentSchema = new mongoose.Schema({
   },
   parentEmail: {
     type: String,
-    required: true
+    default: null
   },
   parent: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Parent',
+    ref: 'User',
     default: null
   },
   pendingApproval: {

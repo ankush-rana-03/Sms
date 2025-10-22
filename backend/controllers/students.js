@@ -2,6 +2,7 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const Parent = require('../models/Parent');
 const { sendEmail } = require('../utils/sendEmail');
+const { createParentAccount } = require('../utils/parentCredentials');
 
 // Test route to get all students with full details (for debugging)
 exports.getAllStudentsTest = async (req, res) => {
@@ -148,86 +149,44 @@ exports.createStudent = async (req, res) => {
 
     console.log('Student created successfully:', student._id);
 
-    // Generate parent credentials if parent email is provided
-    if (parentEmail && !pendingApproval) {
+    // Generate parent email and create parent account
+    const { generateParentEmail } = require('../utils/parentCredentials');
+    const parentEmail = generateParentEmail(parentName, parentPhone, student._id);
+    
+    // Update student with parent email
+    student.parentEmail = parentEmail;
+    await student.save();
+
+    // Create parent account (only if not pending approval)
+    let parentAccountId = null;
+    if (!pendingApproval) {
       try {
-        // Check if parent already exists
-        let parent = await Parent.findOne({ email: parentEmail });
+        parentAccountId = await createParentAccount({
+          parentName,
+          parentPhone,
+          address,
+          name: name?.trim()
+        }, student._id);
         
-        if (parent) {
-          // If parent exists, add student to their children list
-          if (!parent.children.includes(student._id)) {
-            parent.children.push(student._id);
-            await parent.save();
-          }
-          
-          // Update student with parent reference
-          student.parent = parent._id;
-          await student.save();
-          
-          console.log('Student added to existing parent account:', parent._id);
-        } else {
-          // Generate unique credentials
-          const { parentId, password } = Parent.generateCredentials();
-
-          // Create new parent
-          parent = new Parent({
-            name: parentName,
-            email: parentEmail,
-            password: password,
-            phone: parentPhone,
-            address: address,
-            children: [student._id],
-            credentialsGenerated: true,
-            credentialsGeneratedAt: new Date()
-          });
-
-          await parent.save();
-
-          // Update student with parent reference
-          student.parent = parent._id;
-          await student.save();
-
-          // Send credentials email
-          const emailSubject = 'Parent Portal Access Credentials';
-          const emailBody = `
-            <h2>Welcome to the School Parent Portal</h2>
-            <p>Dear ${parentName},</p>
-            <p>Your child ${name} has been enrolled in our school. A parent portal account has been created for you to access your child's academic information and homework assignments.</p>
-            
-            <h3>Login Credentials:</h3>
-            <p><strong>Email:</strong> ${parentEmail}</p>
-            <p><strong>Password:</strong> ${password}</p>
-            
-            <p><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
-            
-            <p>You can access the parent portal at: <a href="${process.env.FRONTEND_URL}/parent-login">Parent Portal Login</a></p>
-            
-            <p>Best regards,<br>School Administration</p>
-          `;
-
-          try {
-            await sendEmail({
-              email: parentEmail,
-              subject: emailSubject,
-              message: emailBody
-            });
-            console.log('Parent credentials sent via email to:', parentEmail);
-          } catch (emailError) {
-            console.error('Email sending failed:', emailError);
-            // Don't fail the student creation if email fails
-          }
-        }
+        // Link parent to student
+        student.parent = parentAccountId;
+        await student.save();
+        
+        console.log('Parent account created and linked to student');
       } catch (parentError) {
         console.error('Error creating parent account:', parentError);
-        // Don't fail the student creation if parent creation fails
+        // Don't fail student creation if parent account creation fails
       }
     }
     
     res.status(201).json({
       success: true,
       message: pendingApproval ? 'Student submitted for approval' : 'Student created successfully',
-      data: student
+      data: {
+        ...student.toObject(),
+        parentEmail,
+        parentAccountCreated: !!parentAccountId
+      }
     });
 
   } catch (error) {
@@ -478,9 +437,43 @@ exports.approveStudent = async (req, res) => {
     if (!student.pendingApproval) {
       return res.status(400).json({ success: false, message: 'Student is already approved' });
     }
+    
     student.pendingApproval = false;
+    
+    // Generate parent email if not already set
+    if (!student.parentEmail) {
+      const { generateParentEmail } = require('../utils/parentCredentials');
+      student.parentEmail = generateParentEmail(student.parentName, student.parentPhone, student._id);
+    }
+    
+    // Create parent account
+    let parentAccountId = null;
+    try {
+      parentAccountId = await createParentAccount({
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        address: student.address,
+        name: student.name
+      }, student._id);
+      
+      // Link parent to student
+      student.parent = parentAccountId;
+      console.log('Parent account created and linked to approved student');
+    } catch (parentError) {
+      console.error('Error creating parent account for approved student:', parentError);
+      // Don't fail approval if parent account creation fails
+    }
+    
     await student.save();
-    res.status(200).json({ success: true, message: 'Student approved successfully', data: student });
+    
+    res.status(200).json({ 
+      success: true, 
+      message: 'Student approved successfully', 
+      data: {
+        ...student.toObject(),
+        parentAccountCreated: !!parentAccountId
+      }
+    });
   } catch (error) {
     console.error('Error approving student:', error);
     res.status(500).json({ success: false, message: 'Error approving student', error: error.message });

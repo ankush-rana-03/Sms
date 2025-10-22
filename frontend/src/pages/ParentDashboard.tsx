@@ -28,10 +28,14 @@ import {
   Person, 
   CheckCircle, 
   RadioButtonUnchecked,
-  Pending
+  Pending,
+  CalendarToday,
+  TrendingUp,
+  AccessTime
 } from '@mui/icons-material';
 import { parentHomeworkService, ParentHomework, HomeworkStatistics } from '../services/parentHomeworkService';
 import { parentAuthService, Parent } from '../services/parentAuthService';
+import { parentAttendanceService, StudentAttendance, AttendanceSummary } from '../services/parentAttendanceService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -63,6 +67,8 @@ const ParentDashboard: React.FC = () => {
   const [parent, setParent] = useState<Parent | null>(null);
   const [homework, setHomework] = useState<ParentHomework[]>([]);
   const [statistics, setStatistics] = useState<HomeworkStatistics | null>(null);
+  const [attendance, setAttendance] = useState<StudentAttendance[]>([]);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -95,13 +101,21 @@ const ParentDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [homeworkResponse, statsResponse] = await Promise.all([
+      const [homeworkResponse, statsResponse, attendanceResponse] = await Promise.all([
         parentHomeworkService.getParentHomework(),
-        parentHomeworkService.getHomeworkStatistics()
+        parentHomeworkService.getHomeworkStatistics(),
+        parentAttendanceService.getCurrentMonthAttendance()
       ]);
       
       setHomework(homeworkResponse.data);
       setStatistics(statsResponse.data);
+      
+      // Process attendance data
+      if (attendanceResponse.data.children.length > 0) {
+        const firstChild = attendanceResponse.data.children[0];
+        setAttendance(firstChild.attendance);
+        setAttendanceSummary(firstChild.summary);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch data');
     } finally {
@@ -111,6 +125,21 @@ const ParentDashboard: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleChildChange = async (childId: string) => {
+    setSelectedChild(childId);
+    try {
+      const [attendanceResponse, summaryResponse] = await Promise.all([
+        parentAttendanceService.getStudentAttendance(childId),
+        parentAttendanceService.getAttendanceSummary(childId)
+      ]);
+      
+      setAttendance(attendanceResponse.data);
+      setAttendanceSummary(summaryResponse.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch attendance data');
+    }
   };
 
   const handleCompletionClick = (homeworkId: string, childId: string, currentStatus: string, comments: string) => {
@@ -276,6 +305,7 @@ const ParentDashboard: React.FC = () => {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab label="All Homework" />
+            <Tab label="Attendance" />
             {parent?.children.map((child) => (
               <Tab key={child._id} label={`${child.name} (Class ${child.grade}-${child.section})`} />
             ))}
@@ -407,6 +437,159 @@ const ParentDashboard: React.FC = () => {
             </Grid>
           </TabPanel>
         ))}
+
+        {/* Attendance Tab */}
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Student Attendance
+            </Typography>
+            {parent && parent.children.length > 1 && (
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>Select Student</InputLabel>
+                <Select
+                  value={selectedChild}
+                  onChange={(e) => handleChildChange(e.target.value)}
+                >
+                  {parent.children.map((child) => (
+                    <MenuItem key={child._id} value={child._id}>
+                      {child.name} (Class {child.grade}-{child.section})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+
+          {/* Attendance Summary */}
+          {attendanceSummary && (
+            <Grid container spacing={3} sx={{ mb: 3 }}>
+              <Grid item xs={12} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Avatar sx={{ mr: 2, bgcolor: 'success.main' }}>
+                        <CheckCircle />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6">{attendanceSummary.presentDays}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Present Days
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Avatar sx={{ mr: 2, bgcolor: 'error.main' }}>
+                        <RadioButtonUnchecked />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6">{attendanceSummary.absentDays}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Absent Days
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Avatar sx={{ mr: 2, bgcolor: 'warning.main' }}>
+                        <AccessTime />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6">{attendanceSummary.lateDays}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Late Days
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={3}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+                        <TrendingUp />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6">{attendanceSummary.attendancePercentage}%</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Attendance Rate
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+
+          {/* Attendance Records */}
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Recent Attendance Records
+              </Typography>
+              {attendance.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No attendance records found for the selected period.
+                </Typography>
+              ) : (
+                <Box sx={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Remarks</th>
+                        <th style={{ padding: '12px', textAlign: 'left' }}>Marked By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attendance.map((record) => (
+                        <tr key={record._id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ padding: '12px' }}>
+                            {new Date(record.date).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <Chip
+                              label={record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                              color={
+                                record.status === 'present' ? 'success' :
+                                record.status === 'absent' ? 'error' : 'warning'
+                              }
+                              size="small"
+                            />
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {record.remarks || '-'}
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            {record.markedBy?.name || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </TabPanel>
       </Card>
 
       {/* Completion Dialog */}

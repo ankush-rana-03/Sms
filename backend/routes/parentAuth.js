@@ -7,7 +7,11 @@ const {
   updateParentProfile,
   changePassword,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getStudentAttendance,
+  getAttendanceSummary,
+  getMonthlyAttendance,
+  getCurrentMonthAttendance
 } = require('../controllers/parentAuth');
 const { protect } = require('../middleware/auth');
 
@@ -21,5 +25,11 @@ router.put('/reset-password/:resettoken', resetPassword);
 router.get('/profile', protect, getParentProfile);
 router.put('/profile', protect, updateParentProfile);
 router.put('/change-password', protect, changePassword);
+
+// Attendance routes
+router.get('/attendance/:studentId', protect, getStudentAttendance);
+router.get('/attendance/:studentId/summary', protect, getAttendanceSummary);
+router.get('/attendance/:studentId/monthly', protect, getMonthlyAttendance);
+router.get('/attendance/current-month', protect, getCurrentMonthAttendance);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const Parent = require('../models/Parent');
 const Student = require('../models/Student');
+const Attendance = require('../models/Attendance');
 const { sendEmail } = require('../utils/sendEmail');
 const crypto = require('crypto');
 
@@ -381,6 +382,235 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error resetting password',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get attendance for a specific student
+// @route   GET /api/parents/attendance/:studentId
+// @access  Private (Parent only)
+exports.getStudentAttendance = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    // Verify the student belongs to this parent
+    const parent = await Parent.findById(req.user.id);
+    if (!parent.children.includes(studentId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. This student is not under your care.'
+      });
+    }
+
+    // Build query
+    const query = { student: studentId };
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+
+    // Get attendance records
+    const attendance = await Attendance.find(query)
+      .populate('student', 'name rollNumber grade section')
+      .populate('markedBy', 'name')
+      .sort({ date: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: attendance
+    });
+  } catch (error) {
+    console.error('Get student attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching attendance',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get attendance summary for a student
+// @route   GET /api/parents/attendance/:studentId/summary
+// @access  Private (Parent only)
+exports.getAttendanceSummary = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    // Verify the student belongs to this parent
+    const parent = await Parent.findById(req.user.id);
+    if (!parent.children.includes(studentId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. This student is not under your care.'
+      });
+    }
+
+    // Build query
+    const query = { student: studentId };
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+
+    // Get attendance records
+    const attendance = await Attendance.find(query);
+    
+    // Calculate summary
+    const totalDays = attendance.length;
+    const presentDays = attendance.filter(a => a.status === 'present').length;
+    const absentDays = attendance.filter(a => a.status === 'absent').length;
+    const lateDays = attendance.filter(a => a.status === 'late').length;
+    const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalDays,
+        presentDays,
+        absentDays,
+        lateDays,
+        attendancePercentage
+      }
+    });
+  } catch (error) {
+    console.error('Get attendance summary error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching attendance summary',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get monthly attendance for a student
+// @route   GET /api/parents/attendance/:studentId/monthly
+// @access  Private (Parent only)
+exports.getMonthlyAttendance = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { month, year } = req.query;
+
+    // Verify the student belongs to this parent
+    const parent = await Parent.findById(req.user.id);
+    if (!parent.children.includes(studentId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. This student is not under your care.'
+      });
+    }
+
+    // Create date range for the month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // Get attendance records for the month
+    const attendance = await Attendance.find({
+      student: studentId,
+      date: { $gte: startDate, $lte: endDate }
+    })
+      .populate('student', 'name rollNumber grade section')
+      .populate('markedBy', 'name')
+      .sort({ date: -1 });
+
+    // Calculate summary
+    const totalDays = attendance.length;
+    const presentDays = attendance.filter(a => a.status === 'present').length;
+    const absentDays = attendance.filter(a => a.status === 'absent').length;
+    const lateDays = attendance.filter(a => a.status === 'late').length;
+    const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        month: startDate.toLocaleString('default', { month: 'long' }),
+        year: parseInt(year),
+        attendance,
+        summary: {
+          totalDays,
+          presentDays,
+          absentDays,
+          lateDays,
+          attendancePercentage
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get monthly attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching monthly attendance',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get current month attendance for all children
+// @route   GET /api/parents/attendance/current-month
+// @access  Private (Parent only)
+exports.getCurrentMonthAttendance = async (req, res) => {
+  try {
+    const parent = await Parent.findById(req.user.id).populate('children', 'name rollNumber grade section');
+    
+    if (!parent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parent not found'
+      });
+    }
+
+    // Get current month date range
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const childrenAttendance = [];
+
+    for (const child of parent.children) {
+      // Get attendance for this child
+      const attendance = await Attendance.find({
+        student: child._id,
+        date: { $gte: startDate, $lte: endDate }
+      })
+        .populate('student', 'name rollNumber grade section')
+        .populate('markedBy', 'name')
+        .sort({ date: -1 });
+
+      // Calculate summary
+      const totalDays = attendance.length;
+      const presentDays = attendance.filter(a => a.status === 'present').length;
+      const absentDays = attendance.filter(a => a.status === 'absent').length;
+      const lateDays = attendance.filter(a => a.status === 'late').length;
+      const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+      childrenAttendance.push({
+        student: child,
+        attendance,
+        summary: {
+          totalDays,
+          presentDays,
+          absentDays,
+          lateDays,
+          attendancePercentage
+        }
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        children: childrenAttendance
+      }
+    });
+  } catch (error) {
+    console.error('Get current month attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching current month attendance',
       error: error.message
     });
   }

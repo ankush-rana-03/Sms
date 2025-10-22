@@ -69,7 +69,20 @@ class ParentAuthService {
 
   // Helper method to check if parent is logged in
   isParentLoggedIn(): boolean {
-    return !!localStorage.getItem('parentToken');
+    const token = localStorage.getItem('parentToken');
+    if (!token) return false;
+    
+    try {
+      // Decode JWT token to check expiration
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp > currentTime;
+    } catch (error) {
+      // If token is malformed, remove it
+      localStorage.removeItem('parentToken');
+      localStorage.removeItem('parentData');
+      return false;
+    }
   }
 
   // Helper method to get parent data from localStorage

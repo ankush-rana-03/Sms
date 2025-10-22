@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Box, Typography, TextField, Button, Card, CardContent, Alert, CircularProgress } from '@mui/material';
 import { School, Login as LoginIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { parentAuthService } from '../services/parentAuthService';
+import { useParentAuth } from '../contexts/ParentAuthContext';
 
 const ParentLogin: React.FC = () => {
+  const { login } = useParentAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -26,12 +27,7 @@ const ParentLogin: React.FC = () => {
     setError(null);
 
     try {
-      const response = await parentAuthService.loginParent(formData);
-      
-      // Store parent token and data
-      localStorage.setItem('parentToken', response.token);
-      localStorage.setItem('parentData', JSON.stringify(response.data.parent));
-      
+      await login(formData.email, formData.password);
       // Navigate to parent dashboard
       navigate('/parent-dashboard');
     } catch (err: any) {

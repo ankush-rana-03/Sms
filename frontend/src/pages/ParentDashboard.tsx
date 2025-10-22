@@ -64,7 +64,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const ParentDashboard: React.FC = () => {
-  const [parent, setParent] = useState<Parent | null>(null);
+  const { parent, isLoggedIn, logout } = useParentAuth();
   const [homework, setHomework] = useState<ParentHomework[]>([]);
   const [statistics, setStatistics] = useState<HomeworkStatistics | null>(null);
   const [attendance, setAttendance] = useState<StudentAttendance[]>([]);
@@ -88,38 +88,18 @@ const ParentDashboard: React.FC = () => {
   });
 
   useEffect(() => {
-    // Check if parent is logged in
-    const isLoggedIn = parentAuthService.isParentLoggedIn();
-    console.log('Parent logged in:', isLoggedIn);
-    
     if (!isLoggedIn) {
       console.log('Parent not logged in, redirecting to login');
-      // Add a small delay to prevent immediate redirect
-      setTimeout(() => {
-        window.location.href = '/parent-login';
-      }, 100);
+      window.location.href = '/parent-login';
       return;
     }
 
-    const parentData = parentAuthService.getParentData();
-    console.log('Parent data:', parentData);
-    
-    if (parentData) {
-      setParent(parentData);
-      if (parentData.children.length > 0) {
-        setSelectedChild(parentData.children[0]._id);
-      }
-      // Only fetch data if we have valid parent data
+    if (parent && parent.children.length > 0) {
+      setSelectedChild(parent.children[0]._id);
       console.log('Fetching data...');
       fetchData();
-    } else {
-      // If no parent data, redirect to login
-      console.log('No parent data, redirecting to login');
-      setTimeout(() => {
-        window.location.href = '/parent-login';
-      }, 100);
     }
-  }, []);
+  }, [isLoggedIn, parent]);
 
   const fetchData = async () => {
     try {
@@ -284,7 +264,7 @@ const ParentDashboard: React.FC = () => {
         <Button
           variant="outlined"
           onClick={() => {
-            parentAuthService.logoutParent();
+            logout();
             window.location.href = '/parent-login';
           }}
         >

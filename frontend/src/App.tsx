@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ParentAuthProvider } from './contexts/ParentAuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
@@ -53,13 +54,14 @@ const App: React.FC = () => {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <Router>
-            <Routes>
+          <ParentAuthProvider>
+            <Router>
+              <Routes>
 
-              <Route path="/debug" element={<LoginDebug />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/parent-login" element={<ParentLogin />} />
-              <Route path="/parent-dashboard" element={<ParentDashboard />} />
+                <Route path="/debug" element={<LoginDebug />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/parent-login" element={<ParentLogin />} />
+                <Route path="/parent-dashboard" element={<ParentDashboard />} />
               <Route
                 path="/"
                 element={
@@ -117,8 +119,9 @@ const App: React.FC = () => {
 
 
               </Route>
-            </Routes>
-          </Router>
+              </Routes>
+            </Router>
+          </ParentAuthProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

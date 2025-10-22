@@ -40,17 +40,10 @@ async function migrateExistingStudents() {
       try {
         console.log(`\n👤 Processing student: ${student.name} (${student.email})`);
 
-        // Check if parent already exists with this email
-        let parentEmail = student.parentPhone; // Use parent phone as email if no email provided
-        if (student.parentPhone && student.parentPhone.includes('@')) {
-          parentEmail = student.parentPhone;
-        } else {
-          // Generate a proper parent email from parent name and phone
-          const parentName = student.parentName.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const phoneLast4 = student.parentPhone.replace(/\D/g, '').slice(-4);
-          const studentId = student._id.toString().slice(-4);
-          parentEmail = `parent.${parentName}.${phoneLast4}${studentId}@school.com`;
-        }
+        // Generate simple parent email
+        const studentName = student.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const parentName = student.parentName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        parentEmail = `${parentName}${studentName}@parent.com`;
 
         console.log(`   📧 Generated parent email: ${parentEmail}`);
 

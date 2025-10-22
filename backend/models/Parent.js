@@ -117,7 +117,7 @@ parentSchema.methods.getResetPasswordToken = function() {
 // Generate unique parent credentials
 parentSchema.statics.generateCredentials = function() {
   const parentId = 'PAR' + Date.now().toString().slice(-6);
-  const password = crypto.randomBytes(8).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
+  const password = 'parent123'; // Simple password for all parents
   return { parentId, password };
 };
 

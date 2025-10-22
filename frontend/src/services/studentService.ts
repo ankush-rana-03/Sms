@@ -223,6 +223,18 @@ class StudentService {
       throw new Error(error.response?.data?.message || 'Failed to approve student');
     }
   }
+
+  // Change parent password
+  async changeParentPassword(studentId: string, newPassword: string): Promise<{ success: boolean; message: string; data: { parentEmail: string; newPassword: string } }> {
+    try {
+      const response = await api.put<{ success: boolean; message: string; data: { parentEmail: string; newPassword: string } }>(`/students/${studentId}/parent-password`, {
+        newPassword
+      });
+      return response;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to change parent password');
+    }
+  }
 }
 
 const studentService = new StudentService();

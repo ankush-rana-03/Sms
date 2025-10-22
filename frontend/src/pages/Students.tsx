@@ -110,7 +110,9 @@ const Students: React.FC = () => {
     gender: '',
     bloodGroup: '',
     parentName: '',
-    parentPhone: ''
+    parentPhone: '',
+    parentEmail: '',
+    parentPassword: ''
   });
 
   useEffect(() => {
@@ -199,7 +201,9 @@ const Students: React.FC = () => {
       gender: student.gender || '',
       bloodGroup: student.bloodGroup || '',
       parentName: student.parentName || '',
-      parentPhone: student.parentPhone || ''
+      parentPhone: student.parentPhone || '',
+      parentEmail: student.parentEmail || '',
+      parentPassword: ''
     });
     setOpenEditDialog(true);
   };
@@ -208,10 +212,23 @@ const Students: React.FC = () => {
     if (!editingStudent) return;
 
     try {
+      // Update student data
       const response = await studentService.updateStudent(editingStudent._id, editForm);
       if (response.success) {
         setStudents(prev => prev.map(s => s._id === editingStudent._id ? response.data : s));
         showToastMessage('Student updated successfully!', 'success');
+        
+        // If parent password is provided, update it
+        if (editForm.parentPassword) {
+          try {
+            await studentService.changeParentPassword(editingStudent._id, editForm.parentPassword);
+            showToastMessage('Parent password updated successfully!', 'success');
+          } catch (passwordError: any) {
+            console.error('Error updating parent password:', passwordError);
+            showToastMessage('Student updated but parent password update failed', 'warning');
+          }
+        }
+        
         setOpenEditDialog(false);
         setEditingStudent(null);
       }
@@ -1051,6 +1068,27 @@ const Students: React.FC = () => {
                   value={editForm.parentPhone}
                   onChange={(e) => setEditForm(prev => ({ ...prev, parentPhone: e.target.value }))}
                   margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Parent Email"
+                  type="email"
+                  value={editForm.parentEmail}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, parentEmail: e.target.value }))}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Parent Password"
+                  type="password"
+                  value={editForm.parentPassword}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, parentPassword: e.target.value }))}
+                  margin="normal"
+                  placeholder="Leave empty to keep current password"
                 />
               </Grid>
             </Grid>

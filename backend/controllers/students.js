@@ -534,3 +534,162 @@ exports.getStudentAttendance = async (req, res) => {
     });
   }
 };
+
+// Update student information
+exports.updateStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Find the student
+    const student = await Student.findById(id);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    // Check if parent email is being updated
+    if (updateData.parentEmail && updateData.parentEmail !== student.parentEmail) {
+      // Check if parent already exists with new email
+      let parent = await Parent.findOne({ email: updateData.parentEmail });
+      
+      if (parent) {
+        // Parent exists, add student to their children if not already there
+        if (!parent.children.includes(student._id)) {
+          parent.children.push(student._id);
+          await parent.save();
+        }
+        // Remove student from old parent if exists
+        if (student.parent) {
+          const oldParent = await Parent.findById(student.parent);
+          if (oldParent) {
+            oldParent.children = oldParent.children.filter(childId => !childId.equals(student._id));
+            await oldParent.save();
+          }
+        }
+        student.parent = parent._id;
+      } else {
+        // Create new parent
+        const { parentId, password } = Parent.generateCredentials();
+        
+        parent = new Parent({
+          name: updateData.parentName || student.parentName,
+          email: updateData.parentEmail,
+          password: password,
+          phone: updateData.parentPhone || student.parentPhone,
+          address: updateData.address || student.address,
+          children: [student._id],
+          credentialsGenerated: true,
+          credentialsGeneratedAt: new Date()
+        });
+
+        await parent.save();
+        
+        // Remove student from old parent if exists
+        if (student.parent) {
+          const oldParent = await Parent.findById(student.parent);
+          if (oldParent) {
+            oldParent.children = oldParent.children.filter(childId => !childId.equals(student._id));
+            await oldParent.save();
+          }
+        }
+        
+        student.parent = parent._id;
+
+        // Send credentials email
+        try {
+          const emailSubject = 'Parent Portal Access Credentials - Updated';
+          const emailBody = `
+            <h2>Parent Portal Access Updated</h2>
+            <p>Dear ${parent.name},</p>
+            <p>Your parent portal access has been updated for your child ${student.name}.</p>
+            
+            <h3>Your Login Credentials:</h3>
+            <p><strong>Email:</strong> ${updateData.parentEmail}</p>
+            <p><strong>Password:</strong> ${password}</p>
+            
+            <p>You can access the parent portal at: <a href="${process.env.FRONTEND_URL}/parent-login">Parent Portal Login</a></p>
+            
+            <p>Best regards,<br>School Administration</p>
+          `;
+
+          await sendEmail({
+            email: updateData.parentEmail,
+            subject: emailSubject,
+            message: emailBody
+          });
+        } catch (emailError) {
+          console.error('Email sending failed:', emailError.message);
+        }
+      }
+    }
+
+    // Update student data
+    const updatedStudent = await Student.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('parent', 'name email phone');
+
+    res.status(200).json({
+      success: true,
+      message: 'Student updated successfully',
+      data: updatedStudent
+    });
+
+  } catch (error) {
+    console.error('Error updating student:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating student',
+      error: error.message
+    });
+  }
+};
+
+// Change parent password
+exports.changeParentPassword = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { newPassword } = req.body;
+
+    // Find the student
+    const student = await Student.findById(studentId).populate('parent');
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    if (!student.parent) {
+      return res.status(404).json({
+        success: false,
+        message: 'No parent account found for this student'
+      });
+    }
+
+    // Update parent password
+    student.parent.password = newPassword || 'parent123'; // Default to simple password
+    await student.parent.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Parent password updated successfully',
+      data: {
+        parentEmail: student.parent.email,
+        newPassword: student.parent.password
+      }
+    });
+
+  } catch (error) {
+    console.error('Error changing parent password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error changing parent password',
+      error: error.message
+    });
+  }
+};

@@ -28,13 +28,10 @@ import {
   Person, 
   CheckCircle, 
   RadioButtonUnchecked,
-  Pending,
-  CalendarToday,
-  TrendingUp,
-  AccessTime
+  Pending
 } from '@mui/icons-material';
 import { parentHomeworkService, ParentHomework, HomeworkStatistics } from '../services/parentHomeworkService';
-import { parentAttendanceService, StudentAttendance, AttendanceSummary } from '../services/parentAttendanceService';
+// Removed parentAttendanceService import as attendance is now handled separately
 import { parentAuthService } from '../services/parentAuthService';
 import { useParentAuth } from '../contexts/ParentAuthContext';
 
@@ -68,12 +65,11 @@ const ParentDashboard: React.FC = () => {
   const { parent, isLoggedIn, logout } = useParentAuth();
   const [homework, setHomework] = useState<ParentHomework[]>([]);
   const [statistics, setStatistics] = useState<HomeworkStatistics | null>(null);
-  const [attendance, setAttendance] = useState<StudentAttendance[]>([]);
-  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(null);
+  // Removed attendance state as it's now handled in ParentAttendance page
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [selectedChild, setSelectedChild] = useState<string>('');
+  // Removed selectedChild state as it's now handled in ParentAttendance page
   const [completionDialog, setCompletionDialog] = useState<{
     open: boolean;
     homeworkId: string;
@@ -98,7 +94,6 @@ const ParentDashboard: React.FC = () => {
     }
 
     if (parent && parent.children && parent.children.length > 0) {
-      setSelectedChild(parent.children[0]._id);
       console.log('Fetching data...');
       fetchData();
     } else if (parent && (!parent.children || parent.children.length === 0)) {
@@ -135,25 +130,7 @@ const ParentDashboard: React.FC = () => {
         // Don't set error for statistics as it's not critical
       }
 
-      try {
-        console.log('Fetching attendance...');
-        const attendanceResponse = await parentAttendanceService.getCurrentMonthAttendance();
-        console.log('Attendance response:', attendanceResponse);
-        // Process attendance data
-        if (attendanceResponse.data && attendanceResponse.data.children && attendanceResponse.data.children.length > 0) {
-          const firstChild = attendanceResponse.data.children[0];
-          console.log('First child attendance data:', firstChild);
-          setAttendance(firstChild.attendance || []);
-          setAttendanceSummary(firstChild.summary || null);
-        } else {
-          console.log('No attendance data found for current month');
-          setAttendance([]);
-          setAttendanceSummary(null);
-        }
-      } catch (err: any) {
-        console.error('Attendance fetch error:', err);
-        setError('Failed to fetch attendance data: ' + (err.response?.data?.message || err.message));
-      }
+      // Removed attendance fetching as it's now handled in ParentAttendance page
     } catch (err: any) {
       console.error('General fetch error:', err);
       setError('Failed to fetch data');
@@ -167,20 +144,7 @@ const ParentDashboard: React.FC = () => {
     setTabValue(newValue);
   };
 
-  const handleChildChange = async (childId: string) => {
-    setSelectedChild(childId);
-    try {
-      const [attendanceResponse, summaryResponse] = await Promise.all([
-        parentAttendanceService.getStudentAttendance(childId),
-        parentAttendanceService.getAttendanceSummary(childId)
-      ]);
-      
-      setAttendance(attendanceResponse.data);
-      setAttendanceSummary(summaryResponse.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch attendance data');
-    }
-  };
+  // Removed handleChildChange as it's now handled in ParentAttendance page
 
   const handleCompletionClick = (homeworkId: string, childId: string, currentStatus: string, comments: string) => {
     setCompletionDialog({
@@ -316,21 +280,6 @@ const ParentDashboard: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Debug Information */}
-      <Card sx={{ mb: 3, bgcolor: 'grey.50' }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>Debug Information</Typography>
-          <Typography variant="body2">
-            <strong>Parent ID:</strong> {parent?.id}<br/>
-            <strong>Children Count:</strong> {parent?.children?.length || 0}<br/>
-            <strong>Selected Child:</strong> {selectedChild}<br/>
-            <strong>Attendance Records:</strong> {attendance.length}<br/>
-            <strong>Attendance Summary:</strong> {attendanceSummary ? 'Available' : 'Not Available'}<br/>
-            <strong>Loading:</strong> {loading ? 'Yes' : 'No'}<br/>
-            <strong>Error:</strong> {error || 'None'}
-          </Typography>
-        </CardContent>
-      </Card>
 
       {/* Statistics Cards */}
       {statistics && (
@@ -392,7 +341,6 @@ const ParentDashboard: React.FC = () => {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab label="All Homework" />
-            <Tab label="Attendance" />
             {parent?.children?.map((child) => (
               <Tab key={child._id} label={`${child.name} (Class ${child.grade}-${child.section})`} />
             ))}
@@ -460,7 +408,7 @@ const ParentDashboard: React.FC = () => {
         </TabPanel>
 
         {parent?.children.map((child, index) => (
-          <TabPanel key={child._id} value={tabValue} index={index + 2}>
+          <TabPanel key={child._id} value={tabValue} index={index + 1}>
             <Grid container spacing={3}>
               {homework
                 .filter(hw => hw.childrenCompletion.some(comp => comp.studentId === child._id))
@@ -525,158 +473,6 @@ const ParentDashboard: React.FC = () => {
           </TabPanel>
         ))}
 
-        {/* Attendance Tab */}
-        <TabPanel value={tabValue} index={1}>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Student Attendance
-            </Typography>
-            {parent && parent.children.length > 1 && (
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel>Select Student</InputLabel>
-                <Select
-                  value={selectedChild}
-                  onChange={(e) => handleChildChange(e.target.value)}
-                >
-                  {parent.children.map((child) => (
-                    <MenuItem key={child._id} value={child._id}>
-                      {child.name} (Class {child.grade}-{child.section})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          </Box>
-
-          {/* Attendance Summary */}
-          {attendanceSummary && (
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-              <Grid item xs={12} md={3}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ mr: 2, bgcolor: 'success.main' }}>
-                        <CheckCircle />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="h6">{attendanceSummary.presentDays}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Present Days
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} md={3}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ mr: 2, bgcolor: 'error.main' }}>
-                        <RadioButtonUnchecked />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="h6">{attendanceSummary.absentDays}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Absent Days
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} md={3}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ mr: 2, bgcolor: 'warning.main' }}>
-                        <AccessTime />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="h6">{attendanceSummary.lateDays}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Late Days
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} md={3}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                        <TrendingUp />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="h6">{attendanceSummary.attendancePercentage}%</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Attendance Rate
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          )}
-
-          {/* Attendance Records */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Recent Attendance Records
-              </Typography>
-              {attendance.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No attendance records found for the selected period.
-                </Typography>
-              ) : (
-                <Box sx={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid #e0e0e0' }}>
-                        <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
-                        <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
-                        <th style={{ padding: '12px', textAlign: 'left' }}>Remarks</th>
-                        <th style={{ padding: '12px', textAlign: 'left' }}>Marked By</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attendance.map((record) => (
-                        <tr key={record._id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                          <td style={{ padding: '12px' }}>
-                            {new Date(record.date).toLocaleDateString()}
-                          </td>
-                          <td style={{ padding: '12px' }}>
-                            <Chip
-                              label={record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                              color={
-                                record.status === 'present' ? 'success' :
-                                record.status === 'absent' ? 'error' : 'warning'
-                              }
-                              size="small"
-                            />
-                          </td>
-                          <td style={{ padding: '12px' }}>
-                            {record.remarks || '-'}
-                          </td>
-                          <td style={{ padding: '12px' }}>
-                            {record.markedBy?.name || '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </TabPanel>
       </Card>
 
       {/* Completion Dialog */}

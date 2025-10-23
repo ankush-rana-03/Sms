@@ -6,6 +6,7 @@ export { default as MobileResponsive, useResponsive } from './MobileResponsive';
 
 // Layout Components
 export { default as Layout } from './Layout';
+export { default as ParentLayout } from './ParentLayout';
 export { default as RoleBasedRoute } from './RoleBasedRoute';
 export { default as LoadingSpinner } from './LoadingSpinner';
 

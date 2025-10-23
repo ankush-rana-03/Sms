@@ -26,9 +26,7 @@ import {
 import {
   Menu as MenuIcon,
   Dashboard,
-  People,
   School,
-  Class,
   Assignment,
   Quiz,
   Assessment,
@@ -36,37 +34,25 @@ import {
   Notifications,
   Logout,
   Settings,
-  ManageAccounts,
-  CalendarToday,
   Close,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useParentAuth } from '../contexts/ParentAuthContext';
 
 const drawerWidth = 280;
 
-const getMenuItems = (userRole: string) => {
-  const allItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
-    { text: 'Student Attendance', icon: <School />, path: '/student-attendance', roles: ['admin', 'principal', 'teacher'] },
-    { text: 'Staff Attendance', icon: <People />, path: '/staff-attendance', roles: ['admin', 'principal', 'teacher'] },
-    { text: 'Students', icon: <School />, path: '/students', roles: ['admin', 'principal', 'teacher'] },
-    { text: 'Teacher Management', icon: <ManageAccounts />, path: '/teacher-management', roles: ['admin'] },
-    { text: 'Classes', icon: <Class />, path: '/classes', roles: ['admin', 'principal', 'teacher'] },
-    { text: 'Sessions', icon: <CalendarToday />, path: '/sessions', roles: ['admin', 'principal'] },
-    { text: 'Teacher Attendance', icon: <People />, path: '/teacher-attendance', roles: ['teacher', 'admin'] },
-    { text: 'Homework', icon: <Assignment />, path: '/homework', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
-    { text: 'Tests', icon: <Quiz />, path: '/tests', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
-    { text: 'Results', icon: <Assessment />, path: '/results', roles: ['admin', 'principal', 'teacher', 'parent', 'student'] },
-  ];
+const getParentMenuItems = () => [
+  { text: 'Dashboard', icon: <Dashboard />, path: '/parent/dashboard' },
+  { text: 'Attendance', icon: <School />, path: '/parent/attendance' },
+  { text: 'Homework', icon: <Assignment />, path: '/parent/homework' },
+  { text: 'Tests', icon: <Quiz />, path: '/parent/tests' },
+  { text: 'Results', icon: <Assessment />, path: '/parent/results' },
+];
 
-  return allItems.filter(item => item.roles.includes(userRole));
-};
-
-const Layout: React.FC = () => {
+const ParentLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const { user, logout } = useAuth();
+  const { parent, logout } = useParentAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -86,7 +72,7 @@ const Layout: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/parent-login');
   };
 
   const handleNavigation = (path: string) => {
@@ -96,7 +82,7 @@ const Layout: React.FC = () => {
     }
   };
 
-  const menuItems = getMenuItems(user?.role || 'student');
+  const menuItems = getParentMenuItems();
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -116,10 +102,10 @@ const Layout: React.FC = () => {
           />
         </Box>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-          🏫 School Management
+          🏫 Parent Portal
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.9 }}>
-          {user?.role ? `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)}` : 'User'} Portal
+          School Management System
         </Typography>
         {isMobile && (
           <IconButton
@@ -150,14 +136,19 @@ const Layout: React.FC = () => {
             fontSize: '1.5rem'
           }}
         >
-          {user?.name?.charAt(0) || 'U'}
+          {parent?.name?.charAt(0) || 'P'}
         </Avatar>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          {user?.name || 'User'}
+          {parent?.name || 'Parent'}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {user?.email || 'user@school.com'}
+          {parent?.email || 'parent@school.com'}
         </Typography>
+        {parent?.children && parent.children.length > 0 && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            {parent.children.length} child{parent.children.length > 1 ? 'ren' : ''}
+          </Typography>
+        )}
       </Box>
 
       {/* Navigation Menu */}
@@ -256,7 +247,7 @@ const Layout: React.FC = () => {
               display: { xs: 'none', sm: 'block' }
             }}
           >
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+            {menuItems.find(item => item.path === location.pathname)?.text || 'Parent Dashboard'}
           </Typography>
 
           {/* Mobile Title */}
@@ -268,7 +259,7 @@ const Layout: React.FC = () => {
               textAlign: 'center'
             }}
           >
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+            {menuItems.find(item => item.path === location.pathname)?.text || 'Parent Dashboard'}
           </Typography>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -291,7 +282,7 @@ const Layout: React.FC = () => {
                   bgcolor: 'rgba(255,255,255,0.2)',
                   color: 'white'
                 }}>
-                  {user?.name?.charAt(0) || 'U'}
+                  {parent?.name?.charAt(0) || 'P'}
                 </Avatar>
               </IconButton>
             </Tooltip>
@@ -379,13 +370,13 @@ const Layout: React.FC = () => {
           }
         }}
       >
-        <MenuItem onClick={() => navigate('/profile')}>
+        <MenuItem onClick={() => navigate('/parent/profile')}>
           <ListItemIcon>
             <Person fontSize="small" />
           </ListItemIcon>
           Profile
         </MenuItem>
-        <MenuItem onClick={() => navigate('/settings')}>
+        <MenuItem onClick={() => navigate('/parent/settings')}>
           <ListItemIcon>
             <Settings fontSize="small" />
           </ListItemIcon>
@@ -403,4 +394,4 @@ const Layout: React.FC = () => {
   );
 };
 
-export default Layout;
+export default ParentLayout;

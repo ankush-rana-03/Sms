@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ParentAuthProvider } from './contexts/ParentAuthContext';
+import { ParentAuthProvider, useParentAuth } from './contexts/ParentAuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
@@ -29,6 +29,7 @@ import TeacherManagement from './pages/TeacherManagement';
 import ParentLogin from './pages/ParentLogin';
 import ParentDashboard from './pages/ParentDashboard';
 import ParentAttendance from './pages/ParentAttendance';
+import ParentLayout from './components/ParentLayout';
 
 // Import custom theme
 import theme from './theme';
@@ -49,6 +50,20 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const ParentProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { parent, isLoggedIn, loading } = useParentAuth();
+
+  if (loading) {
+    return <LoadingSpinner message="Initializing parent portal..." />;
+  }
+
+  if (!isLoggedIn || !parent) {
+    return <Navigate to="/parent-login" />;
+  }
+
+  return <>{children}</>;
+};
+
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -62,6 +77,25 @@ const App: React.FC = () => {
                 <Route path="/debug" element={<LoginDebug />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/parent-login" element={<ParentLogin />} />
+                
+                {/* Parent Routes with Layout */}
+                <Route
+                  path="/parent"
+                  element={
+                    <ParentProtectedRoute>
+                      <ParentLayout />
+                    </ParentProtectedRoute>
+                  }
+                >
+                  <Route index element={<ParentDashboard />} />
+                  <Route path="dashboard" element={<ParentDashboard />} />
+                  <Route path="attendance" element={<ParentAttendance />} />
+                  <Route path="homework" element={<ParentDashboard />} />
+                  <Route path="tests" element={<ParentDashboard />} />
+                  <Route path="results" element={<ParentDashboard />} />
+                </Route>
+                
+                {/* Legacy parent dashboard route for backward compatibility */}
                 <Route path="/parent-dashboard" element={<ParentDashboard />} />
                 <Route path="/parent-attendance" element={<ParentAttendance />} />
               <Route

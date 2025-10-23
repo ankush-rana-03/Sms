@@ -29,7 +29,7 @@ const ParentLogin: React.FC = () => {
     try {
       await login(formData.email, formData.password);
       // Navigate to parent dashboard
-      navigate('/parent-dashboard');
+      navigate('/parent/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

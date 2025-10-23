@@ -37,6 +37,7 @@ import { parentHomeworkService, ParentHomework, HomeworkStatistics } from '../se
 import { parentAttendanceService, StudentAttendance, AttendanceSummary } from '../services/parentAttendanceService';
 import { parentAuthService } from '../services/parentAuthService';
 import { useParentAuth } from '../contexts/ParentAuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -66,6 +67,7 @@ function TabPanel(props: TabPanelProps) {
 
 const ParentDashboard: React.FC = () => {
   const { parent, isLoggedIn, logout } = useParentAuth();
+  const navigate = useNavigate();
   const [homework, setHomework] = useState<ParentHomework[]>([]);
   const [statistics, setStatistics] = useState<HomeworkStatistics | null>(null);
   const [attendance, setAttendance] = useState<StudentAttendance[]>([]);
@@ -278,6 +280,21 @@ const ParentDashboard: React.FC = () => {
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigate('/parent-attendance')}
+            startIcon={<CalendarToday />}
+            sx={{ 
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
+              }
+            }}
+          >
+            View Attendance
+          </Button>
+          <Button
             variant="outlined"
             onClick={async () => {
               try {
@@ -331,6 +348,103 @@ const ParentDashboard: React.FC = () => {
           </Typography>
         </CardContent>
       </Card>
+
+      {/* Quick Access Cards */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <Card 
+            sx={{ 
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
+              }
+            }}
+            onClick={() => navigate('/parent-attendance')}
+          >
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+                  <CalendarToday />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6">View Attendance</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Check your child's attendance records
+                  </Typography>
+                </Box>
+              </Box>
+              {attendanceSummary && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h4" color="primary.main">
+                    {attendanceSummary.attendancePercentage}%
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Attendance Rate
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+        
+        <Grid item xs={12} md={4}>
+          <Card 
+            sx={{ 
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
+              }
+            }}
+            onClick={() => setTabValue(0)}
+          >
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Avatar sx={{ mr: 2, bgcolor: 'secondary.main' }}>
+                  <Assignment />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6">View Homework</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Check homework assignments and progress
+                  </Typography>
+                </Box>
+              </Box>
+              {statistics && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h4" color="secondary.main">
+                    {statistics.totalHomework}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total Homework
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+        
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Avatar sx={{ mr: 2, bgcolor: 'success.main' }}>
+                  <School />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6">Quick Stats</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Overview of your child's progress
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Statistics Cards */}
       {statistics && (
@@ -528,9 +642,26 @@ const ParentDashboard: React.FC = () => {
         {/* Attendance Tab */}
         <TabPanel value={tabValue} index={1}>
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Student Attendance
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                Student Attendance
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate('/parent-attendance')}
+                startIcon={<CalendarToday />}
+                sx={{ 
+                  background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
+                  }
+                }}
+              >
+                View Full Attendance
+              </Button>
+            </Box>
             {parent && parent.children.length > 1 && (
               <FormControl fullWidth sx={{ mb: 3 }}>
                 <InputLabel>Select Student</InputLabel>

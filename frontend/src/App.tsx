@@ -28,6 +28,7 @@ import TeacherAttendance from './pages/TeacherAttendance';
 import TeacherManagement from './pages/TeacherManagement';
 import ParentLogin from './pages/ParentLogin';
 import ParentDashboard from './pages/ParentDashboard';
+import ParentAttendance from './pages/ParentAttendance';
 
 // Import custom theme
 import theme from './theme';
@@ -62,6 +63,7 @@ const App: React.FC = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/parent-login" element={<ParentLogin />} />
                 <Route path="/parent-dashboard" element={<ParentDashboard />} />
+                <Route path="/parent-attendance" element={<ParentAttendance />} />
               <Route
                 path="/"
                 element={

@@ -25,7 +25,6 @@ import {
 import { 
   Assignment, 
   School, 
-  Person, 
   CheckCircle, 
   RadioButtonUnchecked,
   Pending

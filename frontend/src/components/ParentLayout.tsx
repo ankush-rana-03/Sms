@@ -34,9 +34,7 @@ import {
   Notifications,
   Logout,
   Settings,
-  CalendarToday,
   Close,
-  Home,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useParentAuth } from '../contexts/ParentAuthContext';

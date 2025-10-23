@@ -29,6 +29,9 @@ import TeacherManagement from './pages/TeacherManagement';
 import ParentLogin from './pages/ParentLogin';
 import ParentDashboard from './pages/ParentDashboard';
 import ParentAttendance from './pages/ParentAttendance';
+import ParentHomework from './pages/ParentHomework';
+import ParentTests from './pages/ParentTests';
+import ParentResults from './pages/ParentResults';
 import ParentLayout from './components/ParentLayout';
 
 // Import custom theme
@@ -90,9 +93,9 @@ const App: React.FC = () => {
                   <Route index element={<ParentDashboard />} />
                   <Route path="dashboard" element={<ParentDashboard />} />
                   <Route path="attendance" element={<ParentAttendance />} />
-                  <Route path="homework" element={<ParentDashboard />} />
-                  <Route path="tests" element={<ParentDashboard />} />
-                  <Route path="results" element={<ParentDashboard />} />
+                  <Route path="homework" element={<ParentHomework />} />
+                  <Route path="tests" element={<ParentTests />} />
+                  <Route path="results" element={<ParentResults />} />
                 </Route>
                 
                 {/* Legacy parent dashboard route for backward compatibility */}

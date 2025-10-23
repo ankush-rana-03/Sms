@@ -15,13 +15,11 @@ import {
   Avatar,
   Menu,
   MenuItem,
-  Badge,
   useTheme,
   useMediaQuery,
   SwipeableDrawer,
   Tooltip,
   Fade,
-  Zoom,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -31,9 +29,7 @@ import {
   Quiz,
   Assessment,
   Person,
-  Notifications,
   Logout,
-  Settings,
   Close,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
@@ -88,21 +84,21 @@ const ParentLayout: React.FC = () => {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box sx={{ 
-        p: 2, 
+        p: 3, 
         background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
         color: 'white',
         textAlign: 'center'
       }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <img
             src={process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/logo.png` : '/logo.png'}
             alt="Logo"
-            style={{ height: 40, width: 40, objectFit: 'contain', borderRadius: 6, background: 'rgba(255,255,255,0.15)', padding: 4 }}
+            style={{ height: 50, width: 50, objectFit: 'contain', borderRadius: 8, background: 'rgba(255,255,255,0.15)', padding: 8 }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </Box>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-          🏫 Parent Portal
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+          Parent Portal
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.9 }}>
           School Management System
@@ -112,8 +108,8 @@ const ParentLayout: React.FC = () => {
             onClick={handleDrawerToggle}
             sx={{ 
               position: 'absolute', 
-              top: 8, 
-              right: 8, 
+              top: 16, 
+              right: 16, 
               color: 'white' 
             }}
           >
@@ -125,36 +121,36 @@ const ParentLayout: React.FC = () => {
       <Divider />
       
       {/* User Info */}
-      <Box sx={{ p: 2, textAlign: 'center', borderBottom: 1, borderColor: 'divider' }}>
+      <Box sx={{ p: 3, textAlign: 'center', borderBottom: 1, borderColor: 'divider' }}>
         <Avatar 
           sx={{ 
-            width: 64, 
-            height: 64, 
+            width: 80, 
+            height: 80, 
             mx: 'auto', 
-            mb: 1,
+            mb: 2,
             bgcolor: 'primary.main',
-            fontSize: '1.5rem'
+            fontSize: '2rem'
           }}
         >
           {parent?.name?.charAt(0) || 'P'}
         </Avatar>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
           {parent?.name || 'Parent'}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           {parent?.email || 'parent@school.com'}
         </Typography>
         {parent?.children && parent.children.length > 0 && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          <Typography variant="caption" color="text.secondary">
             {parent.children.length} child{parent.children.length > 1 ? 'ren' : ''}
           </Typography>
         )}
       </Box>
 
       {/* Navigation Menu */}
-      <List sx={{ flexGrow: 1, px: 1 }}>
+      <List sx={{ flexGrow: 1, px: 2, py: 1 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+          <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => handleNavigation(item.path)}
@@ -227,16 +223,6 @@ const ParentLayout: React.FC = () => {
             <MenuIcon />
           </IconButton>
           
-          {/* Logo (from public/logo.png) */}
-          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', mr: 2 }}>
-            <img
-              src={process.env.PUBLIC_URL ? `${process.env.PUBLIC_URL}/logo.png` : '/logo.png'}
-              alt="Logo"
-              style={{ height: 32, width: 32, objectFit: 'contain', borderRadius: 4 }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          </Box>
-          
           <Typography 
             variant={isMobile ? "h6" : "h5"} 
             noWrap 
@@ -244,34 +230,13 @@ const ParentLayout: React.FC = () => {
             sx={{ 
               flexGrow: 1,
               fontWeight: 600,
-              display: { xs: 'none', sm: 'block' }
-            }}
-          >
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Parent Dashboard'}
-          </Typography>
-
-          {/* Mobile Title */}
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              flexGrow: 1, 
-              display: { xs: 'block', sm: 'none' },
-              textAlign: 'center'
             }}
           >
             {menuItems.find(item => item.path === location.pathname)?.text || 'Parent Dashboard'}
           </Typography>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Tooltip title="Notifications" TransitionComponent={Zoom}>
-              <IconButton color="inherit">
-                <Badge badgeContent={4} color="error">
-                  <Notifications />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-            
-            <Tooltip title="Profile" TransitionComponent={Zoom}>
+            <Tooltip title="Profile">
               <IconButton
                 onClick={handleProfileMenuOpen}
                 sx={{ ml: 1 }}
@@ -375,12 +340,6 @@ const ParentLayout: React.FC = () => {
             <Person fontSize="small" />
           </ListItemIcon>
           Profile
-        </MenuItem>
-        <MenuItem onClick={() => navigate('/parent/settings')}>
-          <ListItemIcon>
-            <Settings fontSize="small" />
-          </ListItemIcon>
-          Settings
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleLogout}>

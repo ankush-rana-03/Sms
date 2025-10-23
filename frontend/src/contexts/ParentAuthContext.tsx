@@ -32,36 +32,28 @@ export const ParentAuthProvider: React.FC<ParentAuthProviderProps> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        console.log('Initializing parent authentication...');
         const isLoggedIn = parentAuthService.isParentLoggedIn();
-        console.log('Parent logged in:', isLoggedIn);
         
         if (isLoggedIn) {
           const parentData = parentAuthService.getParentData();
-          console.log('Parent data found:', parentData);
           if (parentData) {
-            // Verify token is still valid by making a test API call
+            // Verify token is still valid
             try {
               await parentAuthService.getParentProfile();
               setParent(parentData);
               setIsLoggedIn(true);
             } catch (error) {
-              console.log('Token validation failed, logging out:', error);
+              console.log('Token validation failed, logging out');
               parentAuthService.logoutParent();
+              setParent(null);
               setIsLoggedIn(false);
             }
-          } else {
-            console.log('No parent data found, logging out');
-            parentAuthService.logoutParent();
-            setIsLoggedIn(false);
           }
-        } else {
-          console.log('Parent not logged in');
-          setIsLoggedIn(false);
         }
       } catch (error) {
-        console.error('Parent auth initialization error:', error);
+        console.error('Auth initialization error:', error);
         parentAuthService.logoutParent();
+        setParent(null);
         setIsLoggedIn(false);
       } finally {
         setLoading(false);
@@ -73,16 +65,21 @@ export const ParentAuthProvider: React.FC<ParentAuthProviderProps> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const response = await parentAuthService.loginParent({ email, password });
       
-      // Store parent token and data
-      localStorage.setItem('parentToken', response.token);
-      localStorage.setItem('parentData', JSON.stringify(response.data.parent));
-      
-      setParent(response.data.parent);
-      setIsLoggedIn(true);
+      if (response.success) {
+        parentAuthService.setParentData(response.data.parent);
+        setParent(response.data.parent);
+        setIsLoggedIn(true);
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
     } catch (error) {
+      console.error('Login error:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,18 +93,22 @@ export const ParentAuthProvider: React.FC<ParentAuthProviderProps> = ({ children
     if (parent) {
       const updatedParent = { ...parent, ...parentData };
       setParent(updatedParent);
-      localStorage.setItem('parentData', JSON.stringify(updatedParent));
+      parentAuthService.setParentData(updatedParent);
     }
   };
 
-  const value = {
+  const value: ParentAuthContextType = {
     parent,
     loading,
     isLoggedIn,
     login,
     logout,
-    updateParent,
+    updateParent
   };
 
-  return <ParentAuthContext.Provider value={value}>{children}</ParentAuthContext.Provider>;
+  return (
+    <ParentAuthContext.Provider value={value}>
+      {children}
+    </ParentAuthContext.Provider>
+  );
 };

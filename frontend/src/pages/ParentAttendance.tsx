@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
   Grid, 
   Card, 
   CardContent, 
-  Avatar, 
   CircularProgress, 
   Alert,
   FormControl,
@@ -13,28 +12,27 @@ import {
   Select,
   MenuItem,
   Chip,
+  Avatar,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  IconButton
+  Paper
 } from '@mui/material';
 import { 
   CheckCircle, 
   RadioButtonUnchecked,
   AccessTime,
   TrendingUp,
-  ArrowBack,
-  CalendarToday
+  School
 } from '@mui/icons-material';
 import { parentAttendanceService, StudentAttendance, AttendanceSummary } from '../services/parentAttendanceService';
 import { useParentAuth } from '../contexts/ParentAuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const ParentAttendance: React.FC = () => {
+const ParentAttendancePage: React.FC = () => {
   const { parent, isLoggedIn } = useParentAuth();
   const navigate = useNavigate();
   const [attendance, setAttendance] = useState<StudentAttendance[]>([]);
@@ -43,16 +41,29 @@ const ParentAttendance: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedChild, setSelectedChild] = useState<string>('');
 
-  const fetchAttendanceData = useCallback(async () => {
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/parent-login');
+      return;
+    }
+
+    if (parent && parent.children && parent.children.length > 0) {
+      setSelectedChild(parent.children[0]._id);
+      fetchAttendanceData(parent.children[0]._id);
+    } else if (parent && (!parent.children || parent.children.length === 0)) {
+      setError('No children found in your account. Please contact the administrator.');
+      setLoading(false);
+    }
+  }, [isLoggedIn, parent, navigate]);
+
+  const fetchAttendanceData = async (childId: string) => {
     try {
       setLoading(true);
       setError(null);
-
-      if (!selectedChild) return;
-
+      
       const [attendanceResponse, summaryResponse] = await Promise.all([
-        parentAttendanceService.getStudentAttendance(selectedChild),
-        parentAttendanceService.getAttendanceSummary(selectedChild)
+        parentAttendanceService.getStudentAttendance(childId),
+        parentAttendanceService.getAttendanceSummary(childId)
       ]);
       
       setAttendance(attendanceResponse.data);
@@ -63,48 +74,11 @@ const ParentAttendance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedChild]);
-
-  useEffect(() => {
-    if (!isLoggedIn) {
-      navigate('/parent-login');
-      return;
-    }
-
-    if (parent && parent.children && parent.children.length > 0) {
-      setSelectedChild(parent.children[0]._id);
-      fetchAttendanceData();
-    } else if (parent && (!parent.children || parent.children.length === 0)) {
-      setError('No children found in your account. Please contact the administrator.');
-    }
-  }, [isLoggedIn, parent, navigate, fetchAttendanceData]);
+  };
 
   const handleChildChange = async (childId: string) => {
     setSelectedChild(childId);
-    try {
-      const [attendanceResponse, summaryResponse] = await Promise.all([
-        parentAttendanceService.getStudentAttendance(childId),
-        parentAttendanceService.getAttendanceSummary(childId)
-      ]);
-      
-      setAttendance(attendanceResponse.data);
-      setAttendanceSummary(summaryResponse.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch attendance data');
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'present':
-        return <CheckCircle color="success" />;
-      case 'absent':
-        return <RadioButtonUnchecked color="error" />;
-      case 'late':
-        return <AccessTime color="warning" />;
-      default:
-        return <RadioButtonUnchecked color="disabled" />;
-    }
+    await fetchAttendanceData(childId);
   };
 
   const getStatusColor = (status: string) => {
@@ -120,13 +94,17 @@ const ParentAttendance: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'present':
+        return <CheckCircle />;
+      case 'absent':
+        return <RadioButtonUnchecked />;
+      case 'late':
+        return <AccessTime />;
+      default:
+        return <RadioButtonUnchecked />;
+    }
   };
 
   if (loading) {
@@ -145,38 +123,29 @@ const ParentAttendance: React.FC = () => {
     );
   }
 
-  const selectedChildData = parent?.children?.find(child => child._id === selectedChild);
-
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton 
-          onClick={() => navigate('/parent-dashboard')}
-          sx={{ mr: 2 }}
-        >
-          <ArrowBack />
-        </IconButton>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box>
           <Typography variant="h4" gutterBottom>
             Student Attendance
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            View attendance records for your children
+            Track your child's attendance records
           </Typography>
         </Box>
       </Box>
 
       {/* Student Selection */}
       {parent && parent.children.length > 1 && (
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: 4 }}>
           <CardContent>
             <FormControl fullWidth>
               <InputLabel>Select Student</InputLabel>
               <Select
                 value={selectedChild}
                 onChange={(e) => handleChildChange(e.target.value)}
-                label="Select Student"
               >
                 {parent.children.map((child) => (
                   <MenuItem key={child._id} value={child._id}>
@@ -191,8 +160,8 @@ const ParentAttendance: React.FC = () => {
 
       {/* Attendance Summary */}
       {attendanceSummary && (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={3}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -210,7 +179,7 @@ const ParentAttendance: React.FC = () => {
             </Card>
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} md={3}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -228,7 +197,7 @@ const ParentAttendance: React.FC = () => {
             </Card>
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} md={3}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -246,7 +215,7 @@ const ParentAttendance: React.FC = () => {
             </Card>
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} md={3}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -269,50 +238,47 @@ const ParentAttendance: React.FC = () => {
       {/* Attendance Records */}
       <Card>
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <CalendarToday sx={{ mr: 1, color: 'primary.main' }} />
-            <Typography variant="h6">
-              Attendance Records {selectedChildData && `- ${selectedChildData.name}`}
-            </Typography>
-          </Box>
-          
+          <Typography variant="h6" gutterBottom>
+            Attendance Records
+          </Typography>
           {attendance.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
-              <CalendarToday sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No attendance records found
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Attendance records will appear here once they are marked by teachers.
+              <Avatar sx={{ mx: 'auto', mb: 2, bgcolor: 'grey.100' }}>
+                <School />
+              </Avatar>
+              <Typography variant="body1" color="text.secondary">
+                No attendance records found for the selected period.
               </Typography>
             </Box>
           ) : (
-            <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
-              <Table stickyHeader>
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>Date</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Remarks</strong></TableCell>
-                    <TableCell><strong>Marked By</strong></TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Remarks</TableCell>
+                    <TableCell>Marked By</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {attendance.map((record) => (
                     <TableRow key={record._id} hover>
                       <TableCell>
-                        {formatDate(record.date)}
+                        {new Date(record.date).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {getStatusIcon(record.status)}
-                          <Chip
-                            label={record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                            color={getStatusColor(record.status) as any}
-                            size="small"
-                            sx={{ ml: 1 }}
-                          />
-                        </Box>
+                        <Chip
+                          icon={getStatusIcon(record.status)}
+                          label={record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                          color={getStatusColor(record.status) as any}
+                          size="small"
+                        />
                       </TableCell>
                       <TableCell>
                         {record.remarks || '-'}
@@ -332,4 +298,4 @@ const ParentAttendance: React.FC = () => {
   );
 };
 
-export default ParentAttendance;
+export default ParentAttendancePage;

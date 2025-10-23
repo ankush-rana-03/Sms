@@ -135,6 +135,11 @@ class ParentAuthService {
     return parentData ? JSON.parse(parentData) : null;
   }
 
+  // Helper method to set parent data in localStorage
+  setParentData(parent: Parent): void {
+    localStorage.setItem('parentData', JSON.stringify(parent));
+  }
+
   // Helper method to logout parent
   logoutParent(): void {
     localStorage.removeItem('parentToken');

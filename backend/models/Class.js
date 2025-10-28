@@ -76,4 +76,9 @@ const classSchema = new mongoose.Schema({
 // Compound index for name, section, and session (academicYear is derived from session)
 classSchema.index({ name: 1, section: 1, session: 1 }, { unique: true });
 
+// Add indexes for common query patterns
+classSchema.index({ session: 1 });
+classSchema.index({ name: 1, section: 1 });
+classSchema.index({ isActiveSession: 1 });
+
 module.exports = mongoose.model('Class', classSchema);

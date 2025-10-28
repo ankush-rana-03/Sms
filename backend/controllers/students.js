@@ -9,7 +9,7 @@ exports.getAllStudentsTest = async (req, res) => {
   try {
     console.log('=== TEST ROUTE: Getting all students ===');
     
-    const students = await Student.find({});
+    const students = await Student.find({}).lean();
     
     console.log('Total students in database:', students.length);
     students.forEach((student, index) => {
@@ -232,7 +232,7 @@ exports.getStudents = async (req, res) => {
 
     const skip = (Number(page) - 1) * Number(limit);
     const [students, total] = await Promise.all([
-      Student.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      Student.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
       Student.countDocuments(query)
     ]);
     
@@ -416,7 +416,8 @@ exports.getDeletedStudents = async (req, res) => {
 
     const students = await Student.find(query)
       .populate('deletedBy', 'name email')
-      .sort({ deletedAt: -1 });
+      .sort({ deletedAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,

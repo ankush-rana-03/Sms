@@ -111,6 +111,9 @@ const teacherSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Index for frequent lookups by linked user
+teacherSchema.index({ user: 1 });
+
 // Generate teacher ID
 teacherSchema.pre('save', async function(next) {
   if (this.isNew && !this.teacherId) {

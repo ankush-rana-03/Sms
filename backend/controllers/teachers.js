@@ -14,7 +14,7 @@ exports.getStudentsByClass = async (req, res) => {
     const query = { grade };
     if (section) query.section = section;
 
-    const students = await Student.find(query);
+    const students = await Student.find(query).lean();
     return res.status(200).json({ success: true, count: students.length, data: students });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Error fetching students', error: error.message });
@@ -42,7 +42,7 @@ exports.getTodayAttendance = async (req, res) => {
     const query = { grade };
     if (section) query.section = section;
 
-    const students = await Student.find(query);
+    const students = await Student.find(query).lean();
     const data = students.map(s => {
       const record = (s.attendance || []).find(r => r.date === today && (!session || r.session === session));
       return {
